@@ -6,6 +6,7 @@
 #Load required packages
 #required for shiny apps
 library(shiny)
+library(shinyjs)
 #required for working with datetimes
 library(lubridate)
 #required for manipulating data
@@ -22,6 +23,7 @@ library(readxl)
 #Not sure what this is for.
 library(mgcv)
 "%!in%" <- Negate("%in%")
+source('C:/met_db/busy-indicator.R')
 
 # Set timezone to GMT to stop R/Oracle changing dates based on daylight saving time
 Sys.setenv(TZ = "GMT")
@@ -77,7 +79,7 @@ df_proc$endDate   <- as.POSIXct(df_proc$endDate, format = "%Y/%m/%d %H:%M", tz =
 ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                          #shiny has various different panels and page types, which you can look up
                          #navbarPage is the top bar with "Met Data Validation" and "Information"
-                         tabPanel("Validate Data",
+                         tabPanel("Validate Data",useShinyjs(),
                                   absolutePanel(top = 50, left = 10, right = 0, bottom = 0,width = "auto", height = "auto",
                                                 #you then construct the page chronologically, so under the navigation bar you'll have the Validate Data tab.
                                                 sidebarPanel(
@@ -120,25 +122,27 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                                     #the left hand side is your attached name to call in the server.
                                                     #the right hand side is the text to be displayed in the app.
                                                     actionButton("seejobsummary", "Confirm Run Settings"),
-                                                    actionButton("retrieve_data", "Retrieve from database")
+                                                    shinyjs::disabled(actionButton("retrieve_data", "Retrieve from database"))
                                                   )),
-                                                  br(),
-                                                  mainPanel(
-                                                    fluidRow(
-                                                      actionButton("write_data", "Write to database"),
-                                                      actionButton("plottime", label = "Plot Time Series"),
-                                                      actionButton("reset", label = "Reset selection"),
-                                                      actionButton("delete", label = "Delete selection"),
-                                                      actionButton("replot", label = "Replot graph"),
-                                                      h4("Selected states"),
-                                                      tableOutput("datatab")
-                                                    ),
-                                                    uiOutput("submit_info"),
-                                                    fluidRow(
-                                                      plotOutput("progressbar")
-                                                    ),
-                                                    girafeOutput("plot")
+                                                br(),
+                                                mainPanel(
+                                                  # fluidRow(
+                                                  #   plotOutput("progressbar")
+                                                  # ),
+                                                  fluidRow(
+                                                    shinyjs::disabled(actionButton("replot", label = "Replot graph")),
+                                                    shinyjs::disabled(actionButton("plottime", label = "Plot Time Series")),
+                                                    shinyjs::disabled(actionButton("reset", label = "Reset selection")),
+                                                    shinyjs::disabled(actionButton("delete", label = "Delete selection")),
+                                                    h4("Selected states"),
+                                                    tableOutput("datatab")
+                                                  ),
+                                                  uiOutput("submit_info"),
+                                                  girafeOutput("plot"),
+                                                  fluidRow(
+                                                    actionButton("write_data", "Write to database")
                                                   )
+                                                )
                                   )),
                          #The other panel starts here, the second tab in the navbar page.
                          #note it is after a comma and after: 
@@ -152,7 +156,7 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                   p("CBED is a model which provides Concentratio-Based Estimates of Deposition for a number of pollutants (Smith 2000, 2001). Dry deposition (i.e. var flux), wet deposition (in precipitation), and aerosol particle deposition are modelled explicitly, to six different land-use types."),
                                   uiOutput("git_link")
                          ) # end of tabPanel
-) #end of navbar page
+                         ,busyIndicator(text = "Please wait...", wait = 1000)) #end of navbar page
 ) #end of ui
 
 # Define server logic required for the app
@@ -190,6 +194,10 @@ server <- shinyServer(function(input, output, session) {
     df_qry[df_qry$checked %in% selected_state(), input$select_var] <<- NA
     df_qry[is.na(df_qry[, input$select_var]), input$select_var] <<- df_qry$pred[is.na(df_qry[, input$select_var])]
     #df_qry$TS[df_qry$checked %in% selected_state()] <<- NA
+  })
+  
+  observeEvent(input$seejobsummary, {
+    shinyjs::enable("retrieve_data")
   })
   
   #the first output, rendering a table with the data, depending on the reactive value in selected_state.
@@ -298,6 +306,8 @@ server <- shinyServer(function(input, output, session) {
   
   # Run CBED dry dep
   observeEvent(input$retrieve_data, {
+    enable("replot")
+    enable("plottime")
     # make an SQL query to select all fields between start and end dates
     qry <- paste0("SELECT * FROM ", table_name, 
                   " WHERE DATECT > TO_DATE('", job_df()$datech[1], "', 'yyyy/mm/dd hh24:mi') 
@@ -373,6 +383,8 @@ server <- shinyServer(function(input, output, session) {
   })
   
   observeEvent(input$replot, {
+    enable("reset")
+    enable("delete")
     y <- df_qry[, input$select_var]
     m <- gam(y ~ s(DATECT_NUM, bs = "cr", k = input$intslider), data = df_qry, na.action = na.exclude)
     df_qry$pred <<- predict(m, newdata = df_qry, na.action = na.exclude)
