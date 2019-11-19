@@ -10,6 +10,7 @@ library(shiny)
 library(lubridate)
 #required for manipulating data
 library(plyr)
+library(dplyr)
 #required for plotting + interactive plotting
 library(ggplot2)
 library(ggiraph)
@@ -72,7 +73,6 @@ df_proc$endDate   <- as.POSIXct(df_proc$endDate, format = "%Y/%m/%d %H:%M", tz =
 #observeEvent is a shiny function that checks for a defined condition (ie input from  the user)
 #and then code to run if the condition is met
 
-
 # Define UI for the app
 ui <- shinyUI(navbarPage("Met Data Validation", 
                          #shiny has various different panels and page types, which you can look up
@@ -86,6 +86,9 @@ ui <- shinyUI(navbarPage("Met Data Validation",
                                       #fluidRow is just ui generic text in this case.
                                       #as the first row, it will be at the top of the main panel
                                       helpText("This app provides an interface to the field sites database and allows a user to plot data, remove dubious data and fill gaps with predictions.")
+                                    ),
+                                    fluidRow(
+                                      plotOutput("progressbar")
                                     ),
                                     fluidRow(
                                       column(width = 4,
@@ -226,6 +229,30 @@ server <- shinyServer(function(input, output, session) {
     out
   })
   
+  output$progessbar <- renderPlot({
+    variable_names <- unique(colnames(df_qry))
+    reviewed_df <<- as.data.frame(variable_names)
+    reviewed_df$reviewed <<- FALSE
+    now_true <- reviewed_df %>%
+      filter(variable_names == "TS") 
+    now_true$reviewed <- TRUE
+    reviewed_df$reviewed[which(reviewed_df$variable_names==now_true$variable_names)] <- now_true$reviewed
+    
+    progress_plot <- ggplot(reviewed_df) +
+      geom_tile(aes(x= variable_names,y= "",fill = reviewed))+
+      geom_text(aes(x= variable_names,y= "",label = variable_names),
+                color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
+      scale_y_discrete("",expand = c(0,2))+
+      theme(
+        panel.background = element_blank(),
+        axis.ticks.y =  element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank()
+      )  
+    progress_plot
+  })
+  
   #Create select input UI element with var options
   output$var_filter <- renderUI({
     selectInput("select_var", label = h3("Select Variable"), 
@@ -293,6 +320,7 @@ server <- shinyServer(function(input, output, session) {
   #Render the job info dataframe as a table
   output$job_table <- renderTable({
     job_df()
+    browser()
   })
   
   # Run CBED dry dep
