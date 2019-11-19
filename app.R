@@ -388,7 +388,8 @@ server <- shinyServer(function(input, output, session) {
       } else{
         #if it does exist already, add new variable to df 
         accumulated_df$reviewed[which(accumulated_df$variable_names==now_true$variable_names)] <- now_true$reviewed
-      }
+        accumulated_df <<- accumulated_df
+        }
       
       progress_plot <- ggplot(accumulated_df) +
         geom_tile(aes(x= variable_names,y= "",fill = reviewed))+
