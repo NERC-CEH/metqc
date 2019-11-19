@@ -74,98 +74,72 @@ df_proc$endDate   <- as.POSIXct(df_proc$endDate, format = "%Y/%m/%d %H:%M", tz =
 #and then code to run if the condition is met
 
 # Define UI for the app
-ui <- shinyUI(navbarPage("Met Data Validation", 
+ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                          #shiny has various different panels and page types, which you can look up
                          #navbarPage is the top bar with "Met Data Validation" and "Information"
                          tabPanel("Validate Data",
-                                  #you then construct the page chronologically, so under the navigation bar you'll have the Validate Data tab.
-                                  mainPanel(
-                                    #within the Validate data tab there is a mainPanel (this just means in the centre of the page).
-                                    # you can also have a leftPanel if  you want everything on the left hand side.
-                                    fluidRow(
-                                      #fluidRow is just ui generic text in this case.
-                                      #as the first row, it will be at the top of the main panel
-                                      helpText("This app provides an interface to the field sites database and allows a user to plot data, remove dubious data and fill gaps with predictions.")
-                                    ),
-                                    fluidRow(
-                                      plotOutput("progressbar")
-                                    ),
-                                    fluidRow(
-                                      column(width = 4,
-                                             #here is a bit of uiOutput.
-                                             #the output here is var_filter, which is defined in the server component.
-                                             #just quickly for you to see:
-                                             #
-                                             # output$var_filter <- renderUI({
-                                             #   selectInput("select_var", label = h3("Select Variable"), 
-                                             #               choices = as.list(dbNames) )
-                                             # })
-                                             #
-                                             #it is a drop-down selection button that takes names from a list of variables created in the server.
-                                             uiOutput("var_filter")),
-                                      column(width = 4,
-                                             uiOutput("var_filter_col")),
-                                      column(width = 4,
-                                             uiOutput("landuse_filter")),
-                                      uiOutput("date_info")
-                                    ),
-                                    fluidRow(
-                                      column(width = 6,
-                                             h3("Select Start Data and Time")),
-                                      column(width = 6,
-                                             h3("Select End Data and Time"))
-                                    ),
-                                    fluidRow(
-                                      column(width = 2,
-                                             uiOutput("start_date")),
-                                      column(width = 2,
-                                             #numericInput is similar to uiOutput, but it's just a predefined function in shiny.
-                                             #so no need to custom-generate options in the server.
-                                             #the output in this case gets saved as "shour", so you can use and manipulate it in the server.
-                                             numericInput("shour", value = 00, label = "Hour", min = 0, max = 24, step = 1)),
-                                      column(width = 2,
-                                             numericInput("smin", value = 00, label = "Minute", min = 0, max = 60, step = 1)),
-                                      column(width = 2,
-                                             uiOutput("end_date")),
-                                      column(width = 2,
-                                             numericInput("ehour", value = 00, label = "Hour", min = 0, max = 24, step = 1)),
-                                      column(width = 2,
-                                             numericInput("emin", value = 00, label = "Minute", min = 0, max = 60, step = 1))
-                                    ),
-                                    fluidRow(
-                                      #slider input is similar to numericInput
-                                      sliderInput("intslider", label = "Smoothness (number of knots in cr spline):", min = 1, max = 32, value = 10, step = 1)
-                                    ),
-                                    fluidRow(
-                                      #actionButton is what I referred to in the example with the submit button.
-                                      #the left hand side is your attached name to call in the server.
-                                      #the right hand side is the text to be displayed in the app.
-                                      actionButton("seejobsummary", "Confirm Run Settings")
-                                    ),
-                                    fluidRow(
-                                      #this is a table output calling for the job_table table
-                                      #this table is defined in the server.
-                                      tableOutput("job_table")
-                                      #DT::dataTableOutput("job_table")
-                                      #helpText("Show something here with synopsis of choices for processing, e.g. a table of the options.")
-                                    ),
-                                    fluidRow(
-                                      actionButton("retrieve_data", "Retrieve from database"),
-                                      actionButton("write_data", "Write to database")
-                                    ),
-                                    uiOutput("submit_info"),
-                                    fluidRow(
-                                      uiOutput("sector_filter"),
-                                      actionButton("plottime", label = "Plot Time Series"),
-                                      actionButton("reset", label = "Reset selection"),
-                                      actionButton("delete", label = "Delete selection"),
-                                      actionButton("replot", label = "Replot graph"),
-                                      h4("Selected states"),
-                                      tableOutput("datatab")
-                                    ),
-                                    girafeOutput("plot")
-                                  )
-                         ),
+                                  absolutePanel(top = 50, left = 10, right = 0, bottom = 0,width = "auto", height = "auto",
+                                                #you then construct the page chronologically, so under the navigation bar you'll have the Validate Data tab.
+                                                sidebarPanel(
+                                                  #within the Validate data tab there is a mainPanel (this just means in the centre of the page).
+                                                  # you can also have a leftPanel if  you want everything on the left hand side.
+                                                  fluidRow(
+                                                    #fluidRow is just ui generic text in this case.
+                                                    #as the first row, it will be at the top of the main panel
+                                                    helpText("This app provides an interface to the field sites database and allows a user to plot data, remove dubious data and fill gaps with predictions.")
+                                                  ),
+                                                  fluidRow(h3("Select Variable, colour scale and gap-filling method."),
+                                                           column(width = 4,
+                                                                  uiOutput("var_filter")),
+                                                           column(width = 4,
+                                                                  uiOutput("var_filter_col")),
+                                                           column(width = 4,
+                                                                  uiOutput("landuse_filter"))
+                                                  ),
+                                                  fluidRow(
+                                                    uiOutput("date_info"),
+                                                    column(width = 6,
+                                                           uiOutput("start_date")),
+                                                    column(width = 3,
+                                                           numericInput("shour", value = 00, label = "Hour", min = 0, max = 23, step = 1)),
+                                                    column(width = 3,
+                                                           numericInput("smin", value = 00, label = "Minute", min = 0, max = 59, step = 1)),
+                                                    column(width = 6,
+                                                           uiOutput("end_date")),
+                                                    column(width = 3,
+                                                           numericInput("ehour", value = 00, label = "Hour", min = 0, max = 23, step = 1)),
+                                                    column(width = 3,
+                                                           numericInput("emin", value = 00, label = "Minute", min = 0, max = 59, step = 1))
+                                                  ),
+                                                  fluidRow(
+                                                    #slider input is similar to numericInput
+                                                    sliderInput("intslider", label = "Smoothness (number of knots in cr spline):", min = 1, max = 32, value = 10, step = 1)
+                                                  ),
+                                                  fluidRow(
+                                                    #actionButton is what I referred to in the example with the submit button.
+                                                    #the left hand side is your attached name to call in the server.
+                                                    #the right hand side is the text to be displayed in the app.
+                                                    actionButton("seejobsummary", "Confirm Run Settings"),
+                                                    actionButton("retrieve_data", "Retrieve from database")
+                                                  )),
+                                                  br(),
+                                                  mainPanel(
+                                                    fluidRow(
+                                                      actionButton("write_data", "Write to database"),
+                                                      actionButton("plottime", label = "Plot Time Series"),
+                                                      actionButton("reset", label = "Reset selection"),
+                                                      actionButton("delete", label = "Delete selection"),
+                                                      actionButton("replot", label = "Replot graph"),
+                                                      h4("Selected states"),
+                                                      tableOutput("datatab")
+                                                    ),
+                                                    uiOutput("submit_info"),
+                                                    fluidRow(
+                                                      plotOutput("progressbar")
+                                                    ),
+                                                    girafeOutput("plot")
+                                                  )
+                                  )),
                          #The other panel starts here, the second tab in the navbar page.
                          #note it is after a comma and after: 
                          #
@@ -255,19 +229,19 @@ server <- shinyServer(function(input, output, session) {
   
   #Create select input UI element with var options
   output$var_filter <- renderUI({
-    selectInput("select_var", label = h3("Select Variable"), 
+    selectInput("select_var", label = h5("Variable"), 
                 choices = as.list(dbNames) )
   })
   
   #Create select input UI element with var options
   output$var_filter_col <- renderUI({
-    selectInput("select_col", label = h3("Select Variable for Colour Scale"), 
+    selectInput("select_col", label = h5("Variable for Colour Scale"), 
                 choices = as.list(dbNames) )
   })
   
   #Create select input UI element with land-use options
   output$landuse_filter <- renderUI({
-    selectInput("select_landuse", label = h3("Select Gap-Filling Method"), choices = as.list(c("gridavg", "arable", "forest", "grass", "moor", "urban")) )
+    selectInput("select_landuse", label = h5("Gap-Filling Method"), choices = as.list(c("gridavg", "arable", "forest", "grass", "moor", "urban")) )
   })
   
   #Create a sentence of metadata about the site, station and var selection made.
@@ -320,7 +294,6 @@ server <- shinyServer(function(input, output, session) {
   #Render the job info dataframe as a table
   output$job_table <- renderTable({
     job_df()
-    browser()
   })
   
   # Run CBED dry dep
