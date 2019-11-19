@@ -4,14 +4,21 @@
 # guess former
 #install.packages(c("readxl", "ggiraph"))
 #Load required packages
+#required for shiny apps
 library(shiny)
+#required for working with datetimes
 library(lubridate)
+#required for manipulating data
 library(plyr)
+#required for plotting + interactive plotting
 library(ggplot2)
-#library(openair)
-library(ROracle)
-library(readxl)
 library(ggiraph)
+#library(openair)
+#required for querying and writing to database
+library(ROracle)
+#required for reading .xlsx files
+library(readxl)
+#Not sure what this is for.
 library(mgcv)
 "%!in%" <- Negate("%in%")
 
@@ -24,12 +31,12 @@ dbuid <- "BU_FIELD_SITES"
 dbpwd <- "0ig2mtYUL9" 
 drv <- dbDriver("Oracle")
 con <- dbConnect(drv, dbname = "budbase.nerc-bush.ac.uk/BUA",
-                      username = dbuid,
-                      password = dbpwd)
+                 username = dbuid,
+                 password = dbpwd)
 # needs to be uppercase for queries to work                      
 table_name <- "MET_30MIN"                      
 dbNames <- dbListFields(con, table_name)
-                      
+
 df_proc <- data.frame(
   startDate = "1995/01/01 00:00",
   endDate   = "2019/12/31 00:00",
@@ -40,124 +47,202 @@ df_proc <- data.frame(
 df_proc$startDate <- as.POSIXct(df_proc$startDate, format = "%Y/%m/%d %H:%M", tz = "UTC")
 df_proc$endDate   <- as.POSIXct(df_proc$endDate, format = "%Y/%m/%d %H:%M", tz = "UTC")
 
-<!--- { ui -->
+#Shiny apps are made of two components: the ui and the server.
+
+#First the ui, which determines the page layout, what goes where on the page (for example a plot).
+#in the ui you can determine an objects visual appearance, but can also attach an object name to it
+
+#for example, if you have a button to submit data
+#you tell the ui to display the text "Submit", and attach the name submit_button to it.
+#this allows you to refer to the button in the server component.
+
+#In the server, all the 'under-the-hood' processes occur.
+#Your data manipulation and plotting goes here.
+#The nice thing about shiny is this is where you determine what happens with user interaction, or 'input'.
+
+#In a "normal" r script you have options with an if statements.
+#In a shiny environment, it works similarly - for example if you want the submit button to trigger data submission to the oracle database.
+#so: "if submit_button is pressed, submit data to the database"
+#is translated in shiny to:
+
+#observeEvent(input$submit_button, {
+#code here to upload to database.
+#})
+
+#observeEvent is a shiny function that checks for a defined condition (ie input from  the user)
+#and then code to run if the condition is met
+
 
 # Define UI for the app
-ui <- shinyUI(navbarPage("Met Data Validation",
-                 tabPanel("Validate Data",
-                            mainPanel(
-                              fluidRow(
-                                 helpText("This app provides an interface to the field sites database and allows a user to plot data, remove dubious data and fill gaps with predictions.")
-                                ),
-                              fluidRow(
-                                column(width = 4,
-                                       uiOutput("var_filter")),
-                                column(width = 4,
-                                       uiOutput("var_filter_col")),
-                                column(width = 4,
-                                       uiOutput("landuse_filter")),
-                                uiOutput("date_info")
-                              ),
-                              fluidRow(
-                                column(width = 6,
-                                       h3("Select Start Data and Time")),
-                                column(width = 6,
-                                       h3("Select End Data and Time"))
-                              ),
-                              fluidRow(
-                                column(width = 2,
-                                       uiOutput("start_date")),
-                                column(width = 2,
-                                       numericInput("shour", value = 00, label = "Hour", min = 0, max = 24, step = 1)),
-                                column(width = 2,
-                                       numericInput("smin", value = 00, label = "Minute", min = 0, max = 60, step = 1)),
-
-                                column(width = 2,
-                                       uiOutput("end_date")),
-                                column(width = 2,
-                                       numericInput("ehour", value = 00, label = "Hour", min = 0, max = 24, step = 1)),
-                                column(width = 2,
-                                       numericInput("emin", value = 00, label = "Minute", min = 0, max = 60, step = 1))
-                            ),
-                            fluidRow(
-                              sliderInput("intslider", label = "Smoothness (number of knots in cr spline):", min = 1, max = 32, value = 10, step = 1)
-                            ),
-                            fluidRow(
-                              actionButton("seejobsummary", "Confirm Run Settings")
-                            ),
-                            fluidRow(
-                              tableOutput("job_table")
-                              #DT::dataTableOutput("job_table")
-                              #helpText("Show something here with synopsis of choices for processing, e.g. a table of the options.")
-                            ),
-                            fluidRow(
-                              actionButton("retrieve_data", "Retrieve from database"),
-                              actionButton("write_data", "Write to database")
-                            ),
-                            uiOutput("submit_info"),
-                            fluidRow(
-                              uiOutput("sector_filter"),
-                              actionButton("plottime", label = "Plot Time Series"),
-                              actionButton("reset", label = "Reset selection"),
-                              actionButton("delete", label = "Delete selection"),
-                              actionButton("replot", label = "Replot graph"),
-                                 h4("Selected states"),
-                                 tableOutput("datatab")
-                            ),
-                            girafeOutput("plot")
-                          )
-                 ),
-                 tabPanel("Information",
-                          p("CBED is a model which provides Concentratio-Based Estimates of Deposition for a number of pollutants (Smith 2000, 2001). Dry deposition (i.e. var flux), wet deposition (in precipitation), and aerosol particle deposition are modelled explicitly, to six different land-use types."),
-                          uiOutput("git_link")
-                 )
-
-    )
-)
-<!--- } -->
+ui <- shinyUI(navbarPage("Met Data Validation", 
+                         #shiny has various different panels and page types, which you can look up
+                         #navbarPage is the top bar with "Met Data Validation" and "Information"
+                         tabPanel("Validate Data",
+                                  #you then construct the page chronologically, so under the navigation bar you'll have the Validate Data tab.
+                                  mainPanel(
+                                    #within the Validate data tab there is a mainPanel (this just means in the centre of the page).
+                                    # you can also have a leftPanel if  you want everything on the left hand side.
+                                    fluidRow(
+                                      #fluidRow is just ui generic text in this case.
+                                      #as the first row, it will be at the top of the main panel
+                                      helpText("This app provides an interface to the field sites database and allows a user to plot data, remove dubious data and fill gaps with predictions.")
+                                    ),
+                                    fluidRow(
+                                      column(width = 4,
+                                             #here is a bit of uiOutput.
+                                             #the output here is var_filter, which is defined in the server component.
+                                             #just quickly for you to see:
+                                             #
+                                             # output$var_filter <- renderUI({
+                                             #   selectInput("select_var", label = h3("Select Variable"), 
+                                             #               choices = as.list(dbNames) )
+                                             # })
+                                             #
+                                             #it is a drop-down selection button that takes names from a list of variables created in the server.
+                                             uiOutput("var_filter")),
+                                      column(width = 4,
+                                             uiOutput("var_filter_col")),
+                                      column(width = 4,
+                                             uiOutput("landuse_filter")),
+                                      uiOutput("date_info")
+                                    ),
+                                    fluidRow(
+                                      column(width = 6,
+                                             h3("Select Start Data and Time")),
+                                      column(width = 6,
+                                             h3("Select End Data and Time"))
+                                    ),
+                                    fluidRow(
+                                      column(width = 2,
+                                             uiOutput("start_date")),
+                                      column(width = 2,
+                                             #numericInput is similar to uiOutput, but it's just a predefined function in shiny.
+                                             #so no need to custom-generate options in the server.
+                                             #the output in this case gets saved as "shour", so you can use and manipulate it in the server.
+                                             numericInput("shour", value = 00, label = "Hour", min = 0, max = 24, step = 1)),
+                                      column(width = 2,
+                                             numericInput("smin", value = 00, label = "Minute", min = 0, max = 60, step = 1)),
+                                      column(width = 2,
+                                             uiOutput("end_date")),
+                                      column(width = 2,
+                                             numericInput("ehour", value = 00, label = "Hour", min = 0, max = 24, step = 1)),
+                                      column(width = 2,
+                                             numericInput("emin", value = 00, label = "Minute", min = 0, max = 60, step = 1))
+                                    ),
+                                    fluidRow(
+                                      #slider input is similar to numericInput
+                                      sliderInput("intslider", label = "Smoothness (number of knots in cr spline):", min = 1, max = 32, value = 10, step = 1)
+                                    ),
+                                    fluidRow(
+                                      #actionButton is what I referred to in the example with the submit button.
+                                      #the left hand side is your attached name to call in the server.
+                                      #the right hand side is the text to be displayed in the app.
+                                      actionButton("seejobsummary", "Confirm Run Settings")
+                                    ),
+                                    fluidRow(
+                                      #this is a table output calling for the job_table table
+                                      #this table is defined in the server.
+                                      tableOutput("job_table")
+                                      #DT::dataTableOutput("job_table")
+                                      #helpText("Show something here with synopsis of choices for processing, e.g. a table of the options.")
+                                    ),
+                                    fluidRow(
+                                      actionButton("retrieve_data", "Retrieve from database"),
+                                      actionButton("write_data", "Write to database")
+                                    ),
+                                    uiOutput("submit_info"),
+                                    fluidRow(
+                                      uiOutput("sector_filter"),
+                                      actionButton("plottime", label = "Plot Time Series"),
+                                      actionButton("reset", label = "Reset selection"),
+                                      actionButton("delete", label = "Delete selection"),
+                                      actionButton("replot", label = "Replot graph"),
+                                      h4("Selected states"),
+                                      tableOutput("datatab")
+                                    ),
+                                    girafeOutput("plot")
+                                  )
+                         ),
+                         #The other panel starts here, the second tab in the navbar page.
+                         #note it is after a comma and after: 
+                         #
+                         #tabPanel(Validate Data",
+                         #whatever was in the tabPanel
+                         #),
+                         #
+                         #that is how you order the pages.
+                         tabPanel("Information",
+                                  p("CBED is a model which provides Concentratio-Based Estimates of Deposition for a number of pollutants (Smith 2000, 2001). Dry deposition (i.e. var flux), wet deposition (in precipitation), and aerosol particle deposition are modelled explicitly, to six different land-use types."),
+                                  uiOutput("git_link")
+                         ) # end of tabPanel
+) #end of navbar page
+) #end of ui
 
 # Define server logic required for the app
-server <- shinyServer(function(input, output, session) {
+#next the server.
+#I'm actually not 100% entirely sure how this work precisely
+#but I think the server is basically just a function
 
+#with shiny, the variables in your function are almost always
+#input - what the user clicks (I think)
+#output - your pre-defined tables and plots you want to be displayed
+#session - this one is the one I'm most unclear about - but I think it is just to ensure it is reset and 
+#a clean slate when you start a new session?
+#either way it doesn't need too much attention.
+
+server <- shinyServer(function(input, output, session) {
+  
+  #shiny is different from normal r scripts in that you can create reactive objects.
+  #reactive objects are a different class of object, just like a data.frame, vector or character.
+  #a reactive object is used if you want to change something depending on user input
+  #it has to be pre-defined at before using it in the server, and gives you flexibility because it can change your output
+  #meaning you can have one bit of code to generate a plot, but the plot can change depending on user input
+  
   selected_state <- reactive({
     input$plot_selected
   })
-
+  
+  #here is the first observeEvent, which dictates what to do when the reset button is pressed
   observeEvent(input$reset, {
     session$sendCustomMessage(type = 'plot_set', message = character(0))
   })
-
+  #the second observeEvent, which dictates what to do when the delete button is pressed
+  
   observeEvent(input$delete, {
     #df_qry[df_qry$checked %in% selected_state(), input$select_var] <<- NA
     df_qry[df_qry$checked %in% selected_state(), input$select_var] <<- NA
     df_qry[is.na(df_qry[, input$select_var]), input$select_var] <<- df_qry$pred[is.na(df_qry[, input$select_var])]
     #df_qry$TS[df_qry$checked %in% selected_state()] <<- NA
   })
-
+  
+  #the first output, rendering a table with the data, depending on the reactive value in selected_state.
+  #it returns "out" which is a subset of all the data in df_qry that match selected_state
+  #it is then saved as output$job_table
+  #and called in the ui as tableOutput("job_table")
   output$job_table <- renderTable({
     out <- df_qry[df_qry$checked %in% selected_state(), 1:3]
     if( nrow(out) < 1 ) return(NULL)
     row.names(out) <- NULL
     out
   })
-
+  
   #Create select input UI element with var options
   output$var_filter <- renderUI({
     selectInput("select_var", label = h3("Select Variable"), 
-    choices = as.list(dbNames) )
+                choices = as.list(dbNames) )
   })
-
+  
   #Create select input UI element with var options
   output$var_filter_col <- renderUI({
     selectInput("select_col", label = h3("Select Variable for Colour Scale"), 
-    choices = as.list(dbNames) )
+                choices = as.list(dbNames) )
   })
-
+  
   #Create select input UI element with land-use options
   output$landuse_filter <- renderUI({
     selectInput("select_landuse", label = h3("Select Gap-Filling Method"), choices = as.list(c("gridavg", "arable", "forest", "grass", "moor", "urban")) )
   })
-    
+  
   #Create a sentence of metadata about the site, station and var selection made.
   output$date_info <- renderUI ({
     helpText(paste("You have selected var ", as.character(input$select_var), ". Select your required processing start and end times below."))
@@ -176,15 +261,15 @@ server <- shinyServer(function(input, output, session) {
   #Create a date input for the user to select start date
   output$start_date <- renderUI ({
     dateInput("sdate", 
-      value = as.Date(strptime("01/07/2017", "%d/%m/%Y"), tz = "UTC"), 
-      min = first_start_date(), 
-      max = last_end_date(), label = "Date")
+              value = as.Date(strptime("01/07/2017", "%d/%m/%Y"), tz = "UTC"), 
+              min = first_start_date(), 
+              max = last_end_date(), label = "Date")
   })
   
   #Create a date input for the user to select end date
   output$end_date <- renderUI ({
     dateInput("edate", value = as.Date(strptime("01/08/2017", "%d/%m/%Y"), tz = "UTC"), 
-      min = first_start_date(), max = last_end_date(), label = "Date")
+              min = first_start_date(), max = last_end_date(), label = "Date")
   })
   
   #Create a dataframe with all the information about the job
@@ -197,7 +282,7 @@ server <- shinyServer(function(input, output, session) {
     nTimes <- input$intslider
     # create a sequence of timestamps
     datect <- seq(startDate, endDate, length = nTimes)
-
+    
     data.frame(datech = format(datect, "%Y/%m/%d %H:%M"),
                varName = input$select_var, 
                landuse = input$select_landuse, 
@@ -214,7 +299,7 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(input$retrieve_data, {
     # make an SQL query to select all fields between start and end dates
     qry <- paste0("SELECT * FROM ", table_name, 
-                 " WHERE DATECT > TO_DATE('", job_df()$datech[1], "', 'yyyy/mm/dd hh24:mi') 
+                  " WHERE DATECT > TO_DATE('", job_df()$datech[1], "', 'yyyy/mm/dd hh24:mi') 
                      AND DATECT < TO_DATE('", job_df()$datech[6], "', 'yyyy/mm/dd hh24:mi')")             
     df_qry <<- dbGetQuery(con, qry)
     df_qry$checked <<- as.factor(rownames(df_qry))
@@ -224,15 +309,15 @@ server <- shinyServer(function(input, output, session) {
     df_qry$pred <<- predict(m, newdata = df_qry, na.action = na.exclude)
     
     ggp <<- ggplot(df_qry, aes(DATECT, y = df_qry[, input$select_var])) +     
-              geom_point_interactive(aes(data_id = checked, tooltip = checked, colour = df_qry[, input$select_col]), size = 3) +
-              geom_line(aes(y = df_qry$pred)) +
-              #ylim(0, NA) +
-              xlab("Date")      + ylab("Your variable")      + ggtitle("Time series of your variable")
+      geom_point_interactive(aes(data_id = checked, tooltip = checked, colour = df_qry[, input$select_col]), size = 3) +
+      geom_line(aes(y = df_qry$pred)) +
+      #ylim(0, NA) +
+      xlab("Date")      + ylab("Your variable")      + ggtitle("Time series of your variable")
     
     #Render the job info dataframe as a table
-      output$job_table <- renderTable({
-        as.data.frame(as.matrix(summary(df_qry[, input$select_var])))
-      })
+    output$job_table <- renderTable({
+      as.data.frame(as.matrix(summary(df_qry[, input$select_var])))
+    })
   })
   
   # Run CBED wet dep
@@ -240,10 +325,10 @@ server <- shinyServer(function(input, output, session) {
     # declare brick for deposition rasters for multiple times
     b_F <<- brick(r, values = FALSE, nl = input$intslider)
     #b_Fwet <- brick(r, values = FALSE, nl = nTimes)
-
+    
     for (itime in 1:input$intslider){
       r_F <<- getWetDep(pollutant = input$select_col, datect = job_df()$datect[itime], 
-                   landuse = input$select_landuse, mm = TRUE)
+                        landuse = input$select_landuse, mm = TRUE)
       #r_Fwet <- getWetDep(pollutant = pollutant, datect = datect, landuse = landuse, mm = TRUE)
       b_F[[itime]] <<- r_F
       #b_Fwet[[itime]] <- r_Fwet
@@ -284,18 +369,18 @@ server <- shinyServer(function(input, output, session) {
         names(b_F) <- job_df()$datect
         plot(b_F)
       })
-    })
+  })
   
   observeEvent(input$replot, {
     y <- df_qry[, input$select_var]
     m <- gam(y ~ s(DATECT_NUM, bs = "cr", k = input$intslider), data = df_qry, na.action = na.exclude)
     df_qry$pred <<- predict(m, newdata = df_qry, na.action = na.exclude)
-
+    
     ggp <- ggplot(df_qry, aes(DATECT, y = df_qry[, input$select_var])) + 
-    geom_point_interactive(aes(data_id = checked, tooltip = checked, colour = df_qry[, input$select_col]), size = 3) + 
-    geom_line(aes(y = df_qry$pred), colour = "red") + 
-    #ylim(0, NA) + 
-    xlab("Date")      + ylab("Your variable")      + ggtitle("Time series of your variable")
+      geom_point_interactive(aes(data_id = checked, tooltip = checked, colour = df_qry[, input$select_col]), size = 3) + 
+      geom_line(aes(y = df_qry$pred), colour = "red") + 
+      #ylim(0, NA) + 
+      xlab("Date")      + ylab("Your variable")      + ggtitle("Time series of your variable")
     output$plot <- renderggiraph({
       x <- girafe(code = print(ggp), width_svg = 6, height_svg = 5)
       x <- girafe_options(x, opts_selection(
@@ -304,17 +389,25 @@ server <- shinyServer(function(input, output, session) {
       x
     })
   })
-
+  
   # download netCDF files
   output$netcdf <- downloadHandler(
-filename = function() {
-    paste('rCBED-', Sys.Date(), '.nc', sep='')
-  },
+    filename = function() {
+      paste('rCBED-', Sys.Date(), '.nc', sep='')
+    },
     content = function(file) {
       writeRaster(b_F, file)
     }
   )
 })
+
+#this bit of code just tells R to run the app, and specifies what to use as the ui and what to use as the server.
+#straightforward in this script, but in some larger apps you might want to have the ui and server in seperate scripts
+#it would work the exact same, but you'd have so source the scripts before running the app
+
+#source("script_with_ui.R")
+#source("script_with_server.R")
+#and then you can run 
 
 # Run the application 
 shinyApp(ui = ui, server = server)
