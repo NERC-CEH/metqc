@@ -125,19 +125,18 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                                     shinyjs::disabled(actionButton("retrieve_data", "Retrieve from database"))
                                                   )),
                                                 mainPanel(
-                                                  fluidRow(h4("Review progress"),
-                                                    plotOutput("progressbar"),
-                                                    shinyjs::disabled(actionButton("replot", label = "Replot graph")),
-                                                    shinyjs::disabled(actionButton("plottime", label = "Plot Time Series")),
-                                                    shinyjs::disabled(actionButton("reset", label = "Reset selection")),
-                                                    shinyjs::disabled(actionButton("delete", label = "Delete selection")),
-                                                    tableOutput("datatab")
-                                                  ),
-                                                  h4("Selected states"),
-                                                  uiOutput("submit_info"),
-                                                  girafeOutput("plot"),
-                                                  fluidRow(
-                                                    actionButton("write_data", "Write to database")
+                                                  fluidRow(h4("Output"),
+                                                           uiOutput("submit_info"),
+                                                           shinyjs::disabled(actionButton("replot", label = "Replot graph")),
+                                                           shinyjs::disabled(actionButton("plottime", label = "Plot Time Series")),
+                                                           shinyjs::disabled(actionButton("reset", label = "Reset selection")),
+                                                           shinyjs::disabled(actionButton("delete", label = "Delete selection")),
+                                                           h4("Plotted data"),
+                                                           girafeOutput("plot"),
+                                                           h4("Review progress"),
+                                                           plotOutput("progressbar", width = "100%"),
+                                                           actionButton("write_data", "Write to database")
+                                                           #tableOutput("datatab")
                                                   )
                                                 )
                                   )),
@@ -382,10 +381,12 @@ server <- shinyServer(function(input, output, session) {
         filter(variable_names == input$select_var) 
       now_true$reviewed <- TRUE
       
+      #if there is no progress yet, create accumulated df 
       if(!exists("accumulated_df")){
-      reviewed_df$reviewed[which(reviewed_df$variable_names==now_true$variable_names)] <- now_true$reviewed
-      accumulated_df <<- reviewed_df
+        reviewed_df$reviewed[which(reviewed_df$variable_names==now_true$variable_names)] <- now_true$reviewed
+        accumulated_df <<- reviewed_df
       } else{
+        #if it does exist already, add new variable to df 
         accumulated_df$reviewed[which(accumulated_df$variable_names==now_true$variable_names)] <- now_true$reviewed
       }
       
@@ -402,7 +403,9 @@ server <- shinyServer(function(input, output, session) {
           axis.text.x = element_blank()
         )  
       progress_plot
-    })
+    }
+    ,width = "auto",height = 275
+    )
   })
   
   # download netCDF files
