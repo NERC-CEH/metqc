@@ -126,9 +126,6 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                                   )),
                                                 br(),
                                                 mainPanel(
-                                                  # fluidRow(
-                                                  #   plotOutput("progressbar")
-                                                  # ),
                                                   fluidRow(
                                                     shinyjs::disabled(actionButton("replot", label = "Replot graph")),
                                                     shinyjs::disabled(actionButton("plottime", label = "Plot Time Series")),
@@ -137,6 +134,7 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                                     h4("Selected states"),
                                                     tableOutput("datatab")
                                                   ),
+                                                  plotOutput("progressbar"),
                                                   uiOutput("submit_info"),
                                                   girafeOutput("plot"),
                                                   fluidRow(
@@ -209,30 +207,6 @@ server <- shinyServer(function(input, output, session) {
     if( nrow(out) < 1 ) return(NULL)
     row.names(out) <- NULL
     out
-  })
-  
-  output$progessbar <- renderPlot({
-    variable_names <- unique(colnames(df_qry))
-    reviewed_df <<- as.data.frame(variable_names)
-    reviewed_df$reviewed <<- FALSE
-    now_true <- reviewed_df %>%
-      filter(variable_names == "TS") 
-    now_true$reviewed <- TRUE
-    reviewed_df$reviewed[which(reviewed_df$variable_names==now_true$variable_names)] <- now_true$reviewed
-    
-    progress_plot <- ggplot(reviewed_df) +
-      geom_tile(aes(x= variable_names,y= "",fill = reviewed))+
-      geom_text(aes(x= variable_names,y= "",label = variable_names),
-                color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
-      scale_y_discrete("",expand = c(0,2))+
-      theme(
-        panel.background = element_blank(),
-        axis.ticks.y =  element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.x = element_blank(),
-        axis.text.x = element_blank()
-      )  
-    progress_plot
   })
   
   #Create select input UI element with var options
@@ -372,7 +346,6 @@ server <- shinyServer(function(input, output, session) {
     tagList("CBED pages on EIDC:", eidc_url)
   })
   
-  
   # Plot results as maps
   observeEvent(input$plotmap, {
     output$mapPlot<-renderPlot(
@@ -400,6 +373,30 @@ server <- shinyServer(function(input, output, session) {
         type = "multiple", css = "fill:#FF3333;stroke:black;"),
         opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"))
       x
+    })
+    
+    output$progressbar <- renderPlot({
+      variable_names <- unique(colnames(df_qry))
+      reviewed_df <<- as.data.frame(variable_names)
+      reviewed_df$reviewed <<- FALSE
+      now_true <- reviewed_df %>%
+        filter(variable_names == "TS") 
+      now_true$reviewed <- TRUE
+      reviewed_df$reviewed[which(reviewed_df$variable_names==now_true$variable_names)] <- now_true$reviewed
+      
+      progress_plot <- ggplot(reviewed_df) +
+        geom_tile(aes(x= variable_names,y= "",fill = reviewed))+
+        geom_text(aes(x= variable_names,y= "",label = variable_names),
+                  color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
+        scale_y_discrete("",expand = c(0,2))+
+        theme(
+          panel.background = element_blank(),
+          axis.ticks.y =  element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.x = element_blank()
+        )  
+      progress_plot
     })
   })
   
