@@ -381,9 +381,15 @@ server <- shinyServer(function(input, output, session) {
       now_true <- reviewed_df %>%
         filter(variable_names == input$select_var) 
       now_true$reviewed <- TRUE
-      reviewed_df$reviewed[which(reviewed_df$variable_names==now_true$variable_names)] <- now_true$reviewed
       
-      progress_plot <- ggplot(reviewed_df) +
+      if(!exists("accumulated_df")){
+      reviewed_df$reviewed[which(reviewed_df$variable_names==now_true$variable_names)] <- now_true$reviewed
+      accumulated_df <<- reviewed_df
+      } else{
+        accumulated_df$reviewed[which(accumulated_df$variable_names==now_true$variable_names)] <- now_true$reviewed
+      }
+      
+      progress_plot <- ggplot(accumulated_df) +
         geom_tile(aes(x= variable_names,y= "",fill = reviewed))+
         geom_text(aes(x= variable_names,y= "",label = variable_names),
                   color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
