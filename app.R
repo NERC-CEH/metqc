@@ -124,17 +124,16 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                                     actionButton("seejobsummary", "Confirm Run Settings"),
                                                     shinyjs::disabled(actionButton("retrieve_data", "Retrieve from database"))
                                                   )),
-                                                br(),
                                                 mainPanel(
-                                                  fluidRow(
+                                                  fluidRow(h4("Review progress"),
+                                                    plotOutput("progressbar"),
                                                     shinyjs::disabled(actionButton("replot", label = "Replot graph")),
                                                     shinyjs::disabled(actionButton("plottime", label = "Plot Time Series")),
                                                     shinyjs::disabled(actionButton("reset", label = "Reset selection")),
                                                     shinyjs::disabled(actionButton("delete", label = "Delete selection")),
-                                                    h4("Selected states"),
                                                     tableOutput("datatab")
                                                   ),
-                                                  plotOutput("progressbar"),
+                                                  h4("Selected states"),
                                                   uiOutput("submit_info"),
                                                   girafeOutput("plot"),
                                                   fluidRow(
@@ -380,7 +379,7 @@ server <- shinyServer(function(input, output, session) {
       reviewed_df <<- as.data.frame(variable_names)
       reviewed_df$reviewed <<- FALSE
       now_true <- reviewed_df %>%
-        filter(variable_names == "TS") 
+        filter(variable_names == input$select_var) 
       now_true$reviewed <- TRUE
       reviewed_df$reviewed[which(reviewed_df$variable_names==now_true$variable_names)] <- now_true$reviewed
       
