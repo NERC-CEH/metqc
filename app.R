@@ -90,7 +90,7 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                                     #as the first row, it will be at the top of the main panel
                                                     helpText("This app provides an interface to the field sites database and allows a user to plot data, remove dubious data and fill gaps with predictions.")
                                                   ),
-                                                  fluidRow(h3("Select Variable, colour scale and gap-filling method."),
+                                                  fluidRow(
                                                            column(width = 4,
                                                                   uiOutput("var_filter")),
                                                            column(width = 4,
@@ -122,21 +122,22 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                                     #the left hand side is your attached name to call in the server.
                                                     #the right hand side is the text to be displayed in the app.
                                                     actionButton("seejobsummary", "Confirm Run Settings"),
-                                                    shinyjs::disabled(actionButton("retrieve_data", "Retrieve from database"))
+                                                    actionButton("retrieve_data", "Retrieve from database")
                                                   )),
                                                 mainPanel(
-                                                  fluidRow(h4("Output"),
+                                                  fluidRow(h3("Output"),
                                                            uiOutput("submit_info"),
+                                                           #shinyjs::disabled(actionButton("plottime", label = "Plot Time Series")),
+                                                           h4("Plotted data"),
                                                            shinyjs::disabled(actionButton("replot", label = "Replot graph")),
-                                                           shinyjs::disabled(actionButton("plottime", label = "Plot Time Series")),
                                                            shinyjs::disabled(actionButton("reset", label = "Reset selection")),
                                                            shinyjs::disabled(actionButton("delete", label = "Delete selection")),
-                                                           h4("Plotted data"),
+                                                           shinyjs::disabled(actionButton("submitchanges", "Submit changes")),
                                                            girafeOutput("plot"),
+                                                           tableOutput("datatab"),
                                                            h4("Review progress"),
                                                            plotOutput("progressbar", width = "100%"),
                                                            actionButton("write_data", "Write to database")
-                                                           #tableOutput("datatab")
                                                   )
                                                 )
                                   )),
@@ -186,9 +187,27 @@ server <- shinyServer(function(input, output, session) {
   #the second observeEvent, which dictates what to do when the delete button is pressed
   
   observeEvent(input$delete, {
+    shinyjs::enable("submitchanges")
     #df_qry[df_qry$checked %in% selected_state(), input$select_var] <<- NA
+    
+    changed_df <- data.frame()
+    changed_df <- colnames(c("variable","checked","fill_method","old_value","new_value"))
+    changed_df$variable <- input$select_var
+    changed_df$point_id <- selected_state()
+    changed_df$old_value <- df_qry[df_qry$checked %in% selected_state(), input$select_var]
+    changed_df$fill_method <- input$select_landuse
+    
     df_qry[df_qry$checked %in% selected_state(), input$select_var] <<- NA
     df_qry[is.na(df_qry[, input$select_var]), input$select_var] <<- df_qry$pred[is.na(df_qry[, input$select_var])]
+    changed_df$new_value <- df_qry[df_qry$checked %in% selected_state(), input$select_var]
+    changed_df <- bind_rows(changed_df) %>% as.data.frame()
+    
+    if(!exists("change_summary")){
+      change_summary <<- changed_df
+    } else {
+      change_summary <<- rbind(change_summary, changed_df)
+    }
+    
     #df_qry$TS[df_qry$checked %in% selected_state()] <<- NA
   })
   
@@ -271,15 +290,11 @@ server <- shinyServer(function(input, output, session) {
                datect = datect)
   })
   
-  #Render the job info dataframe as a table
-  output$job_table <- renderTable({
-    job_df()
-  })
-  
   # Run CBED dry dep
   observeEvent(input$retrieve_data, {
     enable("replot")
     enable("plottime")
+    
     # make an SQL query to select all fields between start and end dates
     qry <- paste0("SELECT * FROM ", table_name, 
                   " WHERE DATECT > TO_DATE('", job_df()$datech[1], "', 'yyyy/mm/dd hh24:mi') 
@@ -316,6 +331,10 @@ server <- shinyServer(function(input, output, session) {
       b_F[[itime]] <<- r_F
       #b_Fwet[[itime]] <- r_Fwet
     }                  
+  })
+  
+  observeEvent(input$submitchanges,{
+
   })
   
   #Set the link to the JASMIN public group workspace where ouput will be provided
@@ -389,7 +408,12 @@ server <- shinyServer(function(input, output, session) {
         #if it does exist already, add new variable to df 
         accumulated_df$reviewed[which(accumulated_df$variable_names==now_true$variable_names)] <- now_true$reviewed
         accumulated_df <<- accumulated_df
-        }
+      }
+      
+      #some variables do not have to be included in the plot
+      #we'll make this variable by selection at some point
+      variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
+      accumulated_df <- accumulated_df[!accumulated_df$variable_names %in% variables_to_remove,] 
       
       progress_plot <- ggplot(accumulated_df) +
         geom_tile(aes(x= variable_names,y= "",fill = reviewed))+
