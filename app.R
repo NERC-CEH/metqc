@@ -332,9 +332,14 @@ server <- shinyServer(function(input, output, session) {
     ))
     
     observeEvent(input$variables_not_included,{
+      if(input$select_var == input$variable_check){
+        shinyjs::alert("Variables selected for exclusion cannot match initial variable selected.")
+      } else{
       shinyjs::alert("Variables selected for exclusion.")
       removeModal()
-      exclude_var <<- input$variable_check %>% as.character()
+      }
+      
+      
     })
     
     #Render the job info dataframe as a table
@@ -424,6 +429,7 @@ server <- shinyServer(function(input, output, session) {
       variable_names <- variable_names[!variable_names %in% variables_to_remove]
       reviewed_df <<- as.data.frame(variable_names)
       reviewed_df$reviewed <<- FALSE
+      
       now_true <- reviewed_df %>%
         filter(variable_names == input$select_var) 
       now_true$reviewed <- TRUE
