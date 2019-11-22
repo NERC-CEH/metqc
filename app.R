@@ -303,23 +303,6 @@ server <- shinyServer(function(input, output, session) {
     enable("replot")
     enable("plottime")
     
-    showModal(modalDialog(
-      h4("Are there are any variables that do not need checking?"),
-      varSelectInput("variable_check", "Variables NOT to be checked",
-                     df_qry, multiple = TRUE),
-      footer = tagList(
-        modalButton("All variables need checking."),
-        actionButton("variables_not_included", "Confirm selected variables.")
-      ),
-      h6("Note every variable will have to be checked before data can be written to the database.")
-    ))
-    
-    observeEvent(input$variables_not_included,{
-      shinyjs::alert("Variables selected for exclusion.")
-      removeModal()
-      exclude_var <<- input$variable_check %>% as.character()
-    })
-    
     # make an SQL query to select all fields between start and end dates
     qry <- paste0("SELECT * FROM ", table_name, 
                   " WHERE DATECT > TO_DATE('", job_df()$datech[1], "', 'yyyy/mm/dd hh24:mi') 
@@ -336,6 +319,23 @@ server <- shinyServer(function(input, output, session) {
       geom_line(aes(y = df_qry$pred)) +
       #ylim(0, NA) +
       xlab("Date")      + ylab("Your variable")      + ggtitle("Time series of your variable")
+    
+    showModal(modalDialog(
+      h4("Are there are any variables that do not need checking?"),
+      varSelectInput("variable_check", "Variables NOT to be checked",
+                     df_qry, multiple = TRUE),
+      footer = tagList(
+        modalButton("All variables need checking."),
+        actionButton("variables_not_included", "Confirm selected variables.")
+      ),
+      h6("Note every variable will have to be checked before data can be written to the database.")
+    ))
+    
+    observeEvent(input$variables_not_included,{
+      shinyjs::alert("Variables selected for exclusion.")
+      removeModal()
+      exclude_var <<- input$variable_check %>% as.character()
+    })
     
     #Render the job info dataframe as a table
     output$job_table <- renderTable({
@@ -371,7 +371,6 @@ server <- shinyServer(function(input, output, session) {
       helpText(paste("Your data has been extracted. Plot using the replot button below."))
     })
   })
-  
   
   #When the submit job action button is pressed display a message which states how long the job might take and information on where to access the results.
   observeEvent(input$write_data, {
@@ -419,8 +418,10 @@ server <- shinyServer(function(input, output, session) {
     
     output$progressbar <- renderPlot({
       variable_names <- unique(colnames(df_qry))
-      variable_names <- variable_names[!variable_names %in% input$variable_check,]
-      variable_names <- variable_names[!variable_names %in% exclude_var,]
+      browser()
+      variable_names <- variable_names[!variable_names %in% input$variable_check]
+      variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
+      variable_names <- variable_names[!variable_names %in% variables_to_remove]
       reviewed_df <<- as.data.frame(variable_names)
       reviewed_df$reviewed <<- FALSE
       now_true <- reviewed_df %>%
