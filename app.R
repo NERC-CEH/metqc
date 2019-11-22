@@ -91,12 +91,12 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                                     helpText("This app provides an interface to the field sites database and allows a user to plot data, remove dubious data and fill gaps with predictions.")
                                                   ),
                                                   fluidRow(
-                                                           column(width = 4,
-                                                                  uiOutput("var_filter")),
-                                                           column(width = 4,
-                                                                  uiOutput("var_filter_col")),
-                                                           column(width = 4,
-                                                                  uiOutput("landuse_filter"))
+                                                    column(width = 4,
+                                                           uiOutput("var_filter")),
+                                                    column(width = 4,
+                                                           uiOutput("var_filter_col")),
+                                                    column(width = 4,
+                                                           uiOutput("landuse_filter"))
                                                   ),
                                                   fluidRow(
                                                     uiOutput("date_info"),
@@ -228,6 +228,8 @@ server <- shinyServer(function(input, output, session) {
   
   #Create select input UI element with var options
   output$var_filter <- renderUI({
+    #instead of just calling dbNames, I'm making a new object and removing the variables that don't need to be checked.
+    #ie the timestamp, point id and predicted values.
     var_choices <- dbNames
     variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
     var_choices <- var_choices[!var_choices %in% variables_to_remove]
@@ -301,6 +303,23 @@ server <- shinyServer(function(input, output, session) {
     enable("replot")
     enable("plottime")
     
+    showModal(modalDialog(
+      h4("Are there are any variables that do not need checking?"),
+      varSelectInput("variable_check", "Variables NOT to be checked",
+                     df_qry, multiple = TRUE),
+      footer = tagList(
+        modalButton("All variables need checking."),
+        actionButton("variables_not_included", "Confirm selected variables.")
+      ),
+      h6("Note every variable will have to be checked before data can be written to the database.")
+    ))
+    
+    observeEvent(input$variables_not_included,{
+      shinyjs::alert("Variables selected for exclusion.")
+      removeModal()
+      exclude_var <<- input$variable_check %>% as.character()
+    })
+    
     # make an SQL query to select all fields between start and end dates
     qry <- paste0("SELECT * FROM ", table_name, 
                   " WHERE DATECT > TO_DATE('", job_df()$datech[1], "', 'yyyy/mm/dd hh24:mi') 
@@ -340,7 +359,7 @@ server <- shinyServer(function(input, output, session) {
   })
   
   observeEvent(input$submitchanges,{
-
+    
   })
   
   #Set the link to the JASMIN public group workspace where ouput will be provided
@@ -400,6 +419,8 @@ server <- shinyServer(function(input, output, session) {
     
     output$progressbar <- renderPlot({
       variable_names <- unique(colnames(df_qry))
+      variable_names <- variable_names[!variable_names %in% input$variable_check,]
+      variable_names <- variable_names[!variable_names %in% exclude_var,]
       reviewed_df <<- as.data.frame(variable_names)
       reviewed_df$reviewed <<- FALSE
       now_true <- reviewed_df %>%
