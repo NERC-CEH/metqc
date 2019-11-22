@@ -228,14 +228,20 @@ server <- shinyServer(function(input, output, session) {
   
   #Create select input UI element with var options
   output$var_filter <- renderUI({
+    var_choices <- dbNames
+    variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
+    var_choices <- var_choices[!var_choices %in% variables_to_remove]
     selectInput("select_var", label = h5("Variable"), 
-                choices = as.list(dbNames) )
+                choices = as.list(var_choices) )
   })
   
   #Create select input UI element with var options
   output$var_filter_col <- renderUI({
+    var_choices <- dbNames
+    variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
+    var_choices <- var_choices[!var_choices %in% variables_to_remove]
     selectInput("select_col", label = h5("Variable for Colour Scale"), 
-                choices = as.list(dbNames) )
+                choices = as.list(var_choices) )
   })
   
   #Create select input UI element with land-use options
