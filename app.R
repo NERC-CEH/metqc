@@ -350,6 +350,17 @@ server <- shinyServer(function(input, output, session) {
   
   # Run CBED wet dep
   observeEvent(input$write_data, {
+    
+    if(FALSE %in% accumulated_df$reviewed){
+      false_list <- accumulated_df[FALSE %in% accumulated_df$reviewed,]
+      false_list <- false_list%>%
+        select(variable_names)
+      false_list <- as.character(false_list$variable_names)
+      print(paste0("Not all variables have been checked. Please check ",false_list,"."))
+    } else{
+      print("Ready to write to database.")
+    }
+    
     # declare brick for deposition rasters for multiple times
     b_F <<- brick(r, values = FALSE, nl = input$intslider)
     #b_Fwet <- brick(r, values = FALSE, nl = nTimes)
@@ -423,7 +434,6 @@ server <- shinyServer(function(input, output, session) {
     
     output$progressbar <- renderPlot({
       variable_names <- unique(colnames(df_qry))
-      browser()
       variable_names <- variable_names[!variable_names %in% input$variable_check]
       variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
       variable_names <- variable_names[!variable_names %in% variables_to_remove]
