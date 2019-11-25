@@ -320,10 +320,14 @@ server <- shinyServer(function(input, output, session) {
       #ylim(0, NA) +
       xlab("Date")      + ylab("Your variable")      + ggtitle("Time series of your variable")
     
+    variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
+    df_qry_choices <- df_qry %>%
+      select(-DATECT,-TIMESTAMP,-checked,-DATECT_NUM, -pred)
+    
     showModal(modalDialog(
       h4("Are there are any variables that do not need checking?"),
       varSelectInput("variable_check", "Variables NOT to be checked",
-                     df_qry, multiple = TRUE),
+                     df_qry_choices, multiple = TRUE),
       footer = tagList(
         modalButton("All variables need checking."),
         actionButton("variables_not_included", "Confirm selected variables.")
@@ -331,6 +335,7 @@ server <- shinyServer(function(input, output, session) {
       h6("Note every variable will have to be checked before data can be written to the database.")
     ))
     
+    browser()
     observeEvent(input$variables_not_included,{
       if(input$select_var == input$variable_check){
         shinyjs::alert("Variables selected for exclusion cannot match initial variable selected.")
