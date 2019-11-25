@@ -458,19 +458,22 @@ server <- shinyServer(function(input, output, session) {
       #we'll make this variable by selection at some point
       variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
       accumulated_df <- accumulated_df[!accumulated_df$variable_names %in% variables_to_remove,] 
+      accumulated_df$reviewed <- factor(accumulated_df$reviewed, levels = c("TRUE","FALSE"))
       
       progress_plot <- ggplot(accumulated_df) +
         geom_tile(aes(x= variable_names,y= "",fill = reviewed))+
         geom_text(aes(x= variable_names,y= "",label = variable_names),
                   color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
         scale_y_discrete("",expand = c(0,2))+
+        scale_fill_manual(breaks = c("TRUE", "FALSE"),
+                            values = c("#2F8C1F", "#EB1A1A"))+
         theme(
           panel.background = element_blank(),
           axis.ticks.y =  element_blank(),
           axis.ticks.x = element_blank(),
           axis.title.x = element_blank(),
           axis.text.x = element_blank()
-        )  
+        )
       progress_plot
     }
     ,width = "auto",height = 275
