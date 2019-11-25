@@ -20,6 +20,9 @@ library(ggiraph)
 library(ROracle)
 #required for reading .xlsx files
 library(readxl)
+#packages to display datatable 
+library(DT)
+library(data.table)
 #Not sure what this is for.
 library(mgcv)
 "%!in%" <- Negate("%in%")
@@ -134,8 +137,8 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                                            shinyjs::disabled(actionButton("delete", label = "Delete selection")),
                                                            shinyjs::disabled(actionButton("submitchanges", "Submit changes")),
                                                            girafeOutput("plot"),
-                                                           tableOutput("datatab"),
                                                            h4("Review progress"),
+                                                           div(DT::dataTableOutput("summarytable"),style = "width:75%"),
                                                            plotOutput("progressbar", width = "100%"),
                                                            actionButton("write_data", "Write to database")
                                                   )
@@ -212,6 +215,16 @@ server <- shinyServer(function(input, output, session) {
       #or appends the dataframe if it does already exist
       change_summary <<- rbind(change_summary, changed_df)
     }
+    #here I am making a table that shows the changes that have been made
+    output$summarytable <- renderDataTable({
+      datatable(change_summary,
+                #not that datatable is originally written in javascript
+                #hence why there are some unusually formatted options here 
+                #like class = 'compact' and a 'text-align' = 'center'
+                options = list(pageLength = 5, lengthMenu = c(5,10,25,50)), rownames = FALSE,class = 'compact') %>%
+        formatRound(columns = c(3:5), digits = 2)%>% 
+        formatStyle(columns = c(1:9), 'text-align' = 'center')}
+    )
   })
   
   observeEvent(input$seejobsummary, {
@@ -341,7 +354,6 @@ server <- shinyServer(function(input, output, session) {
     ))
     
     observeEvent(input$variables_not_included,{
-      browser()
       if(length(input$variable_check)!=0){
         if(input$select_var == input$variable_check){
           shinyjs::alert("Variables selected for exclusion cannot match initial variable selected.")
