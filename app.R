@@ -190,25 +190,28 @@ server <- shinyServer(function(input, output, session) {
     shinyjs::enable("submitchanges")
     #df_qry[df_qry$checked %in% selected_state(), input$select_var] <<- NA
     
+    #here I am creating a df to keep track of the changes made to the data.
     changed_df <- data.frame()
+    #set column names
     changed_df <- colnames(c("variable","checked","fill_method","old_value","new_value"))
     changed_df$variable <- input$select_var
     changed_df$point_id <- selected_state()
     changed_df$old_value <- df_qry[df_qry$checked %in% selected_state(), input$select_var]
     changed_df$fill_method <- input$select_landuse
-    
+    #change the old value to the new value depending on the predicted value
     df_qry[df_qry$checked %in% selected_state(), input$select_var] <<- NA
     df_qry[is.na(df_qry[, input$select_var]), input$select_var] <<- df_qry$pred[is.na(df_qry[, input$select_var])]
+    #now adding the new value to the change df, using the exact same command as above for the old value
     changed_df$new_value <- df_qry[df_qry$checked %in% selected_state(), input$select_var]
     changed_df <- bind_rows(changed_df) %>% as.data.frame()
     
+    #if statement that creates the dataframe in memory if it does not already exist
     if(!exists("change_summary")){
       change_summary <<- changed_df
     } else {
+      #or appends the dataframe if it does already exist
       change_summary <<- rbind(change_summary, changed_df)
     }
-    
-    #df_qry$TS[df_qry$checked %in% selected_state()] <<- NA
   })
   
   observeEvent(input$seejobsummary, {
@@ -300,6 +303,7 @@ server <- shinyServer(function(input, output, session) {
   
   # Run CBED dry dep
   observeEvent(input$retrieve_data, {
+    #enabling previously disabled buttons 
     enable("replot")
     enable("plottime")
     
@@ -358,7 +362,6 @@ server <- shinyServer(function(input, output, session) {
   
   # Run CBED wet dep
   observeEvent(input$write_data, {
-    
     if(FALSE %in% accumulated_df$reviewed){
       false_list <- accumulated_df[FALSE %in% accumulated_df$reviewed,]
       false_list <- false_list%>%
@@ -382,6 +385,7 @@ server <- shinyServer(function(input, output, session) {
     }                  
   })
   
+  #submit change button - doesn't do anything just yet.
   observeEvent(input$submitchanges,{
     
   })
@@ -440,24 +444,27 @@ server <- shinyServer(function(input, output, session) {
       x
     })
     
+    #also adding the progress bar once the replot button has been clicked
     output$progressbar <- renderPlot({
+      #extracting the relevant variables names 
       variable_names <- unique(colnames(df_qry))
       variable_names <- variable_names[!variable_names %in% input$variable_check]
       variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
       variable_names <- variable_names[!variable_names %in% variables_to_remove]
+      #make a dataframe that has FALSE assigned to every variable name
       reviewed_df <<- as.data.frame(variable_names)
       reviewed_df$reviewed <<- FALSE
-      
+      #creating a true dataframe, makes a row that sets variable to TRUE is it is in input$select_var
       now_true <- reviewed_df %>%
         filter(variable_names == input$select_var) 
       now_true$reviewed <- TRUE
       
-      #if there is no progress yet, create accumulated df 
       if(!exists("accumulated_df")){
+        #if the dataframe exists already - replaced the row in reviewed df and assign as accumulated_df
         reviewed_df$reviewed[which(reviewed_df$variable_names==now_true$variable_names)] <- now_true$reviewed
         accumulated_df <<- reviewed_df
       } else{
-        #if it does exist already, add new variable to df 
+        #if it does exist already, add new variable to accumulated df 
         accumulated_df$reviewed[which(accumulated_df$variable_names==now_true$variable_names)] <- now_true$reviewed
         accumulated_df <<- accumulated_df
       }
@@ -466,6 +473,7 @@ server <- shinyServer(function(input, output, session) {
       #we'll make this variable by selection at some point
       variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
       accumulated_df <- accumulated_df[!accumulated_df$variable_names %in% variables_to_remove,] 
+      #flip the true/false order (not alphabetical) - this is if there are only TRUE values, the colour remains green.
       accumulated_df$reviewed <- factor(accumulated_df$reviewed, levels = c("TRUE","FALSE"))
       
       progress_plot <- ggplot(accumulated_df) +
@@ -509,4 +517,3 @@ server <- shinyServer(function(input, output, session) {
 
 # Run the application 
 shinyApp(ui = ui, server = server)
-
