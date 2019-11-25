@@ -320,6 +320,7 @@ server <- shinyServer(function(input, output, session) {
       #ylim(0, NA) +
       xlab("Date")      + ylab("Your variable")      + ggtitle("Time series of your variable")
     
+    #creating new dataframe with just relevant options, in order to be used in the varSelectInput() function in the modal.
     variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
     df_qry_choices <- df_qry %>%
       select(-DATECT,-TIMESTAMP,-checked,-DATECT_NUM, -pred)
@@ -330,21 +331,23 @@ server <- shinyServer(function(input, output, session) {
                      df_qry_choices, multiple = TRUE),
       footer = tagList(
         modalButton("All variables need checking."),
-        actionButton("variables_not_included", "Confirm selected variables.")
+        actionButton("variables_not_included", "Confirm variables for exclusion.")
       ),
       h6("Note every variable will have to be checked before data can be written to the database.")
     ))
     
-    browser()
     observeEvent(input$variables_not_included,{
-      if(input$select_var == input$variable_check){
-        shinyjs::alert("Variables selected for exclusion cannot match initial variable selected.")
-      } else{
-      shinyjs::alert("Variables selected for exclusion.")
-      removeModal()
+      browser()
+      if(length(input$variable_check)!=0){
+        if(input$select_var == input$variable_check){
+          shinyjs::alert("Variables selected for exclusion cannot match initial variable selected.")
+        } else{
+          shinyjs::alert("Variables selected for exclusion.")
+          removeModal()
+        }
+      }else{
+        shinyjs::alert("Please select variables for exclusion or click 'All variables need checking'.")
       }
-      
-      
     })
     
     #Render the job info dataframe as a table
@@ -471,7 +474,7 @@ server <- shinyServer(function(input, output, session) {
                   color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
         scale_y_discrete("",expand = c(0,2))+
         scale_fill_manual(breaks = c("TRUE", "FALSE"),
-                            values = c("#2F8C1F", "#EB1A1A"))+
+                          values = c("#2F8C1F", "#EB1A1A"))+
         theme(
           panel.background = element_blank(),
           axis.ticks.y =  element_blank(),
