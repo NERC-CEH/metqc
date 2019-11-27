@@ -1,3 +1,4 @@
+# Karen
 # initial problems either caused by 
 # naming output plot object 'timeplot' instead of 'plot'
 # or having 'Plot time Series' button to initally make graph
