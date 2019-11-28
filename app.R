@@ -85,6 +85,7 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                          #navbarPage is the top bar with "Met Data Validation" and "Information"
                          tabPanel("Validate Data",useShinyjs(),
                                   absolutePanel(top = 50, left = 10, right = 0, bottom = 0,width = "auto", height = "auto",
+                                                br(),
                                                 #you then construct the page chronologically, so under the navigation bar you'll have the Validate Data tab.
                                                 sidebarPanel(
                                                   #within the Validate data tab there is a mainPanel (this just means in the centre of the page).
@@ -122,30 +123,33 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                                   )),
                                                 hidden(mainPanel(
                                                   id = "showpanel",
-                                                  fluidRow(h3("Output"),
-                                                           uiOutput("submit_info"),
-                                                           column(width = 4,
-                                                                  uiOutput("var_filter")),
-                                                           column(width = 4,
-                                                                  uiOutput("var_filter_col")),
-                                                           column(width = 4,
-                                                                  uiOutput("landuse_filter")),
+                                                  fluidRow(
+                                                    #h3("Output"),
+                                                    uiOutput("submit_info"),
+                                                    column(width = 4,
+                                                           uiOutput("var_filter"),
+                                                           uiOutput("var_filter_col"),
+                                                           uiOutput("landuse_filter"),
                                                            uiOutput("var_info"),
-                                                           shinyjs::disabled(actionButton("replot", label = "Replot graph"))
-                                                  ),
-                                                  #shinyjs::disabled(actionButton("plottime", label = "Plot Time Series")),
-                                                  hidden(fluidRow(id = "plotted_data",
-                                                                  h4("Plotted data"),
-                                                                  shinyjs::disabled(actionButton("reset", label = "Reset selection")),
-                                                                  shinyjs::disabled(actionButton("delete", label = "Delete selection")),
-                                                                  shinyjs::disabled(actionButton("submitchanges", "Submit changes")),
-                                                                  girafeOutput("plot"))),
-                                                  hidden(fluidRow(id = "progress_row",
-                                                                  h4("Review progress"),
-                                                                  div(DT::dataTableOutput("summarytable"),style = "width:75%"),
-                                                                  plotOutput("progressbar", width = "100%"),
-                                                                  actionButton("write_data", "Write to database")))
-                                                ))
+                                                           shinyjs::disabled(actionButton("replot", label = "Replot graph"))),
+                                                    #shinyjs::disabled(actionButton("plottime", label = "Plot Time Series")),
+                                                    column(width = 8,
+                                                           hidden(fluidRow(id = "plotted_data",
+                                                                           h4("Plotted data"),
+                                                                           shinyjs::disabled(actionButton("reset", label = "Reset selection")),
+                                                                           shinyjs::disabled(actionButton("delete", label = "Delete selection")),
+                                                                           shinyjs::disabled(actionButton("submitchanges", "Submit changes")),
+                                                                           girafeOutput("plot")
+                                                                           ))))
+                                                )),
+                                                mainPanel(hidden(fluidRow(id = "progress_row",
+                                                                          h4("Review progress"),
+                                                                          column(width = 8,
+                                                                                 plotOutput("progressbar", width = "100%")),
+                                                                          column(width = 4,
+                                                                                 div(DT::dataTableOutput("summarytable"),style = "width:75%"),
+                                                                          actionButton("write_data", "Write to database"))
+                                                                          )))
                                   )),
                          #The other panel starts here, the second tab in the navbar page.
                          #note it is after a comma and after: 
@@ -433,7 +437,9 @@ server <- shinyServer(function(input, output, session) {
         geom_tile(aes(x= var_choices,y= "",fill = reviewed))+
         geom_text(aes(x= var_choices,y= "",label = var_choices),
                   color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
-        scale_y_discrete("",expand = c(0,2))+
+        scale_y_discrete(""
+                        # ,expand = c(0,2)
+                         )+
         scale_fill_manual(breaks = c("TRUE", "FALSE"),
                           values = c("#2F8C1F", "#EB1A1A"))+
         theme(
