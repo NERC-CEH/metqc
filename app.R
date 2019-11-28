@@ -184,6 +184,14 @@ server <- shinyServer(function(input, output, session) {
     input$plot_selected
   })
   
+  var_choices <- reactive({
+    var_choices <- dbNames
+    variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
+    var_choices <- var_choices[!var_choices %in% variables_to_remove]
+    var_choices <- var_choices[!var_choices %in% input$variable_check]
+    
+  })
+  
   #here is the first observeEvent, which dictates what to do when the reset button is pressed
   observeEvent(input$reset, {
     session$sendCustomMessage(type = 'plot_set', message = character(0))
@@ -247,20 +255,14 @@ server <- shinyServer(function(input, output, session) {
   output$var_filter <- renderUI({
     #instead of just calling dbNames, I'm making a new object and removing the variables that don't need to be checked.
     #ie the timestamp, point id and predicted values.
-    var_choices <- dbNames
-    variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
-    var_choices <- var_choices[!var_choices %in% variables_to_remove]
     selectInput("select_var", label = h5("Variable"), 
-                choices = as.list(var_choices) )
+                choices = as.list(var_choices()))
   })
   
   #Create select input UI element with var options
   output$var_filter_col <- renderUI({
-    var_choices <- dbNames
-    variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
-    var_choices <- var_choices[!var_choices %in% variables_to_remove]
     selectInput("select_col", label = h5("Variable for Colour Scale"), 
-                choices = as.list(var_choices) )
+                choices = as.list(var_choices()))
   })
   
   #Create select input UI element with land-use options
@@ -460,38 +462,35 @@ server <- shinyServer(function(input, output, session) {
     #also adding the progress bar once the replot button has been clicked
     output$progressbar <- renderPlot({
       #extracting the relevant variables names 
-      variable_names <- unique(colnames(df_qry))
-      variable_names <- variable_names[!variable_names %in% input$variable_check]
-      variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
-      variable_names <- variable_names[!variable_names %in% variables_to_remove]
       #make a dataframe that has FALSE assigned to every variable name
-      reviewed_df <<- as.data.frame(variable_names)
+      reviewed_df <<- as.data.frame(var_choices())
       reviewed_df$reviewed <<- FALSE
       #creating a true dataframe, makes a row that sets variable to TRUE is it is in input$select_var
       now_true <- reviewed_df %>%
-        filter(variable_names == input$select_var) 
+        filter(var_choices() == input$select_var) 
       now_true$reviewed <- TRUE
+      
+      #just get the brackets out of the df column name to avoid non-function error.
+      colnames(reviewed_df) <- c("var_choices", "reviewed")
+      colnames(now_true) <- c("var_choices", "reviewed")
       
       if(!exists("accumulated_df")){
         #if the dataframe exists already - replaced the row in reviewed df and assign as accumulated_df
-        reviewed_df$reviewed[which(reviewed_df$variable_names==now_true$variable_names)] <- now_true$reviewed
+        reviewed_df$reviewed[which(reviewed_df$var_choices==now_true$var_choices)] <- now_true$reviewed
         accumulated_df <<- reviewed_df
       } else{
         #if it does exist already, add new variable to accumulated df 
-        accumulated_df$reviewed[which(accumulated_df$variable_names==now_true$variable_names)] <- now_true$reviewed
+        accumulated_df$reviewed[which(accumulated_df$var_choices==now_true$var_choices)] <- now_true$reviewed
         accumulated_df <<- accumulated_df
       }
       
       #some variables do not have to be included in the plot
       #we'll make this variable by selection at some point
-      variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
-      accumulated_df <- accumulated_df[!accumulated_df$variable_names %in% variables_to_remove,] 
-      #flip the true/false order (not alphabetical) - this is if there are only TRUE values, the colour remains green.
       accumulated_df$reviewed <- factor(accumulated_df$reviewed, levels = c("TRUE","FALSE"))
       
       progress_plot <- ggplot(accumulated_df) +
-        geom_tile(aes(x= variable_names,y= "",fill = reviewed))+
-        geom_text(aes(x= variable_names,y= "",label = variable_names),
+        geom_tile(aes(x= var_choices,y= "",fill = reviewed))+
+        geom_text(aes(x= var_choices,y= "",label = var_choices),
                   color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
         scale_y_discrete("",expand = c(0,2))+
         scale_fill_manual(breaks = c("TRUE", "FALSE"),
