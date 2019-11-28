@@ -367,6 +367,7 @@ server <- shinyServer(function(input, output, session) {
       }else{
         shinyjs::alert("Please select variables for exclusion or click 'All variables need checking'.")
       }
+      disable("retrieve_data")
     })
     
     #Render the job info dataframe as a table
@@ -452,6 +453,7 @@ server <- shinyServer(function(input, output, session) {
     }
     ,width = "auto",height = 275
     )
+    disable("submitchanges")
   })
   
   #Set the link to the JASMIN public group workspace where ouput will be provided
