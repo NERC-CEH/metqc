@@ -402,7 +402,56 @@ server <- shinyServer(function(input, output, session) {
   
   #submit change button - doesn't do anything just yet.
   observeEvent(input$submitchanges,{
-    
+    #by assigning newvar here and not using input$select_var directly I am preventing the progress bar 
+    #being automatically updated when a new variable is selected, but only once submitchanges has been clicked
+    newvar <- input$select_var
+    #also adding the progress bar once the replot button has been clicked
+    output$progressbar <- renderPlot({
+      #extracting the relevant variables names 
+      #make a dataframe that has FALSE assigned to every variable name
+      reviewed_df <<- as.data.frame(var_choices())
+      reviewed_df$reviewed <<- FALSE
+      #creating a true dataframe, makes a row that sets variable to TRUE is it is in input$select_var
+      now_true <- reviewed_df %>%
+        filter(var_choices() == newvar) 
+      now_true$reviewed <- TRUE
+      
+      #just get the brackets out of the df column name to avoid non-function error.
+      colnames(reviewed_df) <- c("var_choices", "reviewed")
+      colnames(now_true) <- c("var_choices", "reviewed")
+      
+      if(!exists("accumulated_df")){
+        #if the dataframe exists already - replaced the row in reviewed df and assign as accumulated_df
+        reviewed_df$reviewed[which(reviewed_df$var_choices==now_true$var_choices)] <- now_true$reviewed
+        accumulated_df <<- reviewed_df
+      } else{
+        #if it does exist already, add new variable to accumulated df 
+        accumulated_df$reviewed[which(accumulated_df$var_choices==now_true$var_choices)] <- now_true$reviewed
+        accumulated_df <<- accumulated_df
+      }
+      
+      #some variables do not have to be included in the plot
+      #we'll make this variable by selection at some point
+      accumulated_df$reviewed <- factor(accumulated_df$reviewed, levels = c("TRUE","FALSE"))
+      
+      progress_plot <- ggplot(accumulated_df) +
+        geom_tile(aes(x= var_choices,y= "",fill = reviewed))+
+        geom_text(aes(x= var_choices,y= "",label = var_choices),
+                  color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
+        scale_y_discrete("",expand = c(0,2))+
+        scale_fill_manual(breaks = c("TRUE", "FALSE"),
+                          values = c("#2F8C1F", "#EB1A1A"))+
+        theme(
+          panel.background = element_blank(),
+          axis.ticks.y =  element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.x = element_blank()
+        )
+      progress_plot
+    }
+    ,width = "auto",height = 275
+    )
   })
   
   #Set the link to the JASMIN public group workspace where ouput will be provided
@@ -459,53 +508,6 @@ server <- shinyServer(function(input, output, session) {
       x
     })
     
-    #also adding the progress bar once the replot button has been clicked
-    output$progressbar <- renderPlot({
-      #extracting the relevant variables names 
-      #make a dataframe that has FALSE assigned to every variable name
-      reviewed_df <<- as.data.frame(var_choices())
-      reviewed_df$reviewed <<- FALSE
-      #creating a true dataframe, makes a row that sets variable to TRUE is it is in input$select_var
-      now_true <- reviewed_df %>%
-        filter(var_choices() == input$select_var) 
-      now_true$reviewed <- TRUE
-      
-      #just get the brackets out of the df column name to avoid non-function error.
-      colnames(reviewed_df) <- c("var_choices", "reviewed")
-      colnames(now_true) <- c("var_choices", "reviewed")
-      
-      if(!exists("accumulated_df")){
-        #if the dataframe exists already - replaced the row in reviewed df and assign as accumulated_df
-        reviewed_df$reviewed[which(reviewed_df$var_choices==now_true$var_choices)] <- now_true$reviewed
-        accumulated_df <<- reviewed_df
-      } else{
-        #if it does exist already, add new variable to accumulated df 
-        accumulated_df$reviewed[which(accumulated_df$var_choices==now_true$var_choices)] <- now_true$reviewed
-        accumulated_df <<- accumulated_df
-      }
-      
-      #some variables do not have to be included in the plot
-      #we'll make this variable by selection at some point
-      accumulated_df$reviewed <- factor(accumulated_df$reviewed, levels = c("TRUE","FALSE"))
-      
-      progress_plot <- ggplot(accumulated_df) +
-        geom_tile(aes(x= var_choices,y= "",fill = reviewed))+
-        geom_text(aes(x= var_choices,y= "",label = var_choices),
-                  color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
-        scale_y_discrete("",expand = c(0,2))+
-        scale_fill_manual(breaks = c("TRUE", "FALSE"),
-                          values = c("#2F8C1F", "#EB1A1A"))+
-        theme(
-          panel.background = element_blank(),
-          axis.ticks.y =  element_blank(),
-          axis.ticks.x = element_blank(),
-          axis.title.x = element_blank(),
-          axis.text.x = element_blank()
-        )
-      progress_plot
-    }
-    ,width = "auto",height = 275
-    )
   })
   
   # download netCDF files
