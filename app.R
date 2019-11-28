@@ -95,15 +95,7 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                                     helpText("This app provides an interface to the field sites database and allows a user to plot data, remove dubious data and fill gaps with predictions.")
                                                   ),
                                                   fluidRow(
-                                                    column(width = 4,
-                                                           uiOutput("var_filter")),
-                                                    column(width = 4,
-                                                           uiOutput("var_filter_col")),
-                                                    column(width = 4,
-                                                           uiOutput("landuse_filter"))
-                                                  ),
-                                                  fluidRow(
-                                                    uiOutput("date_info"),
+                                                    helpText("Select your required processing start and end times below."),
                                                     column(width = 6,
                                                            uiOutput("start_date")),
                                                     column(width = 3,
@@ -131,6 +123,15 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                                 mainPanel(
                                                   fluidRow(h3("Output"),
                                                            uiOutput("submit_info"),
+                                                           fluidRow(
+                                                             column(width = 4,
+                                                                    uiOutput("var_filter")),
+                                                             column(width = 4,
+                                                                    uiOutput("var_filter_col")),
+                                                             column(width = 4,
+                                                                    uiOutput("landuse_filter"))
+                                                           ),
+                                                           uiOutput("var_info"),
                                                            #shinyjs::disabled(actionButton("plottime", label = "Plot Time Series")),
                                                            h4("Plotted data"),
                                                            shinyjs::disabled(actionButton("replot", label = "Replot graph")),
@@ -271,8 +272,8 @@ server <- shinyServer(function(input, output, session) {
   })
   
   #Create a sentence of metadata about the site, station and var selection made.
-  output$date_info <- renderUI ({
-    helpText(paste("You have selected var ", as.character(input$select_var), ". Select your required processing start and end times below."))
+  output$var_info <- renderUI({
+    helpText(paste0("You have selected variable ", as.character(input$select_var), ". Click Replot to start checking."))
   })
   
   #Create a reactive element with the earliest start date
@@ -330,20 +331,10 @@ server <- shinyServer(function(input, output, session) {
     df_qry <<- dbGetQuery(con, qry)
     df_qry$checked <<- as.factor(rownames(df_qry))
     df_qry$DATECT_NUM <<- as.numeric(df_qry$DATECT)
-    y <- df_qry[, input$select_var]
-    m <- gam(y ~ s(DATECT_NUM, bs = "cr", k = input$intslider), data = df_qry, na.action = na.exclude)
-    df_qry$pred <<- predict(m, newdata = df_qry, na.action = na.exclude)
-    
-    ggp <<- ggplot(df_qry, aes(DATECT, y = df_qry[, input$select_var])) +     
-      geom_point_interactive(aes(data_id = checked, tooltip = checked, colour = df_qry[, input$select_col]), size = 3) +
-      geom_line(aes(y = df_qry$pred)) +
-      #ylim(0, NA) +
-      xlab("Date")      + ylab("Your variable")      + ggtitle("Time series of your variable")
     
     #creating new dataframe with just relevant options, in order to be used in the varSelectInput() function in the modal.
-    variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
     df_qry_choices <- df_qry %>%
-      select(-DATECT,-TIMESTAMP,-checked,-DATECT_NUM, -pred)
+      select(-DATECT,-TIMESTAMP,-checked,-DATECT_NUM)
     
     showModal(modalDialog(
       h4("Are there are any variables that do not need checking?"),
