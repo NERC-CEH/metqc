@@ -120,31 +120,32 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                                     actionButton("seejobsummary", "Confirm Run Settings"),
                                                     actionButton("retrieve_data", "Retrieve from database")
                                                   )),
-                                                mainPanel(
+                                                hidden(mainPanel(
+                                                  id = "showpanel",
                                                   fluidRow(h3("Output"),
                                                            uiOutput("submit_info"),
-                                                           fluidRow(
-                                                             column(width = 4,
-                                                                    uiOutput("var_filter")),
-                                                             column(width = 4,
-                                                                    uiOutput("var_filter_col")),
-                                                             column(width = 4,
-                                                                    uiOutput("landuse_filter"))
-                                                           ),
+                                                           column(width = 4,
+                                                                  uiOutput("var_filter")),
+                                                           column(width = 4,
+                                                                  uiOutput("var_filter_col")),
+                                                           column(width = 4,
+                                                                  uiOutput("landuse_filter")),
                                                            uiOutput("var_info"),
-                                                           #shinyjs::disabled(actionButton("plottime", label = "Plot Time Series")),
-                                                           h4("Plotted data"),
-                                                           shinyjs::disabled(actionButton("replot", label = "Replot graph")),
-                                                           shinyjs::disabled(actionButton("reset", label = "Reset selection")),
-                                                           shinyjs::disabled(actionButton("delete", label = "Delete selection")),
-                                                           shinyjs::disabled(actionButton("submitchanges", "Submit changes")),
-                                                           girafeOutput("plot"),
-                                                           h4("Review progress"),
-                                                           div(DT::dataTableOutput("summarytable"),style = "width:75%"),
-                                                           plotOutput("progressbar", width = "100%"),
-                                                           actionButton("write_data", "Write to database")
-                                                  )
-                                                )
+                                                           shinyjs::disabled(actionButton("replot", label = "Replot graph"))
+                                                  ),
+                                                  #shinyjs::disabled(actionButton("plottime", label = "Plot Time Series")),
+                                                  hidden(fluidRow(id = "plotted_data",
+                                                                  h4("Plotted data"),
+                                                                  shinyjs::disabled(actionButton("reset", label = "Reset selection")),
+                                                                  shinyjs::disabled(actionButton("delete", label = "Delete selection")),
+                                                                  shinyjs::disabled(actionButton("submitchanges", "Submit changes")),
+                                                                  girafeOutput("plot"))),
+                                                  hidden(fluidRow(id = "progress_row",
+                                                                  h4("Review progress"),
+                                                                  div(DT::dataTableOutput("summarytable"),style = "width:75%"),
+                                                                  plotOutput("progressbar", width = "100%"),
+                                                                  actionButton("write_data", "Write to database")))
+                                                ))
                                   )),
                          #The other panel starts here, the second tab in the navbar page.
                          #note it is after a comma and after: 
@@ -312,8 +313,8 @@ server <- shinyServer(function(input, output, session) {
     datect <- seq(startDate, endDate, length = nTimes)
     
     data.frame(datech = format(datect, "%Y/%m/%d %H:%M"),
-               varName = input$select_var, 
-               landuse = input$select_landuse, 
+               #varName = input$select_var, 
+               #landuse = input$select_landuse, 
                nTimes = nTimes,
                datect = datect)
   })
@@ -321,6 +322,7 @@ server <- shinyServer(function(input, output, session) {
   # Run CBED dry dep
   observeEvent(input$retrieve_data, {
     #enabling previously disabled buttons 
+    shinyjs::show("showpanel")
     enable("replot")
     enable("plottime")
     
@@ -394,6 +396,7 @@ server <- shinyServer(function(input, output, session) {
   
   #submit change button - doesn't do anything just yet.
   observeEvent(input$submitchanges,{
+    shinyjs::show("progress_row")
     #by assigning newvar here and not using input$select_var directly I am preventing the progress bar 
     #being automatically updated when a new variable is selected, but only once submitchanges has been clicked
     newvar <- input$select_var
@@ -474,6 +477,7 @@ server <- shinyServer(function(input, output, session) {
   
   # Plot results as maps
   observeEvent(input$plotmap, {
+    
     output$mapPlot<-renderPlot(
       {
         names(b_F) <- job_df()$datect
@@ -482,6 +486,7 @@ server <- shinyServer(function(input, output, session) {
   })
   
   observeEvent(input$replot, {
+    shinyjs::show("plotted_data")
     enable("reset")
     enable("delete")
     y <- df_qry[, input$select_var]
