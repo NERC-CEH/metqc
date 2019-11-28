@@ -8,6 +8,8 @@
 #required for shiny apps
 library(shiny)
 library(shinyjs)
+#package for shiny themes (ui)
+library(shinythemes)
 #required for working with datetimes
 library(lubridate)
 #required for manipulating data
@@ -80,12 +82,13 @@ df_proc$endDate   <- as.POSIXct(df_proc$endDate, format = "%Y/%m/%d %H:%M", tz =
 #and then code to run if the condition is met
 
 # Define UI for the app
-ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
+ui <- shinyUI(navbarPage("Met Data Validation", theme=shinytheme("flatly"), position = "fixed-top",
                          #shiny has various different panels and page types, which you can look up
                          #navbarPage is the top bar with "Met Data Validation" and "Information"
                          tabPanel("Validate Data",useShinyjs(),
                                   absolutePanel(top = 50, left = 10, right = 0, bottom = 0,width = "auto", height = "auto",
-                                                br(),
+                                                #br(),
+                                                h2("Data Validation", align = "center"),
                                                 #you then construct the page chronologically, so under the navigation bar you'll have the Validate Data tab.
                                                 sidebarPanel(
                                                   #within the Validate data tab there is a mainPanel (this just means in the centre of the page).
@@ -142,14 +145,16 @@ ui <- shinyUI(navbarPage("Met Data Validation", position = "fixed-top",
                                                                            girafeOutput("plot")
                                                                            ))))
                                                 )),
-                                                mainPanel(hidden(fluidRow(id = "progress_row",
-                                                                          h4("Review progress"),
-                                                                          column(width = 8,
+                                                br(),
+                                                hidden(fluidRow(id = "progress_row",
+                                                                          h2("Review progress", align = "center"),
+                                                                          column(width = 6,
                                                                                  plotOutput("progressbar", width = "100%")),
+                                                                          column(width = 6,
+                                                                                 div(DT::dataTableOutput("summarytable"),style = "width:75%")),
                                                                           column(width = 4,
-                                                                                 div(DT::dataTableOutput("summarytable"),style = "width:75%"),
                                                                           actionButton("write_data", "Write to database"))
-                                                                          )))
+                                                                          ))
                                   )),
                          #The other panel starts here, the second tab in the navbar page.
                          #note it is after a comma and after: 
