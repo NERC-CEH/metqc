@@ -210,6 +210,9 @@ server <- shinyServer(function(input, output, session) {
   #the second observeEvent, which dictates what to do when the delete button is pressed
   
   observeEvent(input$delete, {
+    if(is.null(selected_state())){
+      shinyjs::alert("Please select a point to delete.")
+    } else{
     shinyjs::enable("submitchanges")
     #df_qry[df_qry$checked %in% selected_state(), input$select_var] <<- NA
     
@@ -245,6 +248,7 @@ server <- shinyServer(function(input, output, session) {
         formatRound(columns = c(3:5), digits = 2)%>% 
         formatStyle(columns = c(1:9), 'text-align' = 'center')}
     )
+    }
   })
   
   observeEvent(input$seejobsummary, {
