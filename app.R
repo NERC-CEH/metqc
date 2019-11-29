@@ -82,7 +82,7 @@ df_proc$endDate   <- as.POSIXct(df_proc$endDate, format = "%Y/%m/%d %H:%M", tz =
 #and then code to run if the condition is met
 
 # Define UI for the app
-ui <- shinyUI(navbarPage("Met Data Validation", theme=shinytheme("flatly"), position = "fixed-top",
+ui <- shinyUI(navbarPage("Met Data Validation", theme=shinytheme("united"), position = "fixed-top",
                          #shiny has various different panels and page types, which you can look up
                          #navbarPage is the top bar with "Met Data Validation" and "Information"
                          tabPanel("Validate Data",useShinyjs(),
@@ -122,7 +122,8 @@ ui <- shinyUI(navbarPage("Met Data Validation", theme=shinytheme("flatly"), posi
                                                     #the left hand side is your attached name to call in the server.
                                                     #the right hand side is the text to be displayed in the app.
                                                     actionButton("seejobsummary", "Confirm Run Settings"),
-                                                    actionButton("retrieve_data", "Retrieve from database")
+                                                    actionButton("retrieve_data", "Retrieve from database"),
+                                                    actionButton("restart", "Start over")
                                                   )),
                                                 hidden(mainPanel(
                                                   id = "showpanel",
@@ -195,6 +196,10 @@ server <- shinyServer(function(input, output, session) {
     input$plot_selected
   })
   
+  accumulated_df <- data.frame()
+  reviewed_df <- data.frame()
+  change_summary <- data.frame()
+  
   var_choices <- reactive({
     var_choices <- dbNames
     variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
@@ -219,8 +224,8 @@ server <- shinyServer(function(input, output, session) {
       df_list <- list()
       for(i in selected_state()){
         #here I am creating a df to keep track of the changes made to the data.
-        changed_df <- data.frame()
         #set column names
+        changed_df <- data.frame()
         changed_df <- colnames(c("variable","checked","fill_method","old_value","new_value"))
         changed_df$variable <- input$select_var
         changed_df$point_id <- i
@@ -235,9 +240,8 @@ server <- shinyServer(function(input, output, session) {
         df_list[[i]] <- changed_df
       }
       changed_df <- bind_rows(df_list)
-      browser()
       #if statement that creates the dataframe in memory if it does not already exist
-      if(!exists("change_summary")){
+      if(length(change_summary)==0){
         change_summary <<- changed_df
       } else {
         #or appends the dataframe if it does already exist
@@ -433,7 +437,7 @@ server <- shinyServer(function(input, output, session) {
       colnames(reviewed_df) <- c("var_choices", "reviewed")
       colnames(now_true) <- c("var_choices", "reviewed")
       
-      if(!exists("accumulated_df")){
+      if(length(accumulated_df) == 0){
         #if the dataframe exists already - replaced the row in reviewed df and assign as accumulated_df
         reviewed_df$reviewed[which(reviewed_df$var_choices==now_true$var_choices)] <- now_true$reviewed
         accumulated_df <<- reviewed_df
@@ -526,6 +530,22 @@ server <- shinyServer(function(input, output, session) {
       x
     })
     
+  })
+  
+  observeEvent(input$restart,{
+    hideElement("showpanel")
+    hideElement("plotted_data")
+    hideElement("progress_row")
+    updateNumericInput(session,"shour", value = 00, label = "Hour", min = 0, max = 23, step = 1)
+    updateNumericInput(session,"smin", value = 00, label = "Minute", min = 0, max = 59, step = 1)
+    updateNumericInput(session,"ehour", value = 00, label = "Hour", min = 0, max = 23, step = 1)
+    updateNumericInput(session,"emin", value = 00, label = "Minute", min = 0, max = 59, step = 1)
+    session$sendCustomMessage(type = 'plot_set', message = character(0))
+    df_qry <<- data.frame()
+    accumulated_df <<- data.frame()
+    reviewed_df <<- data.frame()
+    change_summary <<- data.frame()
+    browser()
   })
   
   # download netCDF files
