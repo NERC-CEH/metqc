@@ -143,18 +143,18 @@ ui <- shinyUI(navbarPage("Met Data Validation", theme=shinytheme("flatly"), posi
                                                                            shinyjs::disabled(actionButton("delete", label = "Delete selection")),
                                                                            shinyjs::disabled(actionButton("submitchanges", "Submit changes")),
                                                                            girafeOutput("plot")
-                                                                           ))))
+                                                           ))))
                                                 )),
                                                 br(),
                                                 hidden(fluidRow(id = "progress_row",
-                                                                          h2("Review progress", align = "center"),
-                                                                          column(width = 6,
-                                                                                 plotOutput("progressbar", width = "100%")),
-                                                                          column(width = 6,
-                                                                                 div(DT::dataTableOutput("summarytable"),style = "width:75%")),
-                                                                          column(width = 4,
-                                                                          actionButton("write_data", "Write to database"))
-                                                                          ))
+                                                                h2("Review progress", align = "center"),
+                                                                column(width = 6,
+                                                                       plotOutput("progressbar", width = "100%")),
+                                                                column(width = 6,
+                                                                       div(DT::dataTableOutput("summarytable"),style = "width:75%")),
+                                                                column(width = 4,
+                                                                       actionButton("write_data", "Write to database"))
+                                                ))
                                   )),
                          #The other panel starts here, the second tab in the navbar page.
                          #note it is after a comma and after: 
@@ -213,41 +213,46 @@ server <- shinyServer(function(input, output, session) {
     if(is.null(selected_state())){
       shinyjs::alert("Please select a point to delete.")
     } else{
-    shinyjs::enable("submitchanges")
-    #df_qry[df_qry$checked %in% selected_state(), input$select_var] <<- NA
-    
-    #here I am creating a df to keep track of the changes made to the data.
-    changed_df <- data.frame()
-    #set column names
-    changed_df <- colnames(c("variable","checked","fill_method","old_value","new_value"))
-    changed_df$variable <- input$select_var
-    changed_df$point_id <- selected_state()
-    changed_df$old_value <- df_qry[df_qry$checked %in% selected_state(), input$select_var]
-    changed_df$fill_method <- input$select_landuse
-    #change the old value to the new value depending on the predicted value
-    df_qry[df_qry$checked %in% selected_state(), input$select_var] <<- NA
-    df_qry[is.na(df_qry[, input$select_var]), input$select_var] <<- df_qry$pred[is.na(df_qry[, input$select_var])]
-    #now adding the new value to the change df, using the exact same command as above for the old value
-    changed_df$new_value <- df_qry[df_qry$checked %in% selected_state(), input$select_var]
-    changed_df <- bind_rows(changed_df) %>% as.data.frame()
-    
-    #if statement that creates the dataframe in memory if it does not already exist
-    if(!exists("change_summary")){
-      change_summary <<- changed_df
-    } else {
-      #or appends the dataframe if it does already exist
-      change_summary <<- rbind(change_summary, changed_df)
-    }
-    #here I am making a table that shows the changes that have been made
-    output$summarytable <- renderDataTable({
-      datatable(change_summary,
-                #not that datatable is originally written in javascript
-                #hence why there are some unusually formatted options here 
-                #like class = 'compact' and a 'text-align' = 'center'
-                options = list(pageLength = 5, lengthMenu = c(5,10,25,50)), rownames = FALSE,class = 'compact') %>%
-        formatRound(columns = c(3:5), digits = 2)%>% 
-        formatStyle(columns = c(1:9), 'text-align' = 'center')}
-    )
+      shinyjs::enable("submitchanges")
+      #df_qry[df_qry$checked %in% selected_state(), input$select_var] <<- NA
+      
+      df_list <- list()
+      for(i in selected_state()){
+        #here I am creating a df to keep track of the changes made to the data.
+        changed_df <- data.frame()
+        #set column names
+        changed_df <- colnames(c("variable","checked","fill_method","old_value","new_value"))
+        changed_df$variable <- input$select_var
+        changed_df$point_id <- i
+        changed_df$old_value <- df_qry[df_qry$checked %in% i, input$select_var]
+        changed_df$fill_method <- input$select_landuse
+        #change the old value to the new value depending on the predicted value
+        df_qry[df_qry$checked %in% i, input$select_var] <<- NA
+        df_qry[is.na(df_qry[, input$select_var]), input$select_var] <<- df_qry$pred[is.na(df_qry[, input$select_var])]
+        #now adding the new value to the change df, using the exact same command as above for the old value
+        changed_df$new_value <- df_qry[df_qry$checked %in% i, input$select_var]
+        changed_df <- bind_rows(changed_df) #%>% as.data.frame()
+        df_list[[i]] <- changed_df
+      }
+      changed_df <- bind_rows(df_list)
+      browser()
+      #if statement that creates the dataframe in memory if it does not already exist
+      if(!exists("change_summary")){
+        change_summary <<- changed_df
+      } else {
+        #or appends the dataframe if it does already exist
+        change_summary <<- rbind(change_summary, changed_df)
+      }
+      #here I am making a table that shows the changes that have been made
+      output$summarytable <- renderDataTable({
+        datatable(change_summary,
+                  #not that datatable is originally written in javascript
+                  #hence why there are some unusually formatted options here 
+                  #like class = 'compact' and a 'text-align' = 'center'
+                  options = list(pageLength = 5, lengthMenu = c(5,10,25,50)), rownames = FALSE,class = 'compact') %>%
+          formatRound(columns = c(3:5), digits = 2)%>% 
+          formatStyle(columns = c(1:9), 'text-align' = 'center')}
+      )
     }
   })
   
@@ -447,8 +452,8 @@ server <- shinyServer(function(input, output, session) {
         geom_text(aes(x= var_choices,y= "",label = var_choices),
                   color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
         scale_y_discrete(""
-                        # ,expand = c(0,2)
-                         )+
+                         # ,expand = c(0,2)
+        )+
         scale_fill_manual(breaks = c("TRUE", "FALSE"),
                           values = c("#2F8C1F", "#EB1A1A"))+
         theme(
