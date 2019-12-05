@@ -122,7 +122,7 @@ ui <- shinyUI(navbarPage("Met Data Validation", theme=shinytheme("united"), posi
                                                     #the left hand side is your attached name to call in the server.
                                                     #the right hand side is the text to be displayed in the app.
                                                     actionButton("seejobsummary", "Confirm Run Settings"),
-                                                    actionButton("retrieve_data", "Retrieve from database"),
+                                                    shinyjs::disabled(actionButton("retrieve_data", "Retrieve from database")),
                                                     actionButton("restart", "Start over")
                                                   )),
                                                 hidden(mainPanel(
@@ -262,6 +262,7 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(input$seejobsummary, {
     shinyjs::enable("retrieve_data")
+    shinyjs::disable("seejobsummary")
   })
   
   #the first output, rendering a table with the data, depending on the reactive value in selected_state.
@@ -347,7 +348,7 @@ server <- shinyServer(function(input, output, session) {
     shinyjs::show("showpanel")
     enable("replot")
     enable("plottime")
-    
+    disable("retrieve_data")
     # make an SQL query to select all fields between start and end dates
     qry <- paste0("SELECT * FROM ", table_name, 
                   " WHERE DATECT > TO_DATE('", job_df()$datech[1], "', 'yyyy/mm/dd hh24:mi') 
@@ -533,6 +534,7 @@ server <- shinyServer(function(input, output, session) {
   })
   
   observeEvent(input$restart,{
+    shinyjs::enable("seejobsummary")
     hideElement("showpanel")
     hideElement("plotted_data")
     hideElement("progress_row")
