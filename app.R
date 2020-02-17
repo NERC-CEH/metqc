@@ -522,7 +522,6 @@ server <- shinyServer(function(input, output, session) {
   
   # Plot results as maps
   observeEvent(input$plotmap, {
-    
     output$mapPlot<-renderPlot(
       {
         names(b_F) <- job_df()$datect
@@ -550,7 +549,6 @@ server <- shinyServer(function(input, output, session) {
         opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"))
       x
     })
-    
   })
   
   observeEvent(input$restart,{
