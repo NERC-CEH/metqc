@@ -220,7 +220,7 @@ server <- shinyServer(function(input, output, session) {
     } else{
       shinyjs::enable("submitchanges")
       #df_qry[df_qry$checked %in% selected_state(), input$select_var] <<- NA
-      delete_reasons <- c("Out of bounds", "Wrong measurement")
+      delete_reasons <- c("Out of bounds", "Wrong measurement", "Faulty sensor")
       
       showModal(modalDialog(
         h4("What is the reason for deleting the point?"),
@@ -312,7 +312,7 @@ server <- shinyServer(function(input, output, session) {
   
   #Create select input UI element with land-use options
   output$landuse_filter <- renderUI({
-    selectInput("select_landuse", label = h5("Gap-Filling Method"), choices = as.list(c("gridavg", "arable", "forest", "grass", "moor", "urban")) )
+    selectInput("select_landuse", label = h5("Gap-Filling Method"), choices = as.list(c("gridavg", "historic fill", "regression", "other site substitute")) )
   })
   
   #Create a sentence of metadata about the site, station and var selection made.
