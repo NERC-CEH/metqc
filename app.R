@@ -220,33 +220,53 @@ server <- shinyServer(function(input, output, session) {
     } else{
       shinyjs::enable("submitchanges")
       #df_qry[df_qry$checked %in% selected_state(), input$select_var] <<- NA
+      delete_reasons <- c("Out of bounds", "Wrong measurement")
       
-      df_list <- list()
-      for(i in selected_state()){
-        #here I am creating a df to keep track of the changes made to the data.
-        #set column names
-        changed_df <- data.frame()
-        changed_df <- colnames(c("variable","checked","fill_method","old_value","new_value"))
-        changed_df$variable <- input$select_var
-        changed_df$point_id <- i
-        changed_df$old_value <- df_qry[df_qry$checked %in% i, input$select_var]
-        changed_df$fill_method <- input$select_landuse
-        #change the old value to the new value depending on the predicted value
-        df_qry[df_qry$checked %in% i, input$select_var] <<- NA
-        df_qry[is.na(df_qry[, input$select_var]), input$select_var] <<- df_qry$pred[is.na(df_qry[, input$select_var])]
-        #now adding the new value to the change df, using the exact same command as above for the old value
-        changed_df$new_value <- df_qry[df_qry$checked %in% i, input$select_var]
-        changed_df <- bind_rows(changed_df) #%>% as.data.frame()
-        df_list[[i]] <- changed_df
-      }
-      changed_df <- bind_rows(df_list)
-      #if statement that creates the dataframe in memory if it does not already exist
-      if(length(change_summary)==0){
-        change_summary <<- changed_df
-      } else {
-        #or appends the dataframe if it does already exist
-        change_summary <<- rbind(change_summary, changed_df)
-      }
+      showModal(modalDialog(
+        h4("What is the reason for deleting the point?"),
+        selectInput("var_reason", label = h5("Reason for point removal."), choices = delete_reasons),
+        footer = tagList(
+          actionButton("var_reason1", "Confirm deletion reason.")
+        )))
+      
+      observeEvent(input$var_reason1,{
+        if(length(input$var_reason)!=0){
+          shinyjs::alert("Reason for deletion confirmed.")
+          removeModal()
+        }
+        
+        df_list <- list()
+        for(i in selected_state()){
+          #here I am creating a df to keep track of the changes made to the data.
+          #set column names
+          changed_df <- data.frame()
+          changed_df <- colnames(c("variable","checked","fill_method","old_value","delete_reason","new_value","user"))
+          changed_df$variable <- input$select_var
+          changed_df$point_id <- i
+          changed_df$old_value <- df_qry[df_qry$checked %in% i, input$select_var]
+          changed_df$fill_method <- input$select_landuse
+          changed_df$delete_reason <-  input$var_reason
+          changed_df$user <- Sys.info()['user']
+          #change the old value to the new value depending on the predicted value
+          df_qry[df_qry$checked %in% i, input$select_var] <<- NA
+          df_qry[is.na(df_qry[, input$select_var]), input$select_var] <<- df_qry$pred[is.na(df_qry[, input$select_var])]
+          #now adding the new value to the change df, using the exact same command as above for the old value
+          changed_df$new_value <- df_qry[df_qry$checked %in% i, input$select_var]
+          changed_df <- bind_rows(changed_df) #%>% as.data.frame()
+          df_list[[i]] <- changed_df
+        }
+        changed_df <- bind_rows(df_list)
+        #if statement that creates the dataframe in memory if it does not already exist
+        if(length(change_summary)==0){
+          change_summary <<- changed_df
+        } else {
+          #or appends the dataframe if it does already exist
+          change_summary <<- rbind(change_summary, changed_df)
+        }
+        #change column order
+        change_summary <<- change_summary[c("variable","point_id","old_value","new_value","fill_method","delete_reason","user")]
+      })
+      
       #here I am making a table that shows the changes that have been made
       output$summarytable <- renderDataTable({
         datatable(change_summary,
@@ -547,7 +567,6 @@ server <- shinyServer(function(input, output, session) {
     accumulated_df <<- data.frame()
     reviewed_df <<- data.frame()
     change_summary <<- data.frame()
-    browser()
   })
   
   # download netCDF files
