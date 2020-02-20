@@ -192,6 +192,11 @@ server <- shinyServer(function(input, output, session) {
   #it has to be pre-defined at before using it in the server, and gives you flexibility because it can change your output
   #meaning you can have one bit of code to generate a plot, but the plot can change depending on user input
   
+  #reading in the data flags
+  ethane_dir <- "P:/NEC06763_NERC-RP_Highlight_DARE/Data/ethane_extraction/met_db_files_temporarily/"
+  data_flags <- read.csv(paste0(ethane_dir, "data_flags.csv"))
+  data_flags$code <- as.character(data_flags$code)
+  
   selected_state <- reactive({
     input$plot_selected
   })
@@ -219,8 +224,10 @@ server <- shinyServer(function(input, output, session) {
       shinyjs::alert("Please select a point to delete.")
     } else{
       shinyjs::enable("submitchanges")
-      #df_qry[df_qry$checked %in% selected_state(), input$select_var] <<- NA
-      delete_reasons <- c("Out of bounds", "Wrong measurement", "Faulty sensor")
+
+      delete_reasons <- data_flags %>% 
+        filter(cat == "initial_flag")
+      delete_reasons <- delete_reasons$information
       
       showModal(modalDialog(
         h4("What is the reason for deleting the point?"),
@@ -240,12 +247,21 @@ server <- shinyServer(function(input, output, session) {
           #here I am creating a df to keep track of the changes made to the data.
           #set column names
           changed_df <- data.frame()
-          changed_df <- colnames(c("variable","checked","fill_method","old_value","delete_reason","new_value","user"))
+          changed_df <- colnames(c("variable","checked","gapfill_code","gapfill_initials","gapfill_info","old_value","flag_info","flag_code","flag_initials","new_value","user"))
           changed_df$variable <- input$select_var
           changed_df$point_id <- i
           changed_df$old_value <- df_qry[df_qry$checked %in% i, input$select_var]
-          changed_df$fill_method <- input$select_landuse
-          changed_df$delete_reason <-  input$var_reason
+          changed_df$gapfill_info <- input$select_landuse
+          changed_df$flag_info <-  input$var_reason
+          add_code <- data_flags %>% 
+            filter(information == input$var_reason)
+          changed_df$flag_code <- add_code$code
+          changed_df$flag_initials <- add_code$initials
+          add_fill <- data_flags %>% 
+            filter(information == input$select_landuse)
+          changed_df$gapfill_code <- add_fill$code
+          changed_df$gapfill_initials <- add_fill$initials
+          
           changed_df$user <- Sys.info()['user']
           #change the old value to the new value depending on the predicted value
           df_qry[df_qry$checked %in% i, input$select_var] <<- NA
@@ -264,7 +280,7 @@ server <- shinyServer(function(input, output, session) {
           change_summary <<- rbind(change_summary, changed_df)
         }
         #change column order
-        change_summary <<- change_summary[c("variable","point_id","old_value","new_value","fill_method","delete_reason","user")]
+        change_summary <<- change_summary[c("variable","point_id","old_value","new_value","flag_code","flag_initials","flag_info","gapfill_code","gapfill_initials","gapfill_info","user")]
       })
       
       #here I am making a table that shows the changes that have been made
@@ -274,8 +290,8 @@ server <- shinyServer(function(input, output, session) {
                   #hence why there are some unusually formatted options here 
                   #like class = 'compact' and a 'text-align' = 'center'
                   options = list(pageLength = 5, lengthMenu = c(5,10,25,50)), rownames = FALSE,class = 'compact') %>%
-          formatRound(columns = c(3:5), digits = 2)%>% 
-          formatStyle(columns = c(1:9), 'text-align' = 'center')}
+          formatRound(columns = c(3:4), digits = 2)%>% 
+          formatStyle(columns = c(1:11), 'text-align' = 'center')}
       )
     }
   })
@@ -311,8 +327,12 @@ server <- shinyServer(function(input, output, session) {
   })
   
   #Create select input UI element with land-use options
+  gapfill_options <- data_flags %>% 
+    filter(cat != "initial_flag")
+  gapfill_options <- gapfill_options$information
+  
   output$landuse_filter <- renderUI({
-    selectInput("select_landuse", label = h5("Gap-Filling Method"), choices = as.list(c("gridavg", "historic fill", "regression", "other site substitute")) )
+    selectInput("select_landuse", label = h5("Gap-Filling Method"), choices = gapfill_options)
   })
   
   #Create a sentence of metadata about the site, station and var selection made.
@@ -493,6 +513,7 @@ server <- shinyServer(function(input, output, session) {
     ,width = "auto",height = 275
     )
     disable("submitchanges")
+    browser()
   })
   
   #Set the link to the JASMIN public group workspace where ouput will be provided
