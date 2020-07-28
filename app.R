@@ -3,7 +3,17 @@
 # naming output plot object 'timeplot' instead of 'plot'
 # or having 'Plot time Series' button to initally make graph
 # guess former
+
+# need to install an older shiny version as
+# some dependencies (fastmap) don't work in 3.4.4
+#remotes::install_version("shiny", "1.3.2", upgrade=FALSE)
+#install.packages(c("DBI"))
+#install.packages(c("lubridate"))
+#install.packages(c("ggplot2"))
 #install.packages(c("readxl", "ggiraph"))
+#install.packages(c("plyr", "dplyr", "data.table"))
+#install.packages(c("lubridate", "shinyjs", "shinythemes"))
+#install.packages(c("DT", "ROracle"))
 #Load required packages
 #required for shiny apps
 library(shiny)
@@ -20,16 +30,16 @@ library(ggplot2)
 library(ggiraph)
 #library(openair)
 #required for querying and writing to database
-library(ROracle)
+library(ROracle) # just download and copy to R\win-library\3.4
 #required for reading .xlsx files
 library(readxl)
 #packages to display datatable 
 library(DT)
 library(data.table)
-#Not sure what this is for.
+# for fitting smooth curves to data with a GAM 
 library(mgcv)
 "%!in%" <- Negate("%in%")
-source('C:/met_db/busy-indicator.R')
+source('./busy-indicator.R')
 
 # Set timezone to GMT to stop R/Oracle changing dates based on daylight saving time
 Sys.setenv(TZ = "GMT")
@@ -193,8 +203,7 @@ server <- shinyServer(function(input, output, session) {
   #meaning you can have one bit of code to generate a plot, but the plot can change depending on user input
   
   #reading in the data flags
-  ethane_dir <- "P:/NEC06763_NERC-RP_Highlight_DARE/Data/ethane_extraction/met_db_files_temporarily/"
-  data_flags <- read.csv(paste0(ethane_dir, "data_flags.csv"))
+  data_flags <- read.csv("./data_flags.csv")
   data_flags$code <- as.character(data_flags$code)
   
   selected_state <- reactive({
@@ -397,13 +406,13 @@ server <- shinyServer(function(input, output, session) {
     df_qry$checked <<- as.factor(rownames(df_qry))
     df_qry$DATECT_NUM <<- as.numeric(df_qry$DATECT)
     
-    #creating new dataframe with just relevant options, in order to be used in the varSelectInput() function in the modal.
+    #creating new dataframe with just relevant options, in order to be used in the selectInput() function in the modal.
     df_qry_choices <- df_qry %>%
       select(-DATECT,-TIMESTAMP,-checked,-DATECT_NUM)
     
     showModal(modalDialog(
       h4("Are there are any variables that do not need checking?"),
-      varSelectInput("variable_check", "Variables NOT to be checked",
+      selectInput("variable_check", "Variables NOT to be checked",
                      df_qry_choices, multiple = TRUE),
       footer = tagList(
         modalButton("All variables need checking."),
