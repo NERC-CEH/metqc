@@ -112,7 +112,7 @@ ui <- shinyUI(navbarPage("Met Data Validation", theme=shinytheme("united"), posi
                                                            uiOutput("var_filter_col"),
                                                            uiOutput("landuse_filter"),
                                                            uiOutput("var_info"),
-                                                           shinyjs::disabled(actionButton("replot", label = "Replot graph"))),
+                                                           shinyjs::disabled(actionButton("replot", label = "Plot graph"))),
                                                     #shinyjs::disabled(actionButton("plottime", label = "Plot Time Series")),
                                                     column(width = 8,
                                                            hidden(fluidRow(id = "plotted_data",
