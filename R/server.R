@@ -1,10 +1,10 @@
 server <- shinyServer(function(input, output, session) {
-  
+  # Setting up the server----
   Sys.setenv(TZ = "GMT")
   Sys.setenv(ORA_SDTZ = "GMT")
   
   # Reading in the data flags ----
-  data_flags <- read.csv("../data/data_flags.csv")
+  data_flags <- read_csv("../data/data_flags.csv")
   data_flags$code <- as.character(data_flags$code)
   
   # Making database connection----
@@ -16,9 +16,9 @@ server <- shinyServer(function(input, output, session) {
                    password = dbpwd)
   table_name <- "MET_30MIN"                      
   dbNames <<- dbListFields(con, table_name)
+  dbNamesForBox <- dbNames[!dbNames %in% c("DATECT","TIMESTAMP","DATECT_NUM","checked","pred")]
   
-  
-  #Format the dates for R
+  # Format the dates for R----
   df_proc <- data.frame(
     startDate = "1995/01/01 00:00",
     endDate   = "2019/12/31 00:00",
@@ -27,14 +27,28 @@ server <- shinyServer(function(input, output, session) {
   df_proc$startDate <- as.POSIXct(df_proc$startDate, format = "%Y/%m/%d %H:%M", tz = "UTC")
   df_proc$endDate   <- as.POSIXct(df_proc$endDate, format = "%Y/%m/%d %H:%M", tz = "UTC")
   
-  # Creating reactive variables and empty dataframes-----
+  # Creating reactive variables-----
   selected_state <- reactive({
     input$plot_selected
   })
   
-  accumulated_df <- data.frame()
-  reviewed_df <- data.frame()
-  change_summary <- data.frame()
+  #Create a dataframe with all the information about the job
+  # the dataframe is only created (or recreated) when the View Job Summary button is pressed
+  job_df <- eventReactive(input$retrieve_data, {
+    startDate <- paste(sprintf("%02d", day(input$sdate)), "/", sprintf("%02d", month(input$sdate)), "/", year(input$sdate), " ", sprintf("%02d", input$shour), ":", sprintf("%02d", input$smin), sep = "")    
+    startDate <- as.POSIXct(strptime(startDate, "%d/%m/%Y %H:%M"), tz = "UTC")
+    endDate   <- paste(sprintf("%02d", day(input$edate)), "/", sprintf("%02d", month(input$edate)), "/", year(input$edate), " ", sprintf("%02d", input$ehour), ":", sprintf("%02d", input$emin), sep = "")
+    endDate   <- as.POSIXct(strptime(endDate, "%d/%m/%Y %H:%M"), tz = "UTC")
+    nTimes <- input$intslider
+    # create a sequence of timestamps
+    datect <- seq(startDate, endDate, length = nTimes)
+    
+    data.frame(datech = format(datect, "%Y/%m/%d %H:%M"),
+               #varName = input$select_var, 
+               #landuse = input$select_landuse, 
+               nTimes = nTimes,
+               datect = datect)
+  })
   
   var_choices <- reactive({
     var_choices <- dbNames
@@ -43,10 +57,91 @@ server <- shinyServer(function(input, output, session) {
     var_choices <- var_choices[!var_choices %in% input$variable_check]
   })
   
+  output$select_variables <- renderUI({
+    checkboxGroupButtons("variable_check", label = h5("Variables to be checked"), 
+                choices = as.list(dbNamesForBox), selected = NULL)
+  })
+  
+  # Creating empty dataframes----
+  accumulated_df <- data.frame()
+  reviewed_df <- data.frame()
+  change_summary <- data.frame()
+  
+  # Data retrieval functionality----- 
+  observeEvent(input$retrieve_data, {
+    #enabling previously disabled buttons 
+    shinyjs::show("showpanel")
+    enable("replot")
+    enable("plottime")
+    browser()
+    # make an SQL query to select all fields between start and end dates
+    qry_variables <- paste(input$variable_check, collapse =", ")
+    qry <- paste0("SELECT DATECT, TIMESTAMP, ",qry_variables," FROM ", table_name, 
+                  " WHERE DATECT > TO_DATE('", job_df()$datech[1], "', 'yyyy/mm/dd hh24:mi') 
+                     AND DATECT < TO_DATE('", job_df()$datech[6], "', 'yyyy/mm/dd hh24:mi')")         
+    df_qry <<- dbGetQuery(con, qry)
+    df_qry$checked <<- as.factor(rownames(df_qry))
+    df_qry$DATECT_NUM <<- as.numeric(df_qry$DATECT)
+    
+    #creating new dataframe with just relevant options, in order to be used in the selectInput() function in the modal.
+    df_qry_choices <- df_qry %>%
+      select(-DATECT,-TIMESTAMP,-checked,-DATECT_NUM) %>%
+      select_if(function(x) any(!is.na(x))) #removing columns where all values are NA (for variables that have no valid data)
+    
+
+    
+    # showModal(modalDialog(
+    #   h4("Are there are any variables that do not need checking?"),
+    #   selectInput("variable_check", "Variables NOT to be checked",
+    #               choices = as.list(var_choices()), multiple = TRUE),
+    #   footer = tagList(
+    #     modalButton("All variables need checking."),
+    #     actionButton("variables_not_included", "Confirm variables for exclusion.")
+    #   ),
+    #   h6("Note every variable will have to be checked before data can be written to the database.")
+    # ))
+    
+    observeEvent(input$variables_not_included,{
+      if(length(input$variable_check)!=0){
+        if(input$select_var == input$variable_check){
+          shinyjs::alert("Variables selected for exclusion cannot match initial variable selected.")
+        } else{
+          shinyjs::alert("Variables selected for exclusion.")
+          removeModal()
+        }
+      }else{
+        shinyjs::alert("Please select variables for exclusion or click 'All variables need checking'.")
+      }
+      disable("retrieve_data")
+    })
+    
+    #Render the job info dataframe as a table
+    output$job_table <- renderTable({
+      as.data.frame(as.matrix(summary(df_qry[, input$select_var])))
+    })
+  })
+  
+  #Variable that has been submitted is no longer shown on the Variables dropdown 
+  output$var_filter <- renderUI({
+    #instead of just calling dbNames, I'm making a new object and removing the variables that don't need to be checked.
+    #ie the timestamp, point id and predicted values.
+    selectInput("select_var", label = h5("Variable"), 
+                choices = as.list(var_choices(), -c(input$select_var)))
+  })
+  output$var_filter_col <- renderUI({
+    selectInput("select_col", label = h5("Variable for Colour Scale"), 
+                choices = as.list(var_choices(), -c(input$select_var)))
+  })
+  
+
+  
+  
+  
   # Reset button functionality----
   observeEvent(input$reset, {
     session$sendCustomMessage(type = 'plot_set', message = character(0))
   })
+  
   
   # Delete button functionality----
   observeEvent(input$delete, {
@@ -67,7 +162,6 @@ server <- shinyServer(function(input, output, session) {
           actionButton("var_reason1", "Confirm deletion reason."),
         )))
       
-      
       observeEvent(input$var_reason1,{
         if(length(input$var_reason)!= 0){
           shinyjs::alert("Reason for deletion confirmed. Please submit changes.")
@@ -79,7 +173,9 @@ server <- shinyServer(function(input, output, session) {
           #here I am creating a df to keep track of the changes made to the data.
           #set column names
           changed_df <- data.frame()
-          changed_df <- colnames(c("variable","checked","gapfill_code","gapfill_initials","gapfill_info","old_value","flag_info","flag_code","flag_initials","new_value","user"))
+          changed_df <- colnames(c("variable","checked","gapfill_code",
+                                   "gapfill_initials","gapfill_info","old_value","flag_info",
+                                   "flag_code","flag_initials","new_value","user"))
           changed_df$variable <- input$select_var
           changed_df$point_id <- i
           changed_df$old_value <- df_qry[df_qry$checked %in% i, input$select_var]
@@ -112,7 +208,9 @@ server <- shinyServer(function(input, output, session) {
           #or appends the dataframe if it does already exist
           change_summary <<- rbind(change_summary, changed_df)
         }
-        change_summary <<- change_summary[c("variable","point_id","old_value","new_value","flag_code","flag_initials","flag_info","gapfill_code","gapfill_initials","gapfill_info","user")]
+        change_summary <<- change_summary[c("variable","point_id","old_value","new_value","flag_code",
+                                            "flag_initials","flag_info","gapfill_code","gapfill_initials",
+                                            "gapfill_info","user")]
         
         #Re-plotting plot after deletion is confirmed to illustrate changes
         shinyjs::show("plotted_data")
@@ -138,6 +236,7 @@ server <- shinyServer(function(input, output, session) {
           x
         })
       })
+      
       #here I am making a table that shows the changes that have been made
       output$summarytable <- renderDataTable({
         datatable(change_summary,
@@ -161,6 +260,7 @@ server <- shinyServer(function(input, output, session) {
       easyClose = TRUE))
   })
   
+  
   # Confirm button functionality----
   observeEvent(input$confirm,{
     #When 'Confirm is clicked, an alert is shown:
@@ -177,6 +277,7 @@ server <- shinyServer(function(input, output, session) {
     #Variable is submitted (same action as submit changes button)
     shinyjs::show("progress_row")
     newvar <- input$select_var
+    
     ## Adding the progress bar 
     output$progressbar <- renderPlot({
       #Extracting relevant variables names and making dataframe that has FALSE assigned to every other variable name
@@ -224,18 +325,8 @@ server <- shinyServer(function(input, output, session) {
     ,width = "auto",height = 275
     )
     
-    #Variable that has been submitted is no longer shown on the Variables dropdown 
-    output$var_filter <- renderUI({
-      #instead of just calling dbNames, I'm making a new object and removing the variables that don't need to be checked.
-      #ie the timestamp, point id and predicted values.
-      selectInput("select_var", label = h5("Variable"), 
-                  choices = as.list(var_choices(), -c(input$select_var)))
-    })
-    output$var_filter_col <- renderUI({
-      selectInput("select_col", label = h5("Variable for Colour Scale"), 
-                  choices = as.list(var_choices(), -c(input$select_var)))
-    })
     
+    # Plotting functionality----
     #Plot of variable that has been submitted disappears (plot space is empty), and user must click replot to check other variables
     shinyjs::show("plotted_data")
     enable("reset")
@@ -252,6 +343,7 @@ server <- shinyServer(function(input, output, session) {
       #ylim(0, NA) + 
       xlab("Date") + ylab(paste("Your variable:", input$select_var)) + ggtitle(paste(input$select_var, "time series")) +
       theme(plot.title = element_text(hjust = 0.5), legend.title = element_blank())
+    
     output$plot <- renderggiraph({
       x <- girafe(code = print(ggp), width_svg = 6, height_svg = 5)
       x <- girafe_options(x, opts_selection(
@@ -261,11 +353,7 @@ server <- shinyServer(function(input, output, session) {
     })
   })
   
-  # Job summary functionality----
-  observeEvent(input$seejobsummary, {
-    shinyjs::enable("retrieve_data")
-    shinyjs::disable("seejobsummary")
-  })
+  
   
   # Output table module----
   #the first output, rendering a table with the data, depending on the reactive value in selected_state.
@@ -331,80 +419,6 @@ server <- shinyServer(function(input, output, session) {
     dateInput("edate", value = as.Date(strptime("01/08/2017", "%d/%m/%Y"), tz = "UTC"), 
               min = first_start_date(), max = last_end_date(), label = "End date")
   })
-  
-  #Create a dataframe with all the information about the job
-  # the dataframe is only created (or recreated) when the View Job Summary button is pressed
-  job_df <- eventReactive(input$seejobsummary, {
-    startDate <- paste(sprintf("%02d", day(input$sdate)), "/", sprintf("%02d", month(input$sdate)), "/", year(input$sdate), " ", sprintf("%02d", input$shour), ":", sprintf("%02d", input$smin), sep = "")    
-    startDate <- as.POSIXct(strptime(startDate, "%d/%m/%Y %H:%M"), tz = "UTC")
-    endDate   <- paste(sprintf("%02d", day(input$edate)), "/", sprintf("%02d", month(input$edate)), "/", year(input$edate), " ", sprintf("%02d", input$ehour), ":", sprintf("%02d", input$emin), sep = "")
-    endDate   <- as.POSIXct(strptime(endDate, "%d/%m/%Y %H:%M"), tz = "UTC")
-    nTimes <- input$intslider
-    # create a sequence of timestamps
-    datect <- seq(startDate, endDate, length = nTimes)
-    
-    data.frame(datech = format(datect, "%Y/%m/%d %H:%M"),
-               #varName = input$select_var, 
-               #landuse = input$select_landuse, 
-               nTimes = nTimes,
-               datect = datect)
-  })
-  
-  # Data retrieval functionality----- 
-  observeEvent(input$retrieve_data, {
-    #enabling previously disabled buttons 
-    shinyjs::show("showpanel")
-    enable("replot")
-    enable("plottime")
-    disable("retrieve_data")
-    # make an SQL query to select all fields between start and end dates
-    qry <- paste0("SELECT * FROM ", table_name, 
-                  " WHERE DATECT > TO_DATE('", job_df()$datech[1], "', 'yyyy/mm/dd hh24:mi') 
-                     AND DATECT < TO_DATE('", job_df()$datech[6], "', 'yyyy/mm/dd hh24:mi')")             
-    df_qry <<- dbGetQuery(con, qry)
-    df_qry$checked <<- as.factor(rownames(df_qry))
-    df_qry$DATECT_NUM <<- as.numeric(df_qry$DATECT)
-    
-    #creating new dataframe with just relevant options, in order to be used in the selectInput() function in the modal.
-    df_qry_choices <- df_qry %>%
-      select(-DATECT,-TIMESTAMP,-checked,-DATECT_NUM) %>%
-      select_if(function(x) any(!is.na(x))) #removing columns where all values are NA (for variables that have no valid data)
-    
-    
-    showModal(modalDialog(
-      h4("Are there are any variables that do not need checking?"),
-      selectInput("variable_check", "Variables NOT to be checked",
-                  choices = as.list(var_choices()), multiple = TRUE),
-      footer = tagList(
-        modalButton("All variables need checking."),
-        actionButton("variables_not_included", "Confirm variables for exclusion.")
-      ),
-      h6("Note every variable will have to be checked before data can be written to the database.")
-    ))
-    
-    
-    observeEvent(input$variables_not_included,{
-      if(length(input$variable_check)!=0){
-        if(input$select_var == input$variable_check){
-          shinyjs::alert("Variables selected for exclusion cannot match initial variable selected.")
-        } else{
-          shinyjs::alert("Variables selected for exclusion.")
-          removeModal()
-        }
-      }else{
-        shinyjs::alert("Please select variables for exclusion or click 'All variables need checking'.")
-      }
-      disable("retrieve_data")
-    })
-    
-    
-    #Render the job info dataframe as a table
-    output$job_table <- renderTable({
-      as.data.frame(as.matrix(summary(df_qry[, input$select_var])))
-    })
-  })
-  
-  
   
   # Write data functionality----
   observeEvent(input$write_data, {
@@ -487,42 +501,8 @@ server <- shinyServer(function(input, output, session) {
     ,width = "auto",height = 275
     )
     disable("submitchanges")
-    #browser()
   })
   
-  #Set the link to the JASMIN public group workspace where ouput will be provided
-  pubgws_url <-a("CBED EIDC page", href = "https://catalogue.ceh.ac.uk/documents/bfa37333-b22e-41b8-829a-10c57d50e13f")
-  
-  #When the submit job action button is pressed display a message which states how long the job might take and information on where to access the results.
-  observeEvent(input$retrieve_data, {
-    output$submit_info <- renderUI ({
-      helpText(paste("Your data has been extracted. Plot using the replot button below."))
-    })
-  })
-  
-  #When the submit job action button is pressed display a message which states how long the job might take and information on where to access the results.
-  observeEvent(input$write_data, {
-    output$submit_info <- renderUI ({
-      helpText(paste("Your model run has completed. Plot and download the output via the options below."))
-    })
-  })
-  
-  #Set the link to the CBED page on EIDC
-  eidc_url <- a("CBED EIDC Documentation", href = "https://catalogue.ceh.ac.uk/documents/bfa37333-b22e-41b8-829a-10c57d50e13f")
-  
-  #Create an output element for the url
-  output$git_link <- renderUI({
-    tagList("CBED pages on EIDC:", eidc_url)
-  })
-  
-  # Plot results as maps
-  observeEvent(input$plotmap, {
-    output$mapPlot<-renderPlot(
-      {
-        names(b_F) <- job_df()$datect
-        plot(b_F)
-      })
-  })
   
   observeEvent(input$replot, {
     shinyjs::show("plotted_data")
@@ -571,14 +551,4 @@ server <- shinyServer(function(input, output, session) {
     reviewed_df <<- data.frame()
     change_summary <<- data.frame()
   })
-  
-  # download netCDF files
-  output$netcdf <- downloadHandler(
-    filename = function() {
-      paste('rCBED-', Sys.Date(), '.nc', sep='')
-    },
-    content = function(file) {
-      writeRaster(b_F, file)
-    }
-  )
 })
