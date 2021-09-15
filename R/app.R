@@ -14,12 +14,4 @@ library(data.table)
 library(mgcv)
 library(shinyalert)
 
-
-"%!in%" <- Negate("%in%")
-source('./busy-indicator.R')
-source('./database-connection.R')
-source('./ui.R')
-source('./server.R')
-
-# Run the application 
-shinyApp(ui = ui, server = server)
+shinyApp(ui = ui, server = server, onStart = )

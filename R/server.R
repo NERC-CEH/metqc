@@ -1,8 +1,31 @@
 server <- shinyServer(function(input, output, session) {
   
+  Sys.setenv(TZ = "GMT")
+  Sys.setenv(ORA_SDTZ = "GMT")
+  
   # Reading in the data flags ----
   data_flags <- read.csv("../data/data_flags.csv")
   data_flags$code <- as.character(data_flags$code)
+  
+  # Making database connection----
+  dbuid <- "BU_FIELD_SITES" 
+  dbpwd <- "0ig2mtYUL9" 
+  drv <- dbDriver("Oracle")
+  con <- dbConnect(drv, dbname = "budbase.nerc-bush.ac.uk/BUA",
+                   username = dbuid,
+                   password = dbpwd)
+  table_name <- "MET_30MIN"                      
+  dbNames <<- dbListFields(con, table_name)
+  
+  
+  #Format the dates for R
+  df_proc <- data.frame(
+    startDate = "1995/01/01 00:00",
+    endDate   = "2019/12/31 00:00",
+    ghgName = "co2"
+  )
+  df_proc$startDate <- as.POSIXct(df_proc$startDate, format = "%Y/%m/%d %H:%M", tz = "UTC")
+  df_proc$endDate   <- as.POSIXct(df_proc$endDate, format = "%Y/%m/%d %H:%M", tz = "UTC")
   
   # Creating reactive variables and empty dataframes-----
   selected_state <- reactive({
@@ -522,6 +545,7 @@ server <- shinyServer(function(input, output, session) {
       #ylim(0, NA) + 
       xlab("Date") + ylab(paste("Your variable:", input$select_var)) + ggtitle(paste(input$select_var, "time series")) +
       theme(plot.title = element_text(hjust = 0.5), legend.title = element_blank())
+    
     output$plot <- renderggiraph({
       x <- girafe(code = print(ggp), width_svg = 6, height_svg = 5)
       x <- girafe_options(x, opts_selection(
@@ -531,6 +555,7 @@ server <- shinyServer(function(input, output, session) {
     })
   })
   
+  # Restart button functionality
   observeEvent(input$restart,{
     shinyjs::enable("seejobsummary")
     hideElement("showpanel")

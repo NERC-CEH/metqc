@@ -8,10 +8,10 @@
 #'   default is 1000 which is 1 second.
 #'   
 #' @export
-busyIndicator <- function(text = "Calculation in progress..",img = "busyIndicator/ajaxloaderq.gif", wait=1000) {
+busyIndicator <- function(text = "Calculation in progress..",img = "../busyIndicator/ajaxloaderq.gif", wait=1000) {
 	tagList(
   		singleton(tags$head(
-    		tags$link(rel="stylesheet", type="text/css",href="busyIndicator/busyIndicator.css")
+    		tags$link(rel="stylesheet", type="text/css",href="../busyIndicator/busyIndicator.css")
   			))
   		,div(class="shinysky-busy-indicator",p(text),img(src=img))
   		,tags$script(sprintf(
