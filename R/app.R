@@ -1,0 +1,25 @@
+library(shiny)
+library(shinydashboard)
+library(shinyjs)
+library(shinythemes)
+library(lubridate)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(ggiraph)
+library(ROracle) 
+library(readxl)
+library(DT)
+library(data.table)
+library(mgcv)
+library(shinyalert)
+
+
+"%!in%" <- Negate("%in%")
+source('./busy-indicator.R')
+source('./database-connection.R')
+source('./ui.R')
+source('./server.R')
+
+# Run the application 
+shinyApp(ui = ui, server = server)
