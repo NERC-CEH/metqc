@@ -59,13 +59,35 @@ server <- shinyServer(function(input, output, session) {
   
   output$select_variables <- renderUI({
     checkboxGroupButtons("variable_check", label = h5("Variables to be checked"), 
-                choices = as.list(dbNamesForBox), selected = NULL)
+                         choices = as.list(dbNamesForBox), selected = NULL)
   })
   
   # Creating empty dataframes----
   accumulated_df <- data.frame()
   reviewed_df <- data.frame()
   change_summary <- data.frame()
+  # 
+  
+  plotting_function <- function(input_variable){
+    p1_ggplot <- ggplot(df_qry, aes(DATECT, y = df_qry[, input_variable])) +
+      geom_point_interactive(aes(data_id = checked, tooltip = checked,
+                                 colour = df_qry[, input_variable]), size = 3) +
+      #geom_line(aes(y = df_qry$pred), colour = "red") + 
+      xlab("Date") +ylab(paste("Your variable:", input_variable)) +
+      ggtitle(paste(input_variable, "time series")) +
+      theme(plot.title = element_text(hjust = 0.5), legend.title = element_blank())
+    p1_girafe <- girafe(code = print(p1_ggplot), width_svg = 6, height_svg = 5)
+    p1_girafe <- girafe_options(p1_girafe, opts_selection(
+      type = "multiple", css = "fill:#FF3333;stroke:black;"),
+      opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"))
+    p1_girafe
+  }
+  # ggp <- ggplot(df_qry, aes(DATECT, y = df_qry[, input$variable_check])) +
+  #   geom_point_interactive(aes(data_id = checked, tooltip = checked, colour = df_qry[, input$select_col]), size = 3) +
+  #   geom_line(aes(y = df_qry$pred), colour = "red") +
+  #   #ylim(0, NA) +
+  #   xlab("Date") + ylab(paste("Your variable:", input$select_var)) + ggtitle(paste(input$select_var, "time series")) +
+  #   theme(plot.title = element_text(hjust = 0.5), legend.title = element_blank())
   
   # Data retrieval functionality----- 
   observeEvent(input$retrieve_data, {
@@ -73,8 +95,6 @@ server <- shinyServer(function(input, output, session) {
     shinyjs::show("showpanel")
     enable("replot")
     enable("plottime")
-    browser()
-    # make an SQL query to select all fields between start and end dates
     qry_variables <- paste(input$variable_check, collapse =", ")
     qry <- paste0("SELECT DATECT, TIMESTAMP, ",qry_variables," FROM ", table_name, 
                   " WHERE DATECT > TO_DATE('", job_df()$datech[1], "', 'yyyy/mm/dd hh24:mi') 
@@ -88,7 +108,21 @@ server <- shinyServer(function(input, output, session) {
       select(-DATECT,-TIMESTAMP,-checked,-DATECT_NUM) %>%
       select_if(function(x) any(!is.na(x))) #removing columns where all values are NA (for variables that have no valid data)
     
-
+    all_tabs_to_render <- paste(input$variable_check)
+    
+    for(i in input$variable_check){
+      appendTab("plotTabs", tabPanel(i, 
+                                     renderPlot(plotting_function(i))))
+    }
+    
+    # output$tabs <- renderUI({
+    #   all_tabs_to_render <- lapply(paste("Variable to check:", input$variable_check), tabPanel)
+    #   # browser()
+    #   # lapply(plotting_function, input$variable_check)
+    #   do.call(tabBox, all_tabs_to_render)
+    #   browser()
+    # })
+    
     
     # showModal(modalDialog(
     #   h4("Are there are any variables that do not need checking?"),
@@ -101,40 +135,36 @@ server <- shinyServer(function(input, output, session) {
     #   h6("Note every variable will have to be checked before data can be written to the database.")
     # ))
     
-    observeEvent(input$variables_not_included,{
-      if(length(input$variable_check)!=0){
-        if(input$select_var == input$variable_check){
-          shinyjs::alert("Variables selected for exclusion cannot match initial variable selected.")
-        } else{
-          shinyjs::alert("Variables selected for exclusion.")
-          removeModal()
-        }
-      }else{
-        shinyjs::alert("Please select variables for exclusion or click 'All variables need checking'.")
-      }
-      disable("retrieve_data")
-    })
+    # observeEvent(input$variables_not_included,{
+    #   if(length(input$variable_check)!=0){
+    #     if(input$select_var == input$variable_check){
+    #       shinyjs::alert("Variables selected for exclusion cannot match initial variable selected.")
+    #     } else{
+    #       shinyjs::alert("Variables selected for exclusion.")
+    #       removeModal()
+    #     }
+    #   }else{
+    #     shinyjs::alert("Please select variables for exclusion or click 'All variables need checking'.")
+    #   }
+    #   disable("retrieve_data")
+    # })
     
     #Render the job info dataframe as a table
-    output$job_table <- renderTable({
-      as.data.frame(as.matrix(summary(df_qry[, input$select_var])))
-    })
+    # output$job_table <- renderTable({
+    #   as.data.frame(as.matrix(summary(df_qry[, input$select_var])))
   })
   
-  #Variable that has been submitted is no longer shown on the Variables dropdown 
-  output$var_filter <- renderUI({
-    #instead of just calling dbNames, I'm making a new object and removing the variables that don't need to be checked.
-    #ie the timestamp, point id and predicted values.
-    selectInput("select_var", label = h5("Variable"), 
-                choices = as.list(var_choices(), -c(input$select_var)))
-  })
-  output$var_filter_col <- renderUI({
-    selectInput("select_col", label = h5("Variable for Colour Scale"), 
-                choices = as.list(var_choices(), -c(input$select_var)))
-  })
-  
-
-  
+  # #Variable that has been submitted is no longer shown on the Variables dropdown 
+  # output$var_filter <- renderUI({
+  #   #instead of just calling dbNames, I'm making a new object and removing the variables that don't need to be checked.
+  #   #ie the timestamp, point id and predicted values.
+  #   selectInput("select_var", label = h5("Variable"), 
+  #               choices = as.list(var_choices(), -c(input$select_var)))
+  # })
+  # output$var_filter_col <- renderUI({
+  #   selectInput("select_col", label = h5("Variable for Colour Scale"), 
+  #               choices = as.list(var_choices(), -c(input$select_var)))
+  # })
   
   
   # Reset button functionality----
@@ -325,9 +355,6 @@ server <- shinyServer(function(input, output, session) {
     ,width = "auto",height = 275
     )
     
-    
-    # Plotting functionality----
-    #Plot of variable that has been submitted disappears (plot space is empty), and user must click replot to check other variables
     shinyjs::show("plotted_data")
     enable("reset")
     enable("delete")

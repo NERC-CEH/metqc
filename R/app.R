@@ -16,4 +16,4 @@ library(data.table)
 library(mgcv)
 library(shinyalert)
 
-shinyApp(ui = ui, server = server, onStart = )
+shinyApp(ui = ui, server = server)

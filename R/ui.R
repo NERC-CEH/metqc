@@ -33,14 +33,19 @@ ui <- dashboardPage(skin = "green",
                                       actionButton("retrieve_data", "Retrieve from database"),
                                       actionButton("restart", "Start over")
                                   ),
-                                  box(height = 475, title = "Specify variable", status = "success", solidHeader = TRUE,
-                                      uiOutput("submit_info"),
-                                      uiOutput("var_filter"),
-                                      uiOutput("var_filter_col"),
-                                      uiOutput("landuse_filter"),
-                                      uiOutput("var_info"),
-                                      shinyjs::disabled(actionButton("replot", label = "Plot graph"))
-                                  )
+                                  #uiOutput("tabs")
+                                  
+                                  # box(height = 475, title = "Specify variable", status = "success", solidHeader = TRUE,
+                                  #     uiOutput("submit_info"),
+                                  #     uiOutput("var_filter"),
+                                  #     uiOutput("var_filter_col"),
+                                  #     uiOutput("landuse_filter"),
+                                  #     uiOutput("var_info"),
+                                  #     shinyjs::disabled(actionButton("replot", label = "Plot graph"))
+                                  # )
+                                ),
+                                fluidRow(
+                                  tabsetPanel(id = "plotTabs", type = "pills")
                                 ),
                                 hidden(
                                   fluidRow(id = "plotted_data",
