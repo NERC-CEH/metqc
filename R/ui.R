@@ -12,7 +12,7 @@ ui <- dashboardPage(skin = "green",
                       tabItems(
                         tabItem(tabName = "dashboard",
                                 fluidRow(
-                                  box(height = 475, title = "Database controls", status = "success", solidHeader = TRUE,
+                                  box(title = "Database controls", status = "success", solidHeader = TRUE,
                                       helpText("Select your required processing start and end times below."),
                                       column(width = 6,
                                              uiOutput("start_date")),
@@ -44,8 +44,14 @@ ui <- dashboardPage(skin = "green",
                                   #     shinyjs::disabled(actionButton("replot", label = "Plot graph"))
                                   # )
                                 ),
-                                fluidRow(
-                                  tabsetPanel(id = "plotTabs", type = "pills")
+                                hidden(
+                                  fluidRow(id = "extracted_data",
+                                           box(title = "Extracted data", status = "success", solidHeader = TRUE,
+                                               tabsetPanel(id = "plotTabs",
+                                                           girafeOutput("interactive_plot"),
+                                                           type = "tabs")
+                                           )
+                                  )
                                 ),
                                 hidden(
                                   fluidRow(id = "plotted_data",

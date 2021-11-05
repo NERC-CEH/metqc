@@ -93,66 +93,80 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(input$retrieve_data, {
     #enabling previously disabled buttons 
     shinyjs::show("showpanel")
+    shinyjs::show("extracted_data")
     enable("replot")
     enable("plottime")
-    qry_variables <- paste(input$variable_check, collapse =", ")
-    qry <- paste0("SELECT DATECT, TIMESTAMP, ",qry_variables," FROM ", table_name, 
-                  " WHERE DATECT > TO_DATE('", job_df()$datech[1], "', 'yyyy/mm/dd hh24:mi') 
+    if(!is.null(input$variable_check)){
+      qry_variables <- paste(input$variable_check, collapse =", ")
+      qry <- paste0("SELECT DATECT, TIMESTAMP, ",qry_variables," FROM ", table_name, 
+                    " WHERE DATECT > TO_DATE('", job_df()$datech[1], "', 'yyyy/mm/dd hh24:mi') 
                      AND DATECT < TO_DATE('", job_df()$datech[6], "', 'yyyy/mm/dd hh24:mi')")         
-    df_qry <<- dbGetQuery(con, qry)
-    df_qry$checked <<- as.factor(rownames(df_qry))
-    df_qry$DATECT_NUM <<- as.numeric(df_qry$DATECT)
-    
-    #creating new dataframe with just relevant options, in order to be used in the selectInput() function in the modal.
-    df_qry_choices <- df_qry %>%
-      select(-DATECT,-TIMESTAMP,-checked,-DATECT_NUM) %>%
-      select_if(function(x) any(!is.na(x))) #removing columns where all values are NA (for variables that have no valid data)
-    
-    all_tabs_to_render <- paste(input$variable_check)
-    
-    for(i in input$variable_check){
-      appendTab("plotTabs", tabPanel(i, 
-                                     renderPlot(plotting_function(i))))
+      df_qry <<- dbGetQuery(con, qry)
+      df_qry$checked <<- as.factor(rownames(df_qry))
+      df_qry$DATECT_NUM <<- as.numeric(df_qry$DATECT)
+      
+      #creating new dataframe with just relevant options, in order to be used in the selectInput() function in the modal.
+      df_qry_choices <- df_qry %>%
+        select(-DATECT,-TIMESTAMP,-checked,-DATECT_NUM) %>%
+        select_if(function(x) any(!is.na(x))) #removing columns where all values are NA (for variables that have no valid data)
+      
+      all_tabs_to_render <- paste(input$variable_check)
+      
+      for(i in input$variable_check){
+        appendTab("plotTabs", tabPanel(i), select = TRUE)
+      }
+    } else if(is.null(input$variable_check)){
+      shinyjs::alert("Please select one or more variables before extracting data from the database.")
     }
-    
-    # output$tabs <- renderUI({
-    #   all_tabs_to_render <- lapply(paste("Variable to check:", input$variable_check), tabPanel)
-    #   # browser()
-    #   # lapply(plotting_function, input$variable_check)
-    #   do.call(tabBox, all_tabs_to_render)
-    #   browser()
-    # })
-    
-    
-    # showModal(modalDialog(
-    #   h4("Are there are any variables that do not need checking?"),
-    #   selectInput("variable_check", "Variables NOT to be checked",
-    #               choices = as.list(var_choices()), multiple = TRUE),
-    #   footer = tagList(
-    #     modalButton("All variables need checking."),
-    #     actionButton("variables_not_included", "Confirm variables for exclusion.")
-    #   ),
-    #   h6("Note every variable will have to be checked before data can be written to the database.")
-    # ))
-    
-    # observeEvent(input$variables_not_included,{
-    #   if(length(input$variable_check)!=0){
-    #     if(input$select_var == input$variable_check){
-    #       shinyjs::alert("Variables selected for exclusion cannot match initial variable selected.")
-    #     } else{
-    #       shinyjs::alert("Variables selected for exclusion.")
-    #       removeModal()
-    #     }
-    #   }else{
-    #     shinyjs::alert("Please select variables for exclusion or click 'All variables need checking'.")
-    #   }
-    #   disable("retrieve_data")
-    # })
-    
-    #Render the job info dataframe as a table
-    # output$job_table <- renderTable({
-    #   as.data.frame(as.matrix(summary(df_qry[, input$select_var])))
   })
+  
+  
+  plot_selected <- reactive({
+    req(input$plotTabs)
+    plotting_function(input$plotTabs)})
+  output$interactive_plot <- renderggiraph(plot_selected())
+  
+  # observeEvent(input$plotTabs, {
+  #   output$interactive_plot <- renderPlot(plotting_function(input$plotTabs))
+  # })
+  # output$tabs <- renderUI({
+  #   all_tabs_to_render <- lapply(paste("Variable to check:", input$variable_check), tabPanel)
+  #   # browser()
+  #   # lapply(plotting_function, input$variable_check)
+  #   do.call(tabBox, all_tabs_to_render)
+  #   browser()
+  # })
+  
+  
+  # showModal(modalDialog(
+  #   h4("Are there are any variables that do not need checking?"),
+  #   selectInput("variable_check", "Variables NOT to be checked",
+  #               choices = as.list(var_choices()), multiple = TRUE),
+  #   footer = tagList(
+  #     modalButton("All variables need checking."),
+  #     actionButton("variables_not_included", "Confirm variables for exclusion.")
+  #   ),
+  #   h6("Note every variable will have to be checked before data can be written to the database.")
+  # ))
+  
+  # observeEvent(input$variables_not_included,{
+  #   if(length(input$variable_check)!=0){
+  #     if(input$select_var == input$variable_check){
+  #       shinyjs::alert("Variables selected for exclusion cannot match initial variable selected.")
+  #     } else{
+  #       shinyjs::alert("Variables selected for exclusion.")
+  #       removeModal()
+  #     }
+  #   }else{
+  #     shinyjs::alert("Please select variables for exclusion or click 'All variables need checking'.")
+  #   }
+  #   disable("retrieve_data")
+  # })
+  
+  #Render the job info dataframe as a table
+  # output$job_table <- renderTable({
+  #   as.data.frame(as.matrix(summary(df_qry[, input$select_var])))
+  
   
   # #Variable that has been submitted is no longer shown on the Variables dropdown 
   # output$var_filter <- renderUI({
@@ -258,7 +272,7 @@ server <- shinyServer(function(input, output, session) {
           xlab("Date") + ylab(paste("Your variable:", input$select_var)) + ggtitle(paste(input$select_var, "time series")) +
           theme(plot.title = element_text(hjust = 0.5), legend.title = element_blank())
         
-        output$plot <- renderggiraph({
+        output$plot <- ({
           x <- girafe(code = print(ggp), width_svg = 6, height_svg = 5)
           x <- girafe_options(x, opts_selection(
             type = "multiple", css = "fill:#FF3333;stroke:black;"),
