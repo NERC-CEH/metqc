@@ -33,49 +33,23 @@ ui <- dashboardPage(skin = "green",
                                       actionButton("retrieve_data", "Retrieve from database"),
                                       actionButton("restart", "Start over")
                                   ),
-                                  #uiOutput("tabs")
-                                  
-                                  # box(height = 475, title = "Specify variable", status = "success", solidHeader = TRUE,
-                                  #     uiOutput("submit_info"),
-                                  #     uiOutput("var_filter"),
-                                  #     uiOutput("var_filter_col"),
-                                  #     uiOutput("landuse_filter"),
-                                  #     uiOutput("var_info"),
-                                  #     shinyjs::disabled(actionButton("replot", label = "Plot graph"))
-                                  # )
                                 ),
                                 hidden(
                                   fluidRow(id = "extracted_data",
                                            box(title = "Extracted data", status = "success", solidHeader = TRUE,
                                                tabsetPanel(id = "plotTabs",
                                                            girafeOutput("interactive_plot"),
-                                                           type = "tabs")
-                                           )
-                                  )
-                                ),
-                                hidden(
-                                  fluidRow(id = "plotted_data",
-                                           box(width = 12, title = "Plotted data", status = "success", solidHeader = TRUE,
+                                                           type = "tabs"),
                                                shinyjs::disabled(actionButton("reset", label = "Reset selection")),
                                                shinyjs::disabled(actionButton("delete", label = "Delete selection")),
                                                shinyjs::disabled(actionButton("nochange", label = "No change needed")),
-                                               shinyjs::disabled(actionButton("submitchanges", "Submit changes")),
-                                               girafeOutput("plot")
-                                           )
-                                  ),
-                                  hidden(
-                                    fluidRow(id = "progress_row",
-                                             box(width = 12, title = "Review progress", status = "success", solidHeader = TRUE,
-                                                 column(width = 12,
-                                                        plotOutput("progressbar", width = "100%")),
-                                                 column(width = 6,
-                                                        div(DT::dataTableOutput("summarytable"),style = "width:75%")),
-                                                 column(width = 4,
-                                                        actionButton("write_data", "Write to database"))
-                                             )
-                                    )
+                                               shinyjs::disabled(actionButton("submitchanges", "Submit changes"))
+                                           ),
+                                           box(title = "Data Preview", status = "success", solidHeader = TRUE,
+                                               tableOutput("job_table"),
+                                               )
                                   )
-                                )
+                                ),
                         ),
                         tabItem(tabName = "information",
                                 h2("Information placeholder"))

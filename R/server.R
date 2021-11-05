@@ -27,11 +27,6 @@ server <- shinyServer(function(input, output, session) {
   df_proc$startDate <- as.POSIXct(df_proc$startDate, format = "%Y/%m/%d %H:%M", tz = "UTC")
   df_proc$endDate   <- as.POSIXct(df_proc$endDate, format = "%Y/%m/%d %H:%M", tz = "UTC")
   
-  # Creating reactive variables-----
-  selected_state <- reactive({
-    input$plot_selected
-  })
-  
   #Create a dataframe with all the information about the job
   # the dataframe is only created (or recreated) when the View Job Summary button is pressed
   job_df <- eventReactive(input$retrieve_data, {
@@ -50,13 +45,6 @@ server <- shinyServer(function(input, output, session) {
                datect = datect)
   })
   
-  var_choices <- reactive({
-    var_choices <- dbNames
-    variables_to_remove <- c("DATECT", "TIMESTAMP","checked","DATECT_NUM","pred")
-    var_choices <- var_choices[!var_choices %in% variables_to_remove]
-    var_choices <- var_choices[!var_choices %in% input$variable_check]
-  })
-  
   output$select_variables <- renderUI({
     checkboxGroupButtons("variable_check", label = h5("Variables to be checked"), 
                          choices = as.list(dbNamesForBox), selected = NULL)
@@ -66,7 +54,6 @@ server <- shinyServer(function(input, output, session) {
   accumulated_df <- data.frame()
   reviewed_df <- data.frame()
   change_summary <- data.frame()
-  # 
   
   plotting_function <- function(input_variable){
     p1_ggplot <- ggplot(df_qry, aes(DATECT, y = df_qry[, input_variable])) +
@@ -82,12 +69,6 @@ server <- shinyServer(function(input, output, session) {
       opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"))
     p1_girafe
   }
-  # ggp <- ggplot(df_qry, aes(DATECT, y = df_qry[, input$variable_check])) +
-  #   geom_point_interactive(aes(data_id = checked, tooltip = checked, colour = df_qry[, input$select_col]), size = 3) +
-  #   geom_line(aes(y = df_qry$pred), colour = "red") +
-  #   #ylim(0, NA) +
-  #   xlab("Date") + ylab(paste("Your variable:", input$select_var)) + ggtitle(paste(input$select_var, "time series")) +
-  #   theme(plot.title = element_text(hjust = 0.5), legend.title = element_blank())
   
   # Data retrieval functionality----- 
   observeEvent(input$retrieve_data, {
@@ -96,6 +77,9 @@ server <- shinyServer(function(input, output, session) {
     shinyjs::show("extracted_data")
     enable("replot")
     enable("plottime")
+    enable("reset")
+    enable("delete")
+    enable("nochange")
     if(!is.null(input$variable_check)){
       qry_variables <- paste(input$variable_check, collapse =", ")
       qry <- paste0("SELECT DATECT, TIMESTAMP, ",qry_variables," FROM ", table_name, 
@@ -105,12 +89,10 @@ server <- shinyServer(function(input, output, session) {
       df_qry$checked <<- as.factor(rownames(df_qry))
       df_qry$DATECT_NUM <<- as.numeric(df_qry$DATECT)
       
-      #creating new dataframe with just relevant options, in order to be used in the selectInput() function in the modal.
-      df_qry_choices <- df_qry %>%
-        select(-DATECT,-TIMESTAMP,-checked,-DATECT_NUM) %>%
-        select_if(function(x) any(!is.na(x))) #removing columns where all values are NA (for variables that have no valid data)
-      
-      all_tabs_to_render <- paste(input$variable_check)
+      # #creating new dataframe with just relevant options, in order to be used in the selectInput() function in the modal.
+      # df_qry_choices <- df_qry %>%
+      #   select(-DATECT,-TIMESTAMP,-checked,-DATECT_NUM) %>%
+      #   select_if(function(x) any(!is.na(x))) #removing columns where all values are NA (for variables that have no valid data)
       
       for(i in input$variable_check){
         appendTab("plotTabs", tabPanel(i), select = TRUE)
@@ -118,54 +100,22 @@ server <- shinyServer(function(input, output, session) {
     } else if(is.null(input$variable_check)){
       shinyjs::alert("Please select one or more variables before extracting data from the database.")
     }
+    
+    plot_selected <- reactive({
+      req(input$plotTabs)
+      plotting_function(input$plotTabs)})
+    output$interactive_plot <- renderggiraph(plot_selected())
+    
   })
   
-  
-  plot_selected <- reactive({
-    req(input$plotTabs)
-    plotting_function(input$plotTabs)})
-  output$interactive_plot <- renderggiraph(plot_selected())
-  
-  # observeEvent(input$plotTabs, {
-  #   output$interactive_plot <- renderPlot(plotting_function(input$plotTabs))
-  # })
-  # output$tabs <- renderUI({
-  #   all_tabs_to_render <- lapply(paste("Variable to check:", input$variable_check), tabPanel)
-  #   # browser()
-  #   # lapply(plotting_function, input$variable_check)
-  #   do.call(tabBox, all_tabs_to_render)
-  #   browser()
-  # })
-  
-  
-  # showModal(modalDialog(
-  #   h4("Are there are any variables that do not need checking?"),
-  #   selectInput("variable_check", "Variables NOT to be checked",
-  #               choices = as.list(var_choices()), multiple = TRUE),
-  #   footer = tagList(
-  #     modalButton("All variables need checking."),
-  #     actionButton("variables_not_included", "Confirm variables for exclusion.")
-  #   ),
-  #   h6("Note every variable will have to be checked before data can be written to the database.")
-  # ))
-  
-  # observeEvent(input$variables_not_included,{
-  #   if(length(input$variable_check)!=0){
-  #     if(input$select_var == input$variable_check){
-  #       shinyjs::alert("Variables selected for exclusion cannot match initial variable selected.")
-  #     } else{
-  #       shinyjs::alert("Variables selected for exclusion.")
-  #       removeModal()
-  #     }
-  #   }else{
-  #     shinyjs::alert("Please select variables for exclusion or click 'All variables need checking'.")
-  #   }
-  #   disable("retrieve_data")
-  # })
-  
+  # Creating reactive variables-----
+  selected_state <- reactive({
+    input$interactive_plot_selected
+  })
+
   #Render the job info dataframe as a table
-  # output$job_table <- renderTable({
-  #   as.data.frame(as.matrix(summary(df_qry[, input$select_var])))
+  output$job_table <- renderTable({
+    as.data.frame(as.matrix(summary(df_qry[, input$select_var])))})
   
   
   # #Variable that has been submitted is no longer shown on the Variables dropdown 
@@ -185,7 +135,6 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(input$reset, {
     session$sendCustomMessage(type = 'plot_set', message = character(0))
   })
-  
   
   # Delete button functionality----
   observeEvent(input$delete, {
@@ -441,23 +390,23 @@ server <- shinyServer(function(input, output, session) {
   first_start_date <- reactive({
     min(as.Date(df_proc$startDate))
   })
-  
+
   #Create a reactive element with the latest end date
   last_end_date <- reactive({
     max(as.Date(df_proc$endDate))
   })
-  
+
   #Create a date input for the user to select start date
   output$start_date <- renderUI ({
-    dateInput("sdate", 
-              value = as.Date(strptime("01/07/2017", "%d/%m/%Y"), tz = "UTC"), 
-              min = first_start_date(), 
+    dateInput("sdate",
+              value = as.Date(strptime("01/07/2017", "%d/%m/%Y"), tz = "UTC"),
+              min = first_start_date(),
               max = last_end_date(), label = "Start date")
   })
-  
+
   #Create a date input for the user to select end date
   output$end_date <- renderUI ({
-    dateInput("edate", value = as.Date(strptime("01/08/2017", "%d/%m/%Y"), tz = "UTC"), 
+    dateInput("edate", value = as.Date(strptime("01/08/2017", "%d/%m/%Y"), tz = "UTC"),
               min = first_start_date(), max = last_end_date(), label = "End date")
   })
   
