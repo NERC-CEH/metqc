@@ -4,7 +4,7 @@ server <- shinyServer(function(input, output, session) {
   Sys.setenv(ORA_SDTZ = "GMT")
   
   # Reading in the data flags ----
-  data_flags <- read_csv("../data/data_flags.csv")
+  data_flags <- read_csv("./data/data_flags.csv")
   data_flags$code <- as.character(data_flags$code)
   
   # Making database connection----
@@ -27,8 +27,7 @@ server <- shinyServer(function(input, output, session) {
   df_proc$startDate <- as.POSIXct(df_proc$startDate, format = "%Y/%m/%d %H:%M", tz = "UTC")
   df_proc$endDate   <- as.POSIXct(df_proc$endDate, format = "%Y/%m/%d %H:%M", tz = "UTC")
   
-  #Create a dataframe with all the information about the job
-  # the dataframe is only created (or recreated) when the View Job Summary button is pressed
+  #Create a dataframe with all the information about the start and end time, and cr spline (do we need this?)----
   job_df <- eventReactive(input$retrieve_data, {
     startDate <- paste(sprintf("%02d", day(input$sdate)), "/", sprintf("%02d", month(input$sdate)), "/", year(input$sdate), " ", sprintf("%02d", input$shour), ":", sprintf("%02d", input$smin), sep = "")    
     startDate <- as.POSIXct(strptime(startDate, "%d/%m/%Y %H:%M"), tz = "UTC")
@@ -39,12 +38,11 @@ server <- shinyServer(function(input, output, session) {
     datect <- seq(startDate, endDate, length = nTimes)
     
     data.frame(datech = format(datect, "%Y/%m/%d %H:%M"),
-               #varName = input$select_var, 
-               #landuse = input$select_landuse, 
                nTimes = nTimes,
                datect = datect)
   })
   
+  # Rendering the box that we need to allow the user to select all of the variables they wish to check----
   output$select_variables <- renderUI({
     checkboxGroupButtons("variable_check", label = h5("Variables to be checked"), 
                          choices = as.list(dbNamesForBox), selected = NULL)
@@ -55,31 +53,14 @@ server <- shinyServer(function(input, output, session) {
   reviewed_df <- data.frame()
   change_summary <- data.frame()
   
-  plotting_function <- function(input_variable){
-    p1_ggplot <- ggplot(df_qry, aes(DATECT, y = df_qry[, input_variable])) +
-      geom_point_interactive(aes(data_id = checked, tooltip = checked,
-                                 colour = df_qry[, input_variable]), size = 3) +
-      #geom_line(aes(y = df_qry$pred), colour = "red") + 
-      xlab("Date") +ylab(paste("Your variable:", input_variable)) +
-      ggtitle(paste(input_variable, "time series")) +
-      theme(plot.title = element_text(hjust = 0.5), legend.title = element_blank())
-    p1_girafe <- girafe(code = print(p1_ggplot), width_svg = 6, height_svg = 5)
-    p1_girafe <- girafe_options(p1_girafe, opts_selection(
-      type = "multiple", css = "fill:#FF3333;stroke:black;"),
-      opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"))
-    p1_girafe
-  }
-  
   # Data retrieval functionality----- 
   observeEvent(input$retrieve_data, {
     #enabling previously disabled buttons 
-    shinyjs::show("showpanel")
     shinyjs::show("extracted_data")
-    enable("replot")
-    enable("plottime")
     enable("reset")
     enable("delete")
     enable("nochange")
+    # make a query for every variable that has been checked by the user.
     if(!is.null(input$variable_check)){
       qry_variables <- paste(input$variable_check, collapse =", ")
       qry <- paste0("SELECT DATECT, TIMESTAMP, ",qry_variables," FROM ", table_name, 
@@ -89,47 +70,45 @@ server <- shinyServer(function(input, output, session) {
       df_qry$checked <<- as.factor(rownames(df_qry))
       df_qry$DATECT_NUM <<- as.numeric(df_qry$DATECT)
       
-      # #creating new dataframe with just relevant options, in order to be used in the selectInput() function in the modal.
-      # df_qry_choices <- df_qry %>%
-      #   select(-DATECT,-TIMESTAMP,-checked,-DATECT_NUM) %>%
-      #   select_if(function(x) any(!is.na(x))) #removing columns where all values are NA (for variables that have no valid data)
-      
+      # Add a tab to the plotting panel for each variable that has been selected by the user.
+      # TO DO: I need to add a condition here that stops the user from adding duplicate variables at a later stage
       for(i in input$variable_check){
         appendTab("plotTabs", tabPanel(i), select = TRUE)
       }
+      # Give a warning if there are no variables selected.
     } else if(is.null(input$variable_check)){
       shinyjs::alert("Please select one or more variables before extracting data from the database.")
     }
     
+    # Creating a reactive plot that will be plotted depending on the tab selected in plotTabs
     plot_selected <- reactive({
       req(input$plotTabs)
       plotting_function(input$plotTabs)})
-    output$interactive_plot <- renderggiraph(plot_selected())
     
+    output$interactive_plot <- renderggiraph(plot_selected())
   })
   
   # Creating reactive variables-----
   selected_state <- reactive({
     input$interactive_plot_selected
   })
-
-  #Render the job info dataframe as a table
+  
+  # Render the job info dataframe as a table
   output$job_table <- renderTable({
-    as.data.frame(as.matrix(summary(df_qry[, input$select_var])))})
+    as.data.frame(as.matrix(df_qry[, input$select_var]))
+    })
+
   
   
-  # #Variable that has been submitted is no longer shown on the Variables dropdown 
-  # output$var_filter <- renderUI({
-  #   #instead of just calling dbNames, I'm making a new object and removing the variables that don't need to be checked.
-  #   #ie the timestamp, point id and predicted values.
-  #   selectInput("select_var", label = h5("Variable"), 
-  #               choices = as.list(var_choices(), -c(input$select_var)))
-  # })
-  # output$var_filter_col <- renderUI({
-  #   selectInput("select_col", label = h5("Variable for Colour Scale"), 
-  #               choices = as.list(var_choices(), -c(input$select_var)))
-  # })
   
+  
+  
+  
+  
+  
+  
+  
+# Older code starts below, keeping to reuse some elements.
   
   # Reset button functionality----
   observeEvent(input$reset, {
@@ -390,12 +369,12 @@ server <- shinyServer(function(input, output, session) {
   first_start_date <- reactive({
     min(as.Date(df_proc$startDate))
   })
-
+  
   #Create a reactive element with the latest end date
   last_end_date <- reactive({
     max(as.Date(df_proc$endDate))
   })
-
+  
   #Create a date input for the user to select start date
   output$start_date <- renderUI ({
     dateInput("sdate",
@@ -403,7 +382,7 @@ server <- shinyServer(function(input, output, session) {
               min = first_start_date(),
               max = last_end_date(), label = "Start date")
   })
-
+  
   #Create a date input for the user to select end date
   output$end_date <- renderUI ({
     dateInput("edate", value = as.Date(strptime("01/08/2017", "%d/%m/%Y"), tz = "UTC"),
