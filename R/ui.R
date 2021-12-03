@@ -31,6 +31,9 @@ ui <- dashboardPage(skin = "green",
                                       uiOutput("select_variables"),
                                       actionButton("retrieve_data", "Retrieve from database")
                                   ),
+                                  box(title = "Calendar heatmap plot", status = "success", solidHeader = TRUE,
+                                      plotOutput("heatmap_plot")
+                                  ),
                                 ),
                                 hidden(
                                   fluidRow(id = "extracted_data",

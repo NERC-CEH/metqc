@@ -61,7 +61,7 @@ server <- shinyServer(function(input, output, session) {
     # create a sequence of timestamps
     datect <- seq(startDate, endDate
                   , length = nTimes
-                  )
+    )
     
     data.frame(datech = format(datect, "%Y/%m/%d %H:%M"),
                nTimes = nTimes,
@@ -111,6 +111,14 @@ server <- shinyServer(function(input, output, session) {
       req(input$plotTabs)
       plotting_function(input$plotTabs)})
     output$interactive_plot <- renderggiraph(plot_selected())
+    
+    # Creating a calendar heatmap plot that will be plotted depending on the tab selected in plotTabs
+    heatmap_plot_selected <- reactive({
+      req(input$plotTabs)
+      plot_heatmap_calendar(input$plotTabs, df_qry)})
+    
+    output$heatmap_plot <- renderPlot(heatmap_plot_selected())
+    
   })
   
   # Creating reactive variables-----
@@ -143,7 +151,8 @@ server <- shinyServer(function(input, output, session) {
       
       # Pop up modal that will ask the user why a point is being deleted.
       showModal(modalDialog(
-        h4("What is the reason for deleting the point?"),
+        h2("Please supply additional information:"),
+        h4("What is the reason for deleting the selected point(s)?"),
         selectInput("var_reason", label = h5("Reason for point removal."), choices = delete_reasons),
         
         h4("What is the gapfilling method you would like to use?"),
@@ -253,17 +262,9 @@ server <- shinyServer(function(input, output, session) {
     })
   })
   
-  
+  # Finished checking, close tab functionality----
   observeEvent(input$nochange, {
-    
-    # showModal(modalDialog(
-    #   title = paste("Can you confirm", input$select_var, "has been checked and no changes are required?"),
-    #   footer = tagList(actionButton("confirm", "Confirm and submit variable."),
-    #                    modalButton("Cancel")),
-    #   easyClose = TRUE))
-    
     removeTab("plotTabs", input$plotTabs)
-
   })
   
   
@@ -272,167 +273,168 @@ server <- shinyServer(function(input, output, session) {
   
   # Older code starts below, keeping to reuse some elements.
   # No change button functionality----
-
+  # 
+  #   
+  #   # Confirm button functionality----
+  #   observeEvent(input$confirm,{
+  #     #When 'Confirm is clicked, an alert is shown:
+  #     if(length(input$confirm)!= 0){
+  #       shinyjs::alert("Variable checked. Please review below and write to the database.")
+  #       removeModal()
+  #     }
+  #     
+  #     #After closing alert message:
+  #     disable("submitchanges")
+  #     disable("nochange")
+  #     disable("delete")
+  #     
+  #     #Variable is submitted (same action as submit changes button)
+  #     shinyjs::show("progress_row")
+  #     newvar <- input$select_var
+  #     
+  #     ## Adding the progress bar 
+  #     output$progressbar <- renderPlot({
+  #       #Extracting relevant variables names and making dataframe that has FALSE assigned to every other variable name
+  #       reviewed_df <<- as.data.frame(var_choices())
+  #       reviewed_df$reviewed <<- FALSE
+  #       #Creating dataframe which  sets variable to TRUE is it is in input$select_var (variable checked and submitted)
+  #       now_true <- reviewed_df %>%
+  #         filter(var_choices() == newvar) 
+  #       now_true$reviewed <- TRUE
+  #       
+  #       colnames(reviewed_df) <- c("var_choices", "reviewed")
+  #       colnames(now_true) <- c("var_choices", "reviewed")
+  #       
+  #       if(length(accumulated_df) == 0){
+  #         #if the dataframe exists already - replace the row in reviewed df and assign as accumulated_df
+  #         reviewed_df$reviewed[which(reviewed_df$var_choices==now_true$var_choices)] <- now_true$reviewed
+  #         accumulated_df <<- reviewed_df
+  #       } else{
+  #         #if it does exist already, add new variable to accumulated df 
+  #         accumulated_df$reviewed[which(accumulated_df$var_choices==now_true$var_choices)] <- now_true$reviewed
+  #         accumulated_df <<- accumulated_df
+  #       }
+  #       
+  #       #some variables do not have to be included in the plot
+  #       accumulated_df$reviewed <- factor(accumulated_df$reviewed, levels = c("TRUE","FALSE"))
+  #       
+  #       progress_plot <- ggplot(accumulated_df) +
+  #         geom_tile(aes(x= var_choices,y= "",fill = reviewed))+
+  #         geom_text(aes(x= var_choices,y= "",label = var_choices),
+  #                   color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
+  #         scale_y_discrete(""
+  #                          # ,expand = c(0,2)
+  #         )+
+  #         scale_fill_manual(breaks = c("TRUE", "FALSE"),
+  #                           values = c("#2F8C1F", "#EB1A1A"))+
+  #         theme(
+  #           panel.background = element_blank(),
+  #           axis.ticks.y =  element_blank(),
+  #           axis.ticks.x = element_blank(),
+  #           axis.title.x = element_blank(),
+  #           axis.text.x = element_blank()
+  #         )
+  #       progress_plot
+  #     }
+  #     ,width = "auto",height = 275
+  #     )
+  #     
+  #     shinyjs::show("plotted_data")
+  #     enable("reset")
+  #     enable("delete")
+  #     enable("nochange")
+  #     y <- df_qry[, input$select_var]
+  #     m <- gam(y ~ s(DATECT_NUM, bs = "cr", k = input$intslider), data = df_qry, na.action = na.exclude)
+  #     df_qry$pred <<- predict(m, newdata = df_qry, na.action = na.exclude)
+  #     
+  #     
+  #     ggp <- ggplot(df_qry, aes(DATECT, y = df_qry[, input$select_var])) + 
+  #       geom_point_interactive(aes(data_id = checked, tooltip = checked, colour = df_qry[, input$select_col]), size = 3) + 
+  #       geom_line(aes(y = df_qry$pred), colour = "red") + 
+  #       #ylim(0, NA) + 
+  #       xlab("Date") + ylab(paste("Your variable:", input$select_var)) + ggtitle(paste(input$select_var, "time series")) +
+  #       theme(plot.title = element_text(hjust = 0.5), legend.title = element_blank())
+  #     
+  #     output$plot <- renderggiraph({
+  #       x <- girafe(code = print(ggp), width_svg = 6, height_svg = 5)
+  #       x <- girafe_options(x, opts_selection(
+  #         type = "multiple", css = "fill:#FF3333;stroke:black;"),
+  #         opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"))
+  #       x
+  #     })
+  #   })
+  #   
+  #   
+  #   # Write data functionality----
+  #   observeEvent(input$write_data, {
+  #     if(FALSE %in% accumulated_df$reviewed){
+  #       false_list <- accumulated_df[FALSE %in% accumulated_df$reviewed,]
+  #       false_list <- false_list%>%
+  #         select(variable_names)
+  #       false_list <- as.character(false_list$variable_names)
+  #       print(paste0("Not all variables have been checked. Please check ",false_list,"."))
+  #     } else{
+  #       print("Ready to write to database.")
+  #     }
+  #   
+  #   })
+  #   
+  #   # Submit change button functionality-----
+  #   observeEvent(input$submitchanges,{
+  #     shinyjs::show("progress_row")
+  #     #by assigning newvar here and not using input$select_var directly I am preventing the progress bar 
+  #     #being automatically updated when a new variable is selected, but only once submitchanges has been clicked
+  #     newvar <- input$select_var
+  #     #also adding the progress bar once the replot button has been clicked
+  #     output$progressbar <- renderPlot({
+  #       #extracting the relevant variables names 
+  #       #make a dataframe that has FALSE assigned to every variable name
+  #       reviewed_df <<- as.data.frame(var_choices())
+  #       reviewed_df$reviewed <<- FALSE
+  #       #creating a true dataframe, makes a row that sets variable to TRUE is it is in input$select_var
+  #       now_true <- reviewed_df %>%
+  #         filter(var_choices() == newvar) 
+  #       now_true$reviewed <- TRUE
+  #       
+  #       #just get the brackets out of the df column name to avoid non-function error.
+  #       colnames(reviewed_df) <- c("var_choices", "reviewed")
+  #       colnames(now_true) <- c("var_choices", "reviewed")
+  #       
+  #       if(length(accumulated_df) == 0){
+  #         #if the dataframe exists already - replaced the row in reviewed df and assign as accumulated_df
+  #         reviewed_df$reviewed[which(reviewed_df$var_choices==now_true$var_choices)] <- now_true$reviewed
+  #         accumulated_df <<- reviewed_df
+  #       } else{
+  #         #if it does exist already, add new variable to accumulated df 
+  #         accumulated_df$reviewed[which(accumulated_df$var_choices==now_true$var_choices)] <- now_true$reviewed
+  #         accumulated_df <<- accumulated_df
+  #       }
+  #       
+  #       #some variables do not have to be included in the plot
+  #       #we'll make this variable by selection at some point
+  #       accumulated_df$reviewed <- factor(accumulated_df$reviewed, levels = c("TRUE","FALSE"))
+  #       
+  #       progress_plot <- ggplot(accumulated_df) +
+  #         geom_tile(aes(x= var_choices,y= "",fill = reviewed))+
+  #         geom_text(aes(x= var_choices,y= "",label = var_choices),
+  #                   color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
+  #         scale_y_discrete(""
+  #                          # ,expand = c(0,2)
+  #         )+
+  #         scale_fill_manual(breaks = c("TRUE", "FALSE"),
+  #                           values = c("#2F8C1F", "#EB1A1A"))+
+  #         theme(
+  #           panel.background = element_blank(),
+  #           axis.ticks.y =  element_blank(),
+  #           axis.ticks.x = element_blank(),
+  #           axis.title.x = element_blank(),
+  #           axis.text.x = element_blank()
+  #         )
+  #       progress_plot
+  #     }
+  #     ,width = "auto",height = 275
+  #     )
+  #     disable("submitchanges")
+  #   })
   
-  # Confirm button functionality----
-  observeEvent(input$confirm,{
-    #When 'Confirm is clicked, an alert is shown:
-    if(length(input$confirm)!= 0){
-      shinyjs::alert("Variable checked. Please review below and write to the database.")
-      removeModal()
-    }
-    
-    #After closing alert message:
-    disable("submitchanges")
-    disable("nochange")
-    disable("delete")
-    
-    #Variable is submitted (same action as submit changes button)
-    shinyjs::show("progress_row")
-    newvar <- input$select_var
-    
-    ## Adding the progress bar 
-    output$progressbar <- renderPlot({
-      #Extracting relevant variables names and making dataframe that has FALSE assigned to every other variable name
-      reviewed_df <<- as.data.frame(var_choices())
-      reviewed_df$reviewed <<- FALSE
-      #Creating dataframe which  sets variable to TRUE is it is in input$select_var (variable checked and submitted)
-      now_true <- reviewed_df %>%
-        filter(var_choices() == newvar) 
-      now_true$reviewed <- TRUE
-      
-      colnames(reviewed_df) <- c("var_choices", "reviewed")
-      colnames(now_true) <- c("var_choices", "reviewed")
-      
-      if(length(accumulated_df) == 0){
-        #if the dataframe exists already - replace the row in reviewed df and assign as accumulated_df
-        reviewed_df$reviewed[which(reviewed_df$var_choices==now_true$var_choices)] <- now_true$reviewed
-        accumulated_df <<- reviewed_df
-      } else{
-        #if it does exist already, add new variable to accumulated df 
-        accumulated_df$reviewed[which(accumulated_df$var_choices==now_true$var_choices)] <- now_true$reviewed
-        accumulated_df <<- accumulated_df
-      }
-      
-      #some variables do not have to be included in the plot
-      accumulated_df$reviewed <- factor(accumulated_df$reviewed, levels = c("TRUE","FALSE"))
-      
-      progress_plot <- ggplot(accumulated_df) +
-        geom_tile(aes(x= var_choices,y= "",fill = reviewed))+
-        geom_text(aes(x= var_choices,y= "",label = var_choices),
-                  color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
-        scale_y_discrete(""
-                         # ,expand = c(0,2)
-        )+
-        scale_fill_manual(breaks = c("TRUE", "FALSE"),
-                          values = c("#2F8C1F", "#EB1A1A"))+
-        theme(
-          panel.background = element_blank(),
-          axis.ticks.y =  element_blank(),
-          axis.ticks.x = element_blank(),
-          axis.title.x = element_blank(),
-          axis.text.x = element_blank()
-        )
-      progress_plot
-    }
-    ,width = "auto",height = 275
-    )
-    
-    shinyjs::show("plotted_data")
-    enable("reset")
-    enable("delete")
-    enable("nochange")
-    y <- df_qry[, input$select_var]
-    m <- gam(y ~ s(DATECT_NUM, bs = "cr", k = input$intslider), data = df_qry, na.action = na.exclude)
-    df_qry$pred <<- predict(m, newdata = df_qry, na.action = na.exclude)
-    
-    
-    ggp <- ggplot(df_qry, aes(DATECT, y = df_qry[, input$select_var])) + 
-      geom_point_interactive(aes(data_id = checked, tooltip = checked, colour = df_qry[, input$select_col]), size = 3) + 
-      geom_line(aes(y = df_qry$pred), colour = "red") + 
-      #ylim(0, NA) + 
-      xlab("Date") + ylab(paste("Your variable:", input$select_var)) + ggtitle(paste(input$select_var, "time series")) +
-      theme(plot.title = element_text(hjust = 0.5), legend.title = element_blank())
-    
-    output$plot <- renderggiraph({
-      x <- girafe(code = print(ggp), width_svg = 6, height_svg = 5)
-      x <- girafe_options(x, opts_selection(
-        type = "multiple", css = "fill:#FF3333;stroke:black;"),
-        opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"))
-      x
-    })
-  })
-  
-  
-  # Write data functionality----
-  observeEvent(input$write_data, {
-    if(FALSE %in% accumulated_df$reviewed){
-      false_list <- accumulated_df[FALSE %in% accumulated_df$reviewed,]
-      false_list <- false_list%>%
-        select(variable_names)
-      false_list <- as.character(false_list$variable_names)
-      print(paste0("Not all variables have been checked. Please check ",false_list,"."))
-    } else{
-      print("Ready to write to database.")
-    }
-  
-  })
-  
-  # Submit change button functionality-----
-  observeEvent(input$submitchanges,{
-    shinyjs::show("progress_row")
-    #by assigning newvar here and not using input$select_var directly I am preventing the progress bar 
-    #being automatically updated when a new variable is selected, but only once submitchanges has been clicked
-    newvar <- input$select_var
-    #also adding the progress bar once the replot button has been clicked
-    output$progressbar <- renderPlot({
-      #extracting the relevant variables names 
-      #make a dataframe that has FALSE assigned to every variable name
-      reviewed_df <<- as.data.frame(var_choices())
-      reviewed_df$reviewed <<- FALSE
-      #creating a true dataframe, makes a row that sets variable to TRUE is it is in input$select_var
-      now_true <- reviewed_df %>%
-        filter(var_choices() == newvar) 
-      now_true$reviewed <- TRUE
-      
-      #just get the brackets out of the df column name to avoid non-function error.
-      colnames(reviewed_df) <- c("var_choices", "reviewed")
-      colnames(now_true) <- c("var_choices", "reviewed")
-      
-      if(length(accumulated_df) == 0){
-        #if the dataframe exists already - replaced the row in reviewed df and assign as accumulated_df
-        reviewed_df$reviewed[which(reviewed_df$var_choices==now_true$var_choices)] <- now_true$reviewed
-        accumulated_df <<- reviewed_df
-      } else{
-        #if it does exist already, add new variable to accumulated df 
-        accumulated_df$reviewed[which(accumulated_df$var_choices==now_true$var_choices)] <- now_true$reviewed
-        accumulated_df <<- accumulated_df
-      }
-      
-      #some variables do not have to be included in the plot
-      #we'll make this variable by selection at some point
-      accumulated_df$reviewed <- factor(accumulated_df$reviewed, levels = c("TRUE","FALSE"))
-      
-      progress_plot <- ggplot(accumulated_df) +
-        geom_tile(aes(x= var_choices,y= "",fill = reviewed))+
-        geom_text(aes(x= var_choices,y= "",label = var_choices),
-                  color = "white", size =3,position = position_stack(vjust = 1),angle = 90)+
-        scale_y_discrete(""
-                         # ,expand = c(0,2)
-        )+
-        scale_fill_manual(breaks = c("TRUE", "FALSE"),
-                          values = c("#2F8C1F", "#EB1A1A"))+
-        theme(
-          panel.background = element_blank(),
-          axis.ticks.y =  element_blank(),
-          axis.ticks.x = element_blank(),
-          axis.title.x = element_blank(),
-          axis.text.x = element_blank()
-        )
-      progress_plot
-    }
-    ,width = "auto",height = 275
-    )
-    disable("submitchanges")
-  })
 })
