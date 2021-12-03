@@ -59,7 +59,9 @@ server <- shinyServer(function(input, output, session) {
     endDate   <- as.POSIXct(strptime(endDate, "%d/%m/%Y %H:%M"), tz = "UTC")
     nTimes <- input$intslider
     # create a sequence of timestamps
-    datect <- seq(startDate, endDate, length = nTimes)
+    datect <- seq(startDate, endDate
+                  , length = nTimes
+                  )
     
     data.frame(datech = format(datect, "%Y/%m/%d %H:%M"),
                nTimes = nTimes,
@@ -134,6 +136,7 @@ server <- shinyServer(function(input, output, session) {
         filter(cat != "initial_flag")
       gapfill_options <- gapfill_options$information
       
+      # Gapfilling - NOTE, does not yet change depending on method selection
       y <- df_qry[, input$plotTabs]
       m <- gam(y ~ s(DATECT_NUM, bs = "cr", k = input$intslider), data = df_qry, na.action = na.exclude)
       df_qry$pred <<- predict(m, newdata = df_qry, na.action = na.exclude)
@@ -145,6 +148,7 @@ server <- shinyServer(function(input, output, session) {
         
         h4("What is the gapfilling method you would like to use?"),
         selectInput("select_gapfill", label = h5("Gap-Filling Method"), choices = gapfill_options),
+        sliderInput("intslider", label = "Smoothness (number of knots in cr spline):", min = 1, max = 32, value = 10, step = 1),
         
         easyClose = TRUE,
         footer = tagList(
@@ -237,9 +241,30 @@ server <- shinyServer(function(input, output, session) {
   
   # Reset button functionality----
   observeEvent(input$reset, {
-    js$reset()
+    
+    showModal(modalDialog(
+      title = "Are you sure you want to restart the app? All progress will be lost",
+      footer = tagList(actionButton("confirm_reset", "I want to restart the app."),
+                       modalButton("Cancel")),
+      easyClose = TRUE))
+    
+    observeEvent(input$confirm_reset,{
+      js$reset()
+    })
   })
   
+  
+  observeEvent(input$nochange, {
+    
+    # showModal(modalDialog(
+    #   title = paste("Can you confirm", input$select_var, "has been checked and no changes are required?"),
+    #   footer = tagList(actionButton("confirm", "Confirm and submit variable."),
+    #                    modalButton("Cancel")),
+    #   easyClose = TRUE))
+    
+    removeTab("plotTabs", input$plotTabs)
+
+  })
   
   
   
@@ -247,13 +272,7 @@ server <- shinyServer(function(input, output, session) {
   
   # Older code starts below, keeping to reuse some elements.
   # No change button functionality----
-  observeEvent(input$nochange, {
-    showModal(modalDialog( 
-      title = paste("Can you confirm", input$select_var, "has been checked and no changes are required?"),
-      footer = tagList(actionButton("confirm", "Confirm and submit variable."), 
-                       modalButton("Cancel")),
-      easyClose = TRUE))
-  })
+
   
   # Confirm button functionality----
   observeEvent(input$confirm,{
@@ -356,18 +375,7 @@ server <- shinyServer(function(input, output, session) {
     } else{
       print("Ready to write to database.")
     }
-    
-    # declare brick for deposition rasters for multiple times
-    b_F <<- brick(r, values = FALSE, nl = input$intslider)
-    #b_Fwet <- brick(r, values = FALSE, nl = nTimes)
-    
-    for (itime in 1:input$intslider){
-      r_F <<- getWetDep(pollutant = input$select_col, datect = job_df()$datect[itime], 
-                        landuse = input$select_landuse, mm = TRUE)
-      #r_Fwet <- getWetDep(pollutant = pollutant, datect = datect, landuse = landuse, mm = TRUE)
-      b_F[[itime]] <<- r_F
-      #b_Fwet[[itime]] <- r_Fwet
-    }                  
+  
   })
   
   # Submit change button functionality-----

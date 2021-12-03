@@ -38,9 +38,9 @@ ui <- dashboardPage(skin = "green",
                                                tabsetPanel(id = "plotTabs",
                                                            girafeOutput("interactive_plot"),
                                                            type = "tabs"),
-                                               shinyjs::disabled(actionButton("reset", label = "Reset selection")),
+                                               shinyjs::disabled(actionButton("reset", label = "Restart app")),
                                                shinyjs::disabled(actionButton("delete", label = "Delete selection")),
-                                               shinyjs::disabled(actionButton("nochange", label = "No change needed")),
+                                               shinyjs::disabled(actionButton("nochange", label = "Finished checking variable for date range.")),
                                            ),
                                            box(title = "Data Change Log", status = "success", solidHeader = TRUE,
                                                dataTableOutput("summarytable"),
@@ -50,7 +50,8 @@ ui <- dashboardPage(skin = "green",
                                 ),
                         ),
                         tabItem(tabName = "information",
-                                h2("Information placeholder"))
+                                h2("Information placeholder"),
+                                p("This app provides an interface to the field sites database and allows a user to plot data, remove dubious data and fill gaps with predictions."))
                       )
                     )
                     
