@@ -12,7 +12,7 @@ ui <- dashboardPage(skin = "green",
                       tabItems(
                         tabItem(tabName = "dashboard",
                                 fluidRow(
-                                  box(title = "Database controls", status = "success", solidHeader = TRUE,
+                                  box(title = "Database Controls", status = "success", solidHeader = TRUE,
                                       helpText("Select your required processing start and end times below."),
                                       column(width = 6,
                                              uiOutput("start_date")),
@@ -34,17 +34,17 @@ ui <- dashboardPage(skin = "green",
                                 ),
                                 hidden(
                                   fluidRow(id = "extracted_data",
-                                           box(title = "Extracted data", status = "success", solidHeader = TRUE,
+                                           box(title = "Plotted Extracted Data", status = "success", solidHeader = TRUE,
                                                tabsetPanel(id = "plotTabs",
                                                            girafeOutput("interactive_plot"),
                                                            type = "tabs"),
                                                shinyjs::disabled(actionButton("reset", label = "Reset selection")),
                                                shinyjs::disabled(actionButton("delete", label = "Delete selection")),
                                                shinyjs::disabled(actionButton("nochange", label = "No change needed")),
-                                               shinyjs::disabled(actionButton("submitchanges", "Submit changes"))
                                            ),
-                                           box(title = "Data Preview", status = "success", solidHeader = TRUE,
-                                               tableOutput("job_table"),
+                                           box(title = "Data Change Log", status = "success", solidHeader = TRUE,
+                                               dataTableOutput("summarytable"),
+                                               shinyjs::disabled(actionButton("submitchanges", "Submit changes"))
                                            )
                                   )
                                 ),

@@ -4,7 +4,7 @@ server <- shinyServer(function(input, output, session) {
   Sys.setenv(ORA_SDTZ = "GMT")
   
   # Reading in the data flags ----
-  data_flags <- read_csv("./data/data_flags.csv")
+  data_flags <- read_csv("~/met_db/data/data_flags.csv")
   data_flags$code <- as.character(data_flags$code)
   
   # Making database connection----
@@ -84,35 +84,12 @@ server <- shinyServer(function(input, output, session) {
     plot_selected <- reactive({
       req(input$plotTabs)
       plotting_function(input$plotTabs)})
-    
     output$interactive_plot <- renderggiraph(plot_selected())
   })
   
   # Creating reactive variables-----
   selected_state <- reactive({
     input$interactive_plot_selected
-  })
-  
-  # Render the job info dataframe as a table
-  output$job_table <- renderTable({
-    as.data.frame(as.matrix(df_qry[, input$select_var]))
-    })
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-# Older code starts below, keeping to reuse some elements.
-  
-  # Reset button functionality----
-  observeEvent(input$reset, {
-    session$sendCustomMessage(type = 'plot_set', message = character(0))
   })
   
   # Delete button functionality----
@@ -122,10 +99,17 @@ server <- shinyServer(function(input, output, session) {
     } else{
       shinyjs::enable("submitchanges")
       
+      # Extract all the reasons for deletion for the data points
       delete_reasons <- data_flags %>% 
         filter(cat == "initial_flag")
+      # Turn it into a list for selection
       delete_reasons <- delete_reasons$information
       
+      y <- df_qry[, input$plotTabs]
+      m <- gam(y ~ s(DATECT_NUM, bs = "cr", k = input$intslider), data = df_qry, na.action = na.exclude)
+      df_qry$pred <<- predict(m, newdata = df_qry, na.action = na.exclude)
+      
+      # Pop up modal that will ask the user why a point is being deleted.
       showModal(modalDialog(
         h4("What is the reason for deleting the point?"),
         selectInput("var_reason", label = h5("Reason for point removal."), choices = delete_reasons),
@@ -134,6 +118,7 @@ server <- shinyServer(function(input, output, session) {
           actionButton("var_reason1", "Confirm deletion reason."),
         )))
       
+      # Confirmation message for deleting a point, and all under-the-hood changes start here
       observeEvent(input$var_reason1,{
         if(length(input$var_reason)!= 0){
           shinyjs::alert("Reason for deletion confirmed. Please submit changes.")
@@ -142,84 +127,98 @@ server <- shinyServer(function(input, output, session) {
         
         df_list <- list()
         for(i in selected_state()){
-          #here I am creating a df to keep track of the changes made to the data.
-          #set column names
+          # Here I am creating a df to keep track of the changes made to the data.
           changed_df <- data.frame()
           changed_df <- colnames(c("variable","checked","gapfill_code",
                                    "gapfill_initials","gapfill_info","old_value","flag_info",
                                    "flag_code","flag_initials","new_value","user"))
-          changed_df$variable <- input$select_var
+          changed_df$variable <- input$plotTabs
           changed_df$point_id <- i
-          changed_df$old_value <- df_qry[df_qry$checked %in% i, input$select_var]
-          changed_df$gapfill_info <- input$select_landuse
+          changed_df$old_value <- df_qry[df_qry$checked %in% i, input$plotTabs]
           changed_df$flag_info <-  input$var_reason
           add_code <- data_flags %>% 
-            filter(information == input$var_reason)
+            dplyr::filter(information == input$var_reason)
           changed_df$flag_code <- add_code$code
           changed_df$flag_initials <- add_code$initials
-          add_fill <- data_flags %>% 
-            filter(information == input$select_landuse)
-          changed_df$gapfill_code <- add_fill$code
-          changed_df$gapfill_initials <- add_fill$initials
+          
+          # Gapfill method information to be added
+          # add_fill <- data_flags %>% 
+          #   dplyr::filter(information == add_code$information)
+          # changed_df$gapfill_info <- input$select_landuse
+          # changed_df$gapfill_code <- add_fill$code
+          # changed_df$gapfill_initials <- add_fill$initials
           
           changed_df$user <- Sys.info()['user']
-          #change the old value to the new value depending on the predicted value
-          df_qry[df_qry$checked %in% i, input$select_var] <<- NA
-          df_qry[is.na(df_qry[, input$select_var]), input$select_var] <<- df_qry$pred[is.na(df_qry[, input$select_var])]
-          #now adding the new value to the changed df, using the exact same command as above for the old value
-          changed_df$new_value <- df_qry[df_qry$checked %in% i, input$select_var]
+          # Change the old value to the new value depending on the predicted value
+          df_qry[df_qry$checked %in% i, input$plotTabs] <<- NA
+          df_qry[is.na(df_qry[, input$plotTabs]), input$plotTabs] <<- df_qry$pred[is.na(df_qry[, input$plotTabs])]
+          # Now adding the new value to the changed df, using the exact same command as above for the old value
+          changed_df$new_value <- df_qry[df_qry$checked %in% i, input$plotTabs]
           changed_df <- bind_rows(changed_df) #%>% as.data.frame()
           df_list[[i]] <- changed_df
         }
-        
         changed_df <- bind_rows(df_list)
-        #if statement that creates the dataframe in memory if it does not already exist
+        
+        # If statement that creates the dataframe in memory if it does not already exist
         if(length(change_summary)==0){
           change_summary <<- changed_df
         } else {
           #or appends the dataframe if it does already exist
           change_summary <<- rbind(change_summary, changed_df)
         }
+        
         change_summary <<- change_summary[c("variable","point_id","old_value","new_value","flag_code",
-                                            "flag_initials","flag_info","gapfill_code","gapfill_initials",
-                                            "gapfill_info","user")]
+                                            "flag_initials","flag_info",
+                                            # "gapfill_code","gapfill_initials","gapfill_info",
+                                            "user")]
         
         #Re-plotting plot after deletion is confirmed to illustrate changes
         shinyjs::show("plotted_data")
         enable("reset")
         enable("delete")
         enable("nochange")
-        y <- df_qry[, input$select_var]
-        m <- gam(y ~ s(DATECT_NUM, bs = "cr", k = input$intslider), data = df_qry, na.action = na.exclude)
-        df_qry$pred <<- predict(m, newdata = df_qry, na.action = na.exclude)
+        # Creating a reactive plot that will be plotted depending on the tab selected in plotTabs
+        plot_selected <- reactive({
+          req(input$plotTabs)
+          plotting_function(input$plotTabs)})
+        # Re-render
+        output$interactive_plot <- renderggiraph(plot_selected())
         
-        ggp <- ggplot(df_qry, aes(DATECT, y = df_qry[, input$select_var])) + 
-          geom_point_interactive(aes(data_id = checked, tooltip = checked, colour = df_qry[, input$select_col]), size = 3) + 
-          geom_line(aes(y = df_qry$pred), colour = "red") + 
-          #ylim(0, NA) + 
-          xlab("Date") + ylab(paste("Your variable:", input$select_var)) + ggtitle(paste(input$select_var, "time series")) +
-          theme(plot.title = element_text(hjust = 0.5), legend.title = element_blank())
+        display_table <<- as.data.table(change_summary)
         
-        output$plot <- ({
-          x <- girafe(code = print(ggp), width_svg = 6, height_svg = 5)
-          x <- girafe_options(x, opts_selection(
-            type = "multiple", css = "fill:#FF3333;stroke:black;"),
-            opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"))
-          x
-        })
-      })
-      
-      #here I am making a table that shows the changes that have been made
-      output$summarytable <- renderDataTable({
-        datatable(change_summary,
-                  #not that datatable is originally written in javascript
-                  #hence why there are some unusually formatted options here 
-                  #like class = 'compact' and a 'text-align' = 'center'
-                  options = list(pageLength = 5, lengthMenu = c(5,10,25,50)), rownames = FALSE,class = 'compact') %>%
-          formatRound(columns = c(3:4), digits = 2)%>% 
-          formatStyle(columns = c(1:11), 'text-align' = 'center')}
+        # Here I am making a table that shows the changes that have been made
+        output$summarytable <- renderDataTable({
+          datatable(display_table,
+                    # Not that datatable is originally written in javascript
+                    # Hence why there are some unusually formatted options here 
+                    # Like class = 'compact' and a 'text-align' = 'center'
+                    options = list(pageLength = 5, lengthMenu = c(5,10,25,50)), rownames = FALSE,class = 'compact') %>%
+            formatRound(columns = c(3:4), digits = 2)%>% 
+            formatStyle(columns = c(1:11), 'text-align' = 'center')}
+        )
+      }
       )
     }
+  }
+  )
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  # Older code starts below, keeping to reuse some elements.
+  
+  # Reset button functionality----
+  observeEvent(input$reset, {
+    session$sendCustomMessage(type = 'plot_set', message = character(0))
   })
   
   
