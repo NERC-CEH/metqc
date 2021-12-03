@@ -49,6 +49,10 @@ busyIndicator <- function(text = "Calculation in progress..",img = "../busyIndic
 	)	
 }
 
+# Js feature that resets the app, needs to be global
+jsResetCode <- "shinyjs.reset = function() {history.go(0)}" # Define the js method that resets the page
+
+
 # Writing a custom plotting function that will work for every variable selected---
 # It will be a ggplot object that we then convert into a girafe object
 # girafe is a package that allows interactivity.

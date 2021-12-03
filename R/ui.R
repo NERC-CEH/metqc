@@ -9,6 +9,7 @@ ui <- dashboardPage(skin = "green",
                     ),
                     dashboardBody(
                       useShinyjs(),
+                      extendShinyjs(text = jsResetCode, functions = "reset"),
                       tabItems(
                         tabItem(tabName = "dashboard",
                                 fluidRow(

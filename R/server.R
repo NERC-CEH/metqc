@@ -202,12 +202,10 @@ server <- shinyServer(function(input, output, session) {
   }
   )
   
-  
-  
-  
-  
-  
-  
+  # Reset button functionality----
+  observeEvent(input$reset, {
+    js$reset()
+  })
   
   
   
@@ -216,10 +214,7 @@ server <- shinyServer(function(input, output, session) {
   
   # Older code starts below, keeping to reuse some elements.
   
-  # Reset button functionality----
-  observeEvent(input$reset, {
-    session$sendCustomMessage(type = 'plot_set', message = character(0))
-  })
+
   
   
   # No change button functionality----
