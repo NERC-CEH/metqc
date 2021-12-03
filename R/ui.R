@@ -29,8 +29,7 @@ ui <- dashboardPage(skin = "green",
                                              numericInput("emin", value = 00, label = "Minute", min = 0, max = 59, step = 1)),
                                       sliderInput("intslider", label = "Smoothness (number of knots in cr spline):", min = 1, max = 32, value = 10, step = 1),
                                       uiOutput("select_variables"),
-                                      actionButton("retrieve_data", "Retrieve from database"),
-                                      actionButton("restart", "Start over")
+                                      actionButton("retrieve_data", "Retrieve from database")
                                   ),
                                 ),
                                 hidden(

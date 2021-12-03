@@ -27,6 +27,30 @@ server <- shinyServer(function(input, output, session) {
   df_proc$startDate <- as.POSIXct(df_proc$startDate, format = "%Y/%m/%d %H:%M", tz = "UTC")
   df_proc$endDate   <- as.POSIXct(df_proc$endDate, format = "%Y/%m/%d %H:%M", tz = "UTC")
   
+  #Create a reactive element with the earliest start date
+  first_start_date <- reactive({
+    min(as.Date(df_proc$startDate))
+  })
+  
+  #Create a reactive element with the latest end date
+  last_end_date <- reactive({
+    max(as.Date(df_proc$endDate))
+  })
+  
+  #Create a date input for the user to select start date
+  output$start_date <- renderUI ({
+    dateInput("sdate",
+              value = as.Date(strptime("01/07/2017", "%d/%m/%Y"), tz = "UTC"),
+              min = first_start_date(),
+              max = last_end_date(), label = "Start date")
+  })
+  
+  #Create a date input for the user to select end date
+  output$end_date <- renderUI ({
+    dateInput("edate", value = as.Date(strptime("01/08/2017", "%d/%m/%Y"), tz = "UTC"),
+              min = first_start_date(), max = last_end_date(), label = "End date")
+  })
+  
   #Create a dataframe with all the information about the start and end time, and cr spline (do we need this?)----
   job_df <- eventReactive(input$retrieve_data, {
     startDate <- paste(sprintf("%02d", day(input$sdate)), "/", sprintf("%02d", month(input$sdate)), "/", year(input$sdate), " ", sprintf("%02d", input$shour), ":", sprintf("%02d", input$smin), sep = "")    
@@ -105,6 +129,11 @@ server <- shinyServer(function(input, output, session) {
       # Turn it into a list for selection
       delete_reasons <- delete_reasons$information
       
+      # Extract gapfilling methods
+      gapfill_options <- data_flags %>% 
+        filter(cat != "initial_flag")
+      gapfill_options <- gapfill_options$information
+      
       y <- df_qry[, input$plotTabs]
       m <- gam(y ~ s(DATECT_NUM, bs = "cr", k = input$intslider), data = df_qry, na.action = na.exclude)
       df_qry$pred <<- predict(m, newdata = df_qry, na.action = na.exclude)
@@ -113,9 +142,13 @@ server <- shinyServer(function(input, output, session) {
       showModal(modalDialog(
         h4("What is the reason for deleting the point?"),
         selectInput("var_reason", label = h5("Reason for point removal."), choices = delete_reasons),
+        
+        h4("What is the gapfilling method you would like to use?"),
+        selectInput("select_gapfill", label = h5("Gap-Filling Method"), choices = gapfill_options),
+        
         easyClose = TRUE,
         footer = tagList(
-          actionButton("var_reason1", "Confirm deletion reason."),
+          actionButton("var_reason1", "Confirm deletion reason and gapfill method."),
         )))
       
       # Confirmation message for deleting a point, and all under-the-hood changes start here
@@ -142,11 +175,11 @@ server <- shinyServer(function(input, output, session) {
           changed_df$flag_initials <- add_code$initials
           
           # Gapfill method information to be added
-          # add_fill <- data_flags %>% 
-          #   dplyr::filter(information == add_code$information)
-          # changed_df$gapfill_info <- input$select_landuse
-          # changed_df$gapfill_code <- add_fill$code
-          # changed_df$gapfill_initials <- add_fill$initials
+          add_fill <- data_flags %>%
+            dplyr::filter(information == add_code$information)
+          changed_df$gapfill_info <- input$select_gapfill
+          changed_df$gapfill_code <- add_fill$code
+          changed_df$gapfill_initials <- add_fill$initials
           
           changed_df$user <- Sys.info()['user']
           # Change the old value to the new value depending on the predicted value
@@ -169,7 +202,7 @@ server <- shinyServer(function(input, output, session) {
         
         change_summary <<- change_summary[c("variable","point_id","old_value","new_value","flag_code",
                                             "flag_initials","flag_info",
-                                            # "gapfill_code","gapfill_initials","gapfill_info",
+                                            "gapfill_code","gapfill_initials","gapfill_info",
                                             "user")]
         
         #Re-plotting plot after deletion is confirmed to illustrate changes
@@ -213,10 +246,6 @@ server <- shinyServer(function(input, output, session) {
   
   
   # Older code starts below, keeping to reuse some elements.
-  
-
-  
-  
   # No change button functionality----
   observeEvent(input$nochange, {
     showModal(modalDialog( 
@@ -225,7 +254,6 @@ server <- shinyServer(function(input, output, session) {
                        modalButton("Cancel")),
       easyClose = TRUE))
   })
-  
   
   # Confirm button functionality----
   observeEvent(input$confirm,{
@@ -317,72 +345,6 @@ server <- shinyServer(function(input, output, session) {
   })
   
   
-  
-  # Output table module----
-  #the first output, rendering a table with the data, depending on the reactive value in selected_state.
-  #it returns "out" which is a subset of all the data in df_qry that match selected_state
-  #it is then saved as output$job_table
-  #and called in the ui as tableOutput("job_table")
-  output$job_table <- renderTable({
-    out <- df_qry[df_qry$checked %in% selected_state(), 1:3]
-    if( nrow(out) < 1 ) return(NULL)
-    row.names(out) <- NULL
-    out
-  })
-  
-  # Output variable selection----
-  #Create select input UI element with var options
-  output$var_filter <- renderUI({
-    #instead of just calling dbNames, I'm making a new object and removing the variables that don't need to be checked.
-    #ie the timestamp, point id and predicted values.
-    selectInput("select_var", label = h5("Variable"), 
-                choices = as.list(var_choices()))
-  })
-  
-  #Create select input UI element with var options
-  output$var_filter_col <- renderUI({
-    selectInput("select_col", label = h5("Variable for Colour Scale"), 
-                choices = as.list(var_choices()))
-  })
-  
-  #Create select input UI element with land-use options
-  gapfill_options <- data_flags %>% 
-    filter(cat != "initial_flag")
-  gapfill_options <- gapfill_options$information
-  
-  output$landuse_filter <- renderUI({
-    selectInput("select_landuse", label = h5("Gap-Filling Method"), choices = gapfill_options)
-  })
-  
-  #Create a sentence of metadata about the site, station and var selection made.
-  output$var_info <- renderUI({
-    helpText(paste0("You have selected variable ", as.character(input$select_var), ". Click Replot to start checking."))
-  })
-  
-  #Create a reactive element with the earliest start date
-  first_start_date <- reactive({
-    min(as.Date(df_proc$startDate))
-  })
-  
-  #Create a reactive element with the latest end date
-  last_end_date <- reactive({
-    max(as.Date(df_proc$endDate))
-  })
-  
-  #Create a date input for the user to select start date
-  output$start_date <- renderUI ({
-    dateInput("sdate",
-              value = as.Date(strptime("01/07/2017", "%d/%m/%Y"), tz = "UTC"),
-              min = first_start_date(),
-              max = last_end_date(), label = "Start date")
-  })
-  
-  #Create a date input for the user to select end date
-  output$end_date <- renderUI ({
-    dateInput("edate", value = as.Date(strptime("01/08/2017", "%d/%m/%Y"), tz = "UTC"),
-              min = first_start_date(), max = last_end_date(), label = "End date")
-  })
-  
   # Write data functionality----
   observeEvent(input$write_data, {
     if(FALSE %in% accumulated_df$reviewed){
@@ -464,54 +426,5 @@ server <- shinyServer(function(input, output, session) {
     ,width = "auto",height = 275
     )
     disable("submitchanges")
-  })
-  
-  
-  observeEvent(input$replot, {
-    shinyjs::show("plotted_data")
-    enable("reset")
-    enable("delete")
-    enable("nochange")
-    y <- df_qry[, input$select_var]
-    m <- gam(y ~ s(DATECT_NUM, bs = "cr", k = input$intslider), data = df_qry, na.action = na.exclude)
-    df_qry$pred <<- predict(m, newdata = df_qry, na.action = na.exclude)
-    
-    #If statement to trigger an alert when a variable doesn't have valid data 
-    if(is.na(input$select_var)){
-      shinyjs::alert(input$select_var, "has no valid data")
-      
-    }
-    
-    ggp <- ggplot(df_qry, aes(DATECT, y = df_qry[, input$select_var])) + 
-      geom_point_interactive(aes(data_id = checked, tooltip = checked, colour = df_qry[, input$select_col]), size = 3) + 
-      geom_line(aes(y = df_qry$pred), colour = "red") + 
-      #ylim(0, NA) + 
-      xlab("Date") + ylab(paste("Your variable:", input$select_var)) + ggtitle(paste(input$select_var, "time series")) +
-      theme(plot.title = element_text(hjust = 0.5), legend.title = element_blank())
-    
-    output$plot <- renderggiraph({
-      x <- girafe(code = print(ggp), width_svg = 6, height_svg = 5)
-      x <- girafe_options(x, opts_selection(
-        type = "multiple", css = "fill:#FF3333;stroke:black;"),
-        opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"))
-      x
-    })
-  })
-  
-  # Restart button functionality
-  observeEvent(input$restart,{
-    shinyjs::enable("seejobsummary")
-    hideElement("showpanel")
-    hideElement("plotted_data")
-    hideElement("progress_row")
-    updateNumericInput(session,"shour", value = 00, label = "Hour", min = 0, max = 23, step = 1)
-    updateNumericInput(session,"smin", value = 00, label = "Minute", min = 0, max = 59, step = 1)
-    updateNumericInput(session,"ehour", value = 00, label = "Hour", min = 0, max = 23, step = 1)
-    updateNumericInput(session,"emin", value = 00, label = "Minute", min = 0, max = 59, step = 1)
-    session$sendCustomMessage(type = 'plot_set', message = character(0))
-    df_qry <<- data.frame()
-    accumulated_df <<- data.frame()
-    reviewed_df <<- data.frame()
-    change_summary <<- data.frame()
   })
 })
