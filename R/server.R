@@ -161,90 +161,94 @@ server <- shinyServer(function(input, output, session) {
         
         easyClose = TRUE,
         footer = tagList(
-          actionButton("var_reason1", "Confirm deletion reason and gapfill method."),
+          actionButton("var_reason1", "Confirm deletion reason and gapfill method.")
         )))
-      
-      # Confirmation message for deleting a point, and all under-the-hood changes start here
-      observeEvent(input$var_reason1,{
-        if(length(input$var_reason)!= 0){
-          shinyjs::alert("Reason for deletion confirmed. Please submit changes.")
-          removeModal()
-        }
-        
-        df_list <- list()
-        for(i in selected_state()){
-          # Here I am creating a df to keep track of the changes made to the data.
-          changed_df <- data.frame()
-          changed_df <- colnames(c("variable","checked","gapfill_code",
-                                   "gapfill_initials","gapfill_info","old_value","flag_info",
-                                   "flag_code","flag_initials","new_value","user"))
-          changed_df$variable <- input$plotTabs
-          changed_df$point_id <- i
-          changed_df$old_value <- df_qry[df_qry$checked %in% i, input$plotTabs]
-          changed_df$flag_info <-  input$var_reason
-          add_code <- data_flags %>% 
-            dplyr::filter(information == input$var_reason)
-          changed_df$flag_code <- add_code$code
-          changed_df$flag_initials <- add_code$initials
-          
-          # Gapfill method information to be added
-          add_fill <- data_flags %>%
-            dplyr::filter(information == add_code$information)
-          changed_df$gapfill_info <- input$select_gapfill
-          changed_df$gapfill_code <- add_fill$code
-          changed_df$gapfill_initials <- add_fill$initials
-          
-          changed_df$user <- Sys.info()['user']
-          # Change the old value to the new value depending on the predicted value
-          df_qry[df_qry$checked %in% i, input$plotTabs] <<- NA
-          df_qry[is.na(df_qry[, input$plotTabs]), input$plotTabs] <<- df_qry$pred[is.na(df_qry[, input$plotTabs])]
-          # Now adding the new value to the changed df, using the exact same command as above for the old value
-          changed_df$new_value <- df_qry[df_qry$checked %in% i, input$plotTabs]
-          changed_df <- bind_rows(changed_df) #%>% as.data.frame()
-          df_list[[i]] <- changed_df
-        }
-        changed_df <- bind_rows(df_list)
-        
-        # If statement that creates the dataframe in memory if it does not already exist
-        if(length(change_summary)==0){
-          change_summary <<- changed_df
-        } else {
-          #or appends the dataframe if it does already exist
-          change_summary <<- rbind(change_summary, changed_df)
-        }
-        
-        change_summary <<- change_summary[c("variable","point_id","old_value","new_value","flag_code",
-                                            "flag_initials","flag_info",
-                                            "gapfill_code","gapfill_initials","gapfill_info",
-                                            "user")]
-        
-        #Re-plotting plot after deletion is confirmed to illustrate changes
-        shinyjs::show("plotted_data")
-        enable("reset")
-        enable("delete")
-        enable("nochange")
-        # Creating a reactive plot that will be plotted depending on the tab selected in plotTabs
-        plot_selected <- reactive({
-          req(input$plotTabs)
-          plotting_function(input$plotTabs)})
-        # Re-render
-        output$interactive_plot <- renderggiraph(plot_selected())
-        
-        display_table <<- as.data.table(change_summary)
-        
-        # Here I am making a table that shows the changes that have been made
-        output$summarytable <- renderDataTable({
-          datatable(display_table,
-                    # Not that datatable is originally written in javascript
-                    # Hence why there are some unusually formatted options here 
-                    # Like class = 'compact' and a 'text-align' = 'center'
-                    options = list(pageLength = 5, lengthMenu = c(5,10,25,50)), rownames = FALSE,class = 'compact') %>%
-            formatRound(columns = c(3:4), digits = 2)%>% 
-            formatStyle(columns = c(1:11), 'text-align' = 'center')}
-        )
-      }
-      )
     }
+  })
+  
+  # Confirmation message for deleting a point, and all under-the-hood changes start here
+  observeEvent(input$var_reason1,{
+    removeModal()
+    sendSweetAlert(
+      session,
+      title = "Success!",
+      type = "success",
+      btn_labels = "Ok",
+      closeOnClickOutside = TRUE,
+      width = NULL
+    )
+    df_list <- list()
+    for(i in selected_state()){
+      # Here I am creating a df to keep track of the changes made to the data.
+      changed_df <- data.frame()
+      changed_df <- colnames(c("variable","checked","gapfill_code",
+                               "gapfill_initials","gapfill_info","old_value","flag_info",
+                               "flag_code","flag_initials","new_value","user"))
+      changed_df$variable <- input$plotTabs
+      changed_df$point_id <- i
+      changed_df$old_value <- df_qry[df_qry$checked %in% i, input$plotTabs]
+      changed_df$flag_info <-  input$var_reason
+      add_code <- data_flags %>% 
+        dplyr::filter(information == input$var_reason)
+      changed_df$flag_code <- add_code$code
+      changed_df$flag_initials <- add_code$initials
+      
+      # Gapfill method information to be added
+      add_fill <- data_flags %>%
+        dplyr::filter(information == add_code$information)
+      changed_df$gapfill_info <- input$select_gapfill
+      changed_df$gapfill_code <- add_fill$code
+      changed_df$gapfill_initials <- add_fill$initials
+      
+      changed_df$user <- Sys.info()['user']
+      # Change the old value to the new value depending on the predicted value
+      df_qry[df_qry$checked %in% i, input$plotTabs] <<- NA
+      df_qry[is.na(df_qry[, input$plotTabs]), input$plotTabs] <<- df_qry$pred[is.na(df_qry[, input$plotTabs])]
+      # Now adding the new value to the changed df, using the exact same command as above for the old value
+      changed_df$new_value <- df_qry[df_qry$checked %in% i, input$plotTabs]
+      changed_df <- bind_rows(changed_df) #%>% as.data.frame()
+      df_list[[i]] <- changed_df
+    }
+    changed_df <- bind_rows(df_list)
+    
+    # If statement that creates the dataframe in memory if it does not already exist
+    if(length(change_summary)==0){
+      change_summary <<- changed_df
+    } else {
+      #or appends the dataframe if it does already exist
+      change_summary <<- rbind(change_summary, changed_df)
+    }
+    
+    change_summary <<- change_summary[c("variable","point_id","old_value","new_value","flag_code",
+                                        "flag_initials","flag_info",
+                                        "gapfill_code","gapfill_initials","gapfill_info",
+                                        "user")]
+    
+    #Re-plotting plot after deletion is confirmed to illustrate changes
+    shinyjs::show("plotted_data")
+    enable("reset")
+    enable("delete")
+    enable("nochange")
+    
+    # Creating a reactive plot that will be plotted depending on the tab selected in plotTabs
+    plot_selected <- reactive({
+      req(input$plotTabs)
+      plotting_function(input$plotTabs)})
+    # Re-render
+    output$interactive_plot <- renderggiraph(plot_selected())
+    
+    display_table <<- as.data.table(change_summary)
+    
+    # Here I am making a table that shows the changes that have been made
+    output$summarytable <- renderDataTable({
+      datatable(display_table,
+                # Not that datatable is originally written in javascript
+                # Hence why there are some unusually formatted options here 
+                # Like class = 'compact' and a 'text-align' = 'center'
+                options = list(pageLength = 5, lengthMenu = c(5,10,25,50)), rownames = FALSE,class = 'compact') %>%
+        formatRound(columns = c(3:4), digits = 2)%>% 
+        formatStyle(columns = c(1:11), 'text-align' = 'center')}
+    )
   }
   )
   
