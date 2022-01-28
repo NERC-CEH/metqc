@@ -270,9 +270,9 @@ server <- shinyServer(function(input, output, session) {
     # Re-render
     output$interactive_plot <- renderggiraph(plot_selected())
 
+    # Here I am making a table that shows the changes that have been made
     display_table <<- as.data.table(change_summary)
 
-    # Here I am making a table that shows the changes that have been made
     output$summarytable <- renderDataTable({
       datatable(display_table,
         # Not that datatable is originally written in javascript
@@ -305,6 +305,39 @@ server <- shinyServer(function(input, output, session) {
   # Finished checking, close tab functionality----
   observeEvent(input$nochange, {
     removeTab("plotTabs", input$plotTabs)
+  })
+  
+  # Writing tables to a database----
+  observeEvent(input$submitchanges, {
+    if (dbExistsTable(con, "MET_30MIN_VALIDATED_TEST")) {
+      dbWriteTable(con,
+                   "MET_30MIN_VALIDATED_TEST",
+                   df_qry,
+                   append = TRUE
+      )
+    } else {
+      dbWriteTable(con,
+                   "MET_30MIN_VALIDATED_TEST",
+                   df_qry
+      )
+    }
+    
+    if (dbExistsTable(con, "MET_30MIN_VALIDATION_LOG_TEST")) {
+      dbWriteTable(con,
+                   "MET_30MIN_VALIDATION_LOG_TEST",
+                   change_summary,
+                   append = TRUE
+      )
+    } else {
+      dbWriteTable(con,
+                   "MET_30MIN_VALIDATION_LOG_TEST",
+                   change_summary
+      )
+    }
+    
+    
+    browser()
+    
   })
 
 
