@@ -23,4 +23,6 @@ Imports:
     ggiraph,
     data.table,
     DT,
-    shinyWidgets
+    shinyWidgets,
+    shinyjs,
+    shinyalert

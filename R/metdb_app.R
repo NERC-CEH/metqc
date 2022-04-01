@@ -1,4 +1,17 @@
-myApp <- function(...) {
+library(shiny)
+library(shinyWidgets)
+library(shinyjs)
+library(dplyr)
+library(ggplot2)
+library(ggiraph)
+library(ROracle)
+library(DT)
+library(data.table)
+library(shinyalert)
+library(lubridate)
+library(ggExtra)
+
+metdbApp <- function(...) {
   
   # Define UI for the app
   ui <- dashboardPage(skin = "green",
