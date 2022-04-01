@@ -18,43 +18,6 @@ library(shinyalert)
 library(lubridate)
 library(ggExtra)
 
-#' busy_indicator
-#'
-#' A busy indicator
-#'
-#' @param text The text to show
-#' @param img An anitmated gif
-#' @param wait The amount of time to wait before showing the busy indicator. The
-#'   default is 1000 which is 1 second.
-#'
-#' @export
-busy_indicator <- function(
-  text = "Calculation in progress..",
-  img = "../busy_indicator/ajaxloaderq.gif",
-  wait=1000) {
-  tagList(
-    singleton(tags$head(
-      tags$link(rel = "stylesheet", type = "text/css",
-                href = "../busy_indicator/busy_indicator.css")
-    ))
-    , div(class = "shinysky-busy-indicator", p(text), img(src = img))
-    , tags$script(sprintf(
-      "	setInterval(function() {
-  		 	 if ($('html').hasClass('shiny-busy')) {
-  		    setTimeout(function() {
-  		      if ($('html').hasClass('shiny-busy')) {
-  		        $('div.shinysky-busy-indicator').show()
-  		      }
-  		    }, %d)
-  		  } else {
-  		    $('div.shinysky-busy-indicator').hide()
-  		  }
-  		},100)
-  		", wait)
-    )
-  )
-}
-
 # Writing a custom plotting function that will work for every variable selected---
 # It will be a ggplot object that we then convert into a girafe object
 # girafe is a package that allows interactivity.

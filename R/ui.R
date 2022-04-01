@@ -79,5 +79,5 @@ ui <- dashboardPage(skin = "green",
                                 h2("Information placeholder"),
                                 p("This app provides an interface to the field sites database and allows a user to plot data, remove dubious data and fill gaps with predictions."))
                       )
-                    ), busy_indicator(text = "Please wait...", wait = 500)
+                    )
 ) #end of navbar page

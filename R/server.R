@@ -4,7 +4,7 @@ server <- shinyServer(function(input, output, session) {
   Sys.setenv(ORA_SDTZ = "GMT")
   
   # Reading in the data flags ----
-  data_flags <- read_csv("~/met_db/data/data_flags.csv")
+  data_flags <- read_csv("data/data_flags.csv")
   data_flags$code <- as.character(data_flags$code)
   
   # Making database connection----
@@ -159,7 +159,6 @@ server <- shinyServer(function(input, output, session) {
   
   # Delete button functionality----
   observeEvent(input$delete, {
-    browser()
     if (is.null(selected_state())) {
       shinyjs::alert("Please select a point to delete.")
     } else {
@@ -348,10 +347,6 @@ server <- shinyServer(function(input, output, session) {
                    change_summary
       )
     }
-    
-    
-    browser()
-    
   })
   
   
