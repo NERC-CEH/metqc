@@ -54,12 +54,6 @@ ui <- dashboardPage(skin = "green",
                                            box(title = "Plotted Extracted Data",
                                                status = "success", solidHeader = TRUE,
                                                uiOutput("mytabs"),
-                                               # tabsetPanel(id = "plotTabs",
-                                               #             type = "tabs",
-                                               #             tabPanelBody(
-                                               #               girafeOutput("interactive_plot")  
-                                               #             )
-                                               
                                                shinyjs::disabled(actionButton("reset",
                                                                               label = "Restart app")),
                                                shinyjs::disabled(actionButton("delete",
