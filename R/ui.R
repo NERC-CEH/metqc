@@ -1,17 +1,17 @@
+# Adding UKCEH shiny theme
+devtools::source_url("https://github.com/NERC-CEH/UKCEH_shiny_theming/blob/main/theme_elements.R?raw=TRUE")
+
 # Define UI for the app
 ui <- dashboardPage(skin = "green",
                     dashboardHeader(title = "Met Data Validation"),
                     dashboardSidebar(
                       sidebarMenu(
-                        menuItem("Dashboard", tabName = "dashboard",
-                                 icon = icon("dashboard")),
-                        menuItem("Information", tabName = "information",
-                                 icon = icon("th"))
+                        menuItem("Dashboard", tabName = "dashboard"),
+                        menuItem("Information", tabName = "information")
                       )
                     ),
                     dashboardBody(
                       useShinyjs(),
-                      extendShinyjs(text = js_reset_code, functions = "reset"),
                       tabItems(
                         tabItem(tabName = "dashboard",
                                 fluidRow(
@@ -53,9 +53,13 @@ ui <- dashboardPage(skin = "green",
                                   fluidRow(id = "extracted_data",
                                            box(title = "Plotted Extracted Data",
                                                status = "success", solidHeader = TRUE,
-                                               tabsetPanel(id = "plotTabs",
-                                                           girafeOutput("interactive_plot"),
-                                                           type = "tabs"),
+                                               uiOutput("mytabs"),
+                                               # tabsetPanel(id = "plotTabs",
+                                               #             type = "tabs",
+                                               #             tabPanelBody(
+                                               #               girafeOutput("interactive_plot")  
+                                               #             )
+                                               
                                                shinyjs::disabled(actionButton("reset",
                                                                               label = "Restart app")),
                                                shinyjs::disabled(actionButton("delete",

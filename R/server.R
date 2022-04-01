@@ -2,25 +2,25 @@ server <- shinyServer(function(input, output, session) {
   # Setting up the server----
   Sys.setenv(TZ = "GMT")
   Sys.setenv(ORA_SDTZ = "GMT")
-
+  
   # Reading in the data flags ----
   data_flags <- read_csv("~/met_db/data/data_flags.csv")
   data_flags$code <- as.character(data_flags$code)
-
+  
   # Making database connection----
   dbuid <- "BU_FIELD_SITES"
   dbpwd <- "0ig2mtYUL9"
   drv <- dbDriver("Oracle")
   con <- dbConnect(drv,
-    dbname = "budbase.nerc-bush.ac.uk/BUA",
-    username = dbuid,
-    password = dbpwd
+                   dbname = "budbase.nerc-bush.ac.uk/BUA",
+                   username = dbuid,
+                   password = dbpwd
   )
   table_name <- "MET_30MIN"
   db_names <<- dbListFields(con, table_name)
   db_names_for_box <- db_names[!db_names %in%
-    c("DATECT", "TIMESTAMP", "datect_num", "checked", "pred")]
-
+                                 c("DATECT", "TIMESTAMP", "datect_num", "checked", "pred")]
+  
   # Format the dates for R----
   df_proc <- data.frame(
     start_date = "1995/01/01 00:00",
@@ -31,34 +31,34 @@ server <- shinyServer(function(input, output, session) {
     df_proc$start_date, format = "%Y/%m/%d %H:%M", tz = "UTC")
   df_proc$end_date <- as.POSIXct(
     df_proc$end_date, format = "%Y/%m/%d %H:%M", tz = "UTC")
-
+  
   # Create a reactive element with the earliest start date
   first_start_date <- reactive({
     min(as.Date(df_proc$start_date))
   })
-
+  
   # Create a reactive element with the latest end date
   last_end_date <- reactive({
     max(as.Date(df_proc$end_date))
   })
-
+  
   # Create a date input for the user to select start date
   output$start_date <- renderUI({
     dateInput("sdate",
-      value = as.Date(strptime("01/07/2017", "%d/%m/%Y"), tz = "UTC"),
-      min = first_start_date(),
-      max = last_end_date(), label = "Start date"
+              value = as.Date(strptime("01/07/2017", "%d/%m/%Y"), tz = "UTC"),
+              min = first_start_date(),
+              max = last_end_date(), label = "Start date"
     )
   })
-
+  
   # Create a date input for the user to select end date
   output$end_date <- renderUI({
     dateInput("edate",
-      value = as.Date(strptime("01/08/2017", "%d/%m/%Y"), tz = "UTC"),
-      min = first_start_date(), max = last_end_date(), label = "End date"
+              value = as.Date(strptime("01/08/2017", "%d/%m/%Y"), tz = "UTC"),
+              min = first_start_date(), max = last_end_date(), label = "End date"
     )
   })
-
+  
   # Create a dataframe with all the information about the start and end time,
   # and cr spline (do we need this?)----
   job_df <- eventReactive(input$retrieve_data, {
@@ -74,30 +74,30 @@ server <- shinyServer(function(input, output, session) {
     n_times <- input$intslider
     # create a sequence of timestamps
     datect <- seq(start_date, end_date,
-      length = n_times
+                  length = n_times
     )
-
+    
     data.frame(
       datech = format(datect, "%Y/%m/%d %H:%M"),
       n_times = n_times,
       datect = datect
     )
   })
-
+  
   # Rendering the box that we need to allow the user to select
   # all of the variables they wish to check----
   output$select_variables <- renderUI({
     checkboxGroupButtons("variable_check",
-      label = h5("Variables to be checked"),
-      choices = as.list(db_names_for_box), selected = NULL
+                         label = h5("Variables to be checked"),
+                         choices = as.list(db_names_for_box), selected = NULL
     )
   })
-
+  
   # Creating empty dataframes----
   accumulated_df <- data.frame()
   reviewed_df <- data.frame()
   change_summary <- data.frame()
-
+  
   # Data retrieval functionality-----
   observeEvent(input$retrieve_data, {
     # enabling previously disabled buttons
@@ -113,66 +113,75 @@ server <- shinyServer(function(input, output, session) {
         " WHERE DATECT > TO_DATE('", job_df()$datech[1],
         "', 'yyyy/mm/dd hh24:mi') AND DATECT < TO_DATE('",
         job_df()$datech[6], "', 'yyyy/mm/dd hh24:mi')"
-        )
+      )
       df_qry <<- dbGetQuery(con, qry)
       df_qry$checked <<- as.factor(rownames(df_qry))
       df_qry$datect_num <<- as.numeric(df_qry$DATECT)
-
+      
       # Add a tab to the plotting panel for each variable that has been selected by the user.
       # TO DO: I need to add a condition here that stops the user from adding duplicate variables at a later stage
-      for (i in input$variable_check) {
-        appendTab("plotTabs", tabPanel(i), select = TRUE)
-      }
+      output$mytabs = renderUI({
+        number_of_tabs = length(input$variable_check)
+        my_tabs = lapply(paste(input$variable_check), function(i) {
+          tabPanel(i,
+                   value = i,
+                   girafeOutput(paste0(i, "_interactive_plot")),
+          ) 
+        })
+        do.call(tabsetPanel, c(my_tabs, id = "plotTabs"))
+      })
+      
+      observe(
+        lapply(paste(input$variable_check), function(i) {
+          output[[paste0(i, "_interactive_plot")]] <-
+            renderggiraph(plotting_function(i))
+        })
+      )
+      
       # Give a warning if there are no variables selected.
     } else if (is.null(input$variable_check)) {
       shinyjs::alert("Please select one or more variables before extracting data from the database.")
     }
-
-    # Creating a reactive plot that will be plotted depending on the tab selected in plotTabs
-    plot_selected <- reactive({
-      req(input$plotTabs)
-      plotting_function(input$plotTabs)
-    })
-    output$interactive_plot <- renderggiraph(plot_selected())
-
+    
     # Creating a calendar heatmap plot that will be plotted depending on the tab selected in plotTabs
     heatmap_plot_selected <- reactive({
       req(input$plotTabs)
       plot_heatmap_calendar(input$plotTabs, df_qry)
     })
-
+    
     output$heatmap_plot <- renderPlot(heatmap_plot_selected())
   })
-
+  
   # Creating reactive variables-----
   selected_state <- reactive({
-    input$interactive_plot_selected
+    input[[paste0(input$plotTabs, "_interactive_plot_selected")]]
   })
-
+  
   # Delete button functionality----
   observeEvent(input$delete, {
+    browser()
     if (is.null(selected_state())) {
       shinyjs::alert("Please select a point to delete.")
     } else {
       shinyjs::enable("submitchanges")
-
+      
       # Extract all the reasons for deletion for the data points
       delete_reasons <- data_flags %>%
         filter(cat == "initial_flag")
       # Turn it into a list for selection
       delete_reasons <- delete_reasons$information
-
+      
       # Extract gapfilling methods
       gapfill_options <- data_flags %>%
         filter(cat != "initial_flag")
       gapfill_options <- gapfill_options$information
-
+      
       # Gapfilling - NOTE, does not yet change depending on method selection
       y <- df_qry[, input$plotTabs]
       m <- gam(y ~ s(datect_num, bs = "cr", k = input$intslider),
                data = df_qry, na.action = na.exclude)
       df_qry$pred <<- predict(m, newdata = df_qry, na.action = na.exclude)
-
+      
       # Pop up modal that will ask the user why a point is being deleted.
       showModal(modalDialog(
         h2("Please supply additional information:"),
@@ -192,7 +201,7 @@ server <- shinyServer(function(input, output, session) {
       ))
     }
   })
-
+  
   # Confirmation message for deleting a point, and all under-the-hood changes start here
   observeEvent(input$var_reason1, {
     removeModal()
@@ -221,14 +230,14 @@ server <- shinyServer(function(input, output, session) {
         dplyr::filter(information == input$var_reason)
       changed_df$flag_code <- add_code$code
       changed_df$flag_initials <- add_code$initials
-
+      
       # Gapfill method information to be added
       add_fill <- data_flags %>%
         dplyr::filter(information == add_code$information)
       changed_df$gapfill_info <- input$select_gapfill
       changed_df$gapfill_code <- add_fill$code
       changed_df$gapfill_initials <- add_fill$initials
-
+      
       changed_df$user <- Sys.info()["user"]
       # Change the old value to the new value depending on the predicted value
       df_qry[df_qry$checked %in% i, input$plotTabs] <<- NA
@@ -240,7 +249,7 @@ server <- shinyServer(function(input, output, session) {
       df_list[[i]] <- changed_df
     }
     changed_df <- bind_rows(df_list)
-
+    
     # If statement that creates the dataframe in memory if it does not already exist
     if (length(change_summary) == 0) {
       change_summary <<- changed_df
@@ -248,20 +257,20 @@ server <- shinyServer(function(input, output, session) {
       # or appends the dataframe if it does already exist
       change_summary <<- rbind(change_summary, changed_df)
     }
-
+    
     change_summary <<- change_summary[c(
       "variable", "point_id", "old_value", "new_value", "flag_code",
       "flag_initials", "flag_info",
       "gapfill_code", "gapfill_initials", "gapfill_info",
       "user"
     )]
-
+    
     # Re-plotting plot after deletion is confirmed to illustrate changes
     shinyjs::show("plotted_data")
     enable("reset")
     enable("delete")
     enable("nochange")
-
+    
     # Creating a reactive plot that will be plotted depending on the tab selected in plotTabs
     plot_selected <- reactive({
       req(input$plotTabs)
@@ -269,23 +278,23 @@ server <- shinyServer(function(input, output, session) {
     })
     # Re-render
     output$interactive_plot <- renderggiraph(plot_selected())
-
+    
     # Here I am making a table that shows the changes that have been made
     display_table <<- as.data.table(change_summary)
-
+    
     output$summarytable <- renderDataTable({
       datatable(display_table,
-        # Not that datatable is originally written in javascript
-        # Hence why there are some unusually formatted options here
-        # Like class = 'compact' and a 'text-align' = 'center'
-        options = list(pageLength = 5, lengthMenu = c(5, 10, 25, 50)),
-        rownames = FALSE, class = "compact"
+                # Not that datatable is originally written in javascript
+                # Hence why there are some unusually formatted options here
+                # Like class = 'compact' and a 'text-align' = 'center'
+                options = list(pageLength = 5, lengthMenu = c(5, 10, 25, 50)),
+                rownames = FALSE, class = "compact"
       ) %>%
         formatRound(columns = c(3:4), digits = 2) %>%
         formatStyle(columns = c(1:11), "text-align" = "center")
     })
   })
-
+  
   # Reset button functionality----
   observeEvent(input$reset, {
     showModal(modalDialog(
@@ -296,15 +305,20 @@ server <- shinyServer(function(input, output, session) {
       ),
       easyClose = TRUE
     ))
-
+    
     observeEvent(input$confirm_reset, {
-      js$reset()
+      session$reload()    
     })
   })
-
+  
   # Finished checking, close tab functionality----
   observeEvent(input$nochange, {
     removeTab("plotTabs", input$plotTabs)
+    # Insert validation flag for date range here
+    
+    # Enable submit button
+    
+    
   })
   
   # Writing tables to a database----
@@ -339,11 +353,11 @@ server <- shinyServer(function(input, output, session) {
     browser()
     
   })
-
-
-
-
-
+  
+  
+  
+  
+  
   # Older code starts below, keeping to reuse some elements.
   # No change button functionality----
   #
