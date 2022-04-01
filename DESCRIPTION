@@ -13,3 +13,14 @@ RoxygenNote: 7.1.2
 Depends: 
     R (>= 2.10)
 LazyData: true
+Imports: 
+    pkgload,
+    shinydashboard,
+    shiny,
+    lubridate,
+    ggplot2,
+    dplyr,
+    ggiraph,
+    data.table,
+    DT,
+    shinyWidgets

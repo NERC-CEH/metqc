@@ -1,23 +1,3 @@
-library(shiny)
-library(shinydashboard)
-library(shinyWidgets)
-library(shinyjs)
-library(shinythemes)
-library(lubridate)
-library(plyr)
-library(dplyr)
-library(ggplot2)
-library(readr)
-library(ggiraph)
-library(ROracle)
-library(readxl)
-library(DT)
-library(data.table)
-library(mgcv)
-library(shinyalert)
-library(lubridate)
-library(ggExtra)
-
 myApp <- function(...) {
   
   # Define UI for the app

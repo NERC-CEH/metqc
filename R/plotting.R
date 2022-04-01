@@ -1,26 +1,11 @@
-library(shiny)
-library(shinydashboard)
-library(shinyWidgets)
-library(shinyjs)
-library(shinythemes)
-library(lubridate)
-library(plyr)
-library(dplyr)
-library(ggplot2)
-library(readr)
-library(ggiraph)
-library(ROracle)
-library(readxl)
-library(DT)
-library(data.table)
-library(mgcv)
-library(shinyalert)
-library(lubridate)
-library(ggExtra)
-
-# Writing a custom plotting function that will work for every variable selected---
-# It will be a ggplot object that we then convert into a girafe object
-# girafe is a package that allows interactivity.
+#' Custom plotting function for each variable
+#'
+#' @param input_variable 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 plotting_function <- function(input_variable) {
   p1_ggplot <- ggplot(df_qry,
                       aes(DATECT, y = df_qry[, input_variable])) +
@@ -40,7 +25,15 @@ plotting_function <- function(input_variable) {
     opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"))
 }
 
-# Custom plotting function to construct a heatmap calendar of when data has been/has not been checked
+#' Custom plotting function to construct a heatmap calendar
+#'
+#' @param input_variable 
+#' @param df_qry 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 plot_heatmap_calendar <- function(input_variable, df_qry) {
   # Transforming query dataframe with lubridate to fit the format needed for a heatmap calendar
   date_coverage_df <- df_qry %>%
