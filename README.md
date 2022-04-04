@@ -1,3 +1,25 @@
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
 # metdb
-Quality control of field site meteorological data
-The working version is deployed at http://shiny-prod.nerc-lancaster.ac.uk:3838/thowag/met_db/.
+
+<!-- badges: start -->
+
+[![Lifecycle:
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+<!-- badges: end -->
+
+The goal of metdb is to create an application to help with the quality
+control of field site meteorological data. The working version is
+deployed at
+<https://connect-apps.ceh.ac.uk/content/1943fcd9-7dde-4477-928c-01ae7701a69b>.
+
+## Installation
+
+You can install the development version of metdb from
+[GitHub](https://github.com/) with:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("NERC-CEH/metdb")
+```
