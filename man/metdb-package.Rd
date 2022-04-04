@@ -17,5 +17,11 @@ Authors:
   \item David Leaver \email{leav@ceh.ac.uk}
 }
 
+Other contributors:
+\itemize{
+  \item Juan Pablo Lobo Guerrero \email{jualob@ceh.ac.uk} [contributor]
+  \item Karen Yeung \email{karung@ceh.ac.uk} [contributor]
+}
+
 }
 \keyword{internal}

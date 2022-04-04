@@ -7,12 +7,15 @@
 
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![R-CMD-check](https://github.com/NERC-CEH/metdb/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/NERC-CEH/metdb/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 The goal of metdb is to create an application to help with the quality
 control of field site meteorological data. The working version is
 deployed at
 <https://connect-apps.ceh.ac.uk/content/1943fcd9-7dde-4477-928c-01ae7701a69b>.
+This version may differ slightly from the version on here while the
+lifecycle is experimental.
 
 ## Installation
 
