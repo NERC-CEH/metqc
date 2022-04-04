@@ -1,10 +1,12 @@
 library(shiny)
 library(shinyWidgets)
 library(shinyjs)
+library(shinydashboard)
 library(dplyr)
 library(ggplot2)
 library(ggiraph)
 library(ROracle)
+library(mgcv)
 library(DT)
 library(data.table)
 library(shinyalert)
@@ -97,13 +99,11 @@ metdbApp <- function(...) {
     data_flags$code <- as.character(data_flags$code)
     
     # Making database connection----
-    dbuid <- "BU_FIELD_SITES"
-    dbpwd <- "0ig2mtYUL9"
     drv <- dbDriver("Oracle")
     con <- dbConnect(drv,
-                     dbname = "budbase.nerc-bush.ac.uk/BUA",
-                     username = dbuid,
-                     password = dbpwd
+                     dbname = Sys.getenv("DBNAME"),
+                     username = Sys.getenv("DBUID"),
+                     password = Sys.getenv("DBPWD")
     )
     table_name <- "MET_30MIN"
     db_names <<- dbListFields(con, table_name)

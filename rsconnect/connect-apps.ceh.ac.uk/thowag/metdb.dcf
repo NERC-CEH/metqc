@@ -5,7 +5,7 @@ account: thowag
 server: connect-apps.ceh.ac.uk
 hostUrl: https://connect-apps.ceh.ac.uk/__api__
 appId: 99
-bundleId: 4248
+bundleId: 4412
 url: https://connect-apps.ceh.ac.uk/content/1943fcd9-7dde-4477-928c-01ae7701a69b/
-when: 1648824698.37631
-lastSyncTime: 1648824698.37631
+when: 1649073798.44416
+lastSyncTime: 1649073798.44416

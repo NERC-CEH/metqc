@@ -25,4 +25,7 @@ Imports:
     DT,
     shinyWidgets,
     shinyjs,
-    shinyalert
+    shinyalert,
+    ROracle,
+    ggExtra,
+    mgcv
