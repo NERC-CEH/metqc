@@ -1,12 +1,26 @@
 Package: metdb
-Title: What the Package Does (One Line, Title Case)
+Title: Quality Control Of Field Site Meteorological Data 
 Version: 0.0.0.9000
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+    c(
+    person(
+    given = "Pete", family = "Levy",
+    email = "plevy@ceh.ac.uk",
+    role = c("aut"),
+    comment = c(ORCID = "0000-0002-8505-1901")),
+    person(
+    given = "Thomas", 
+    family = "Zwagerman",
+    email = "thowag@ceh.ac.uk",
+    role = c("aut", "cre")),
+    person(given = "David",
+    family = "Leaver",
+    email = "leav@ceh.ac.uk",
+    role = c("aut"))
+    )
+Description: Quality control of field site meteorological data. 
+The working version is deployed at https://connect-apps.ceh.ac.uk/content/1943fcd9-7dde-4477-928c-01ae7701a69b.
+License: CC BY 4.0
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2
