@@ -7,11 +7,13 @@
 #'
 #' @examples
 plotting_function <- function(input_variable) {
-  p1_ggplot <- ggplot(df_qry,
-                      aes(DATECT, y = df_qry[, input_variable])) +
-    geom_point_interactive(aes(data_id = checked, tooltip = checked,
-                               colour = df_qry[, input_variable]), size = 3) +
-    #geom_line(aes(y = df_qry$pred), colour = "red") +
+  df <- data.frame(DATECT = df_qry$DATECT, y = df_qry[, input_variable], 
+    qc = df_qc[, input_variable], checked = df_qry$checked)
+  p1_ggplot <- ggplot(df, 
+                      aes(DATECT, y)) +
+    geom_point_interactive(aes(data_id = checked, tooltip = qc,
+                               colour = factor(qc)), size = 3) +
+    #geom_line(aes(y = df$pred), colour = "red") +
     xlab("Date") +
     ylab(paste("Your variable:", input_variable)) +
     ggtitle(paste(input_variable, "time series")) +
