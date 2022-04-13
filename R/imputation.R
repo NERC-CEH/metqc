@@ -1,222 +1,134 @@
-#' @title impute_by_time
-#' @description Impute missing values using a smoothing regression against time 
-#'   with a General Additive Model (GAM)
-#' @param y Response variable with missing values to be replaced (variable name 
-#'   as a "quoted string")
-#' @param l_gf List of two data frames containing data and qc codes. Default: l_gf
-#' @param qc qc code to denote values imputed by this function, Default: 2
-#' @param k Number of knots determining smoothness of fit; more knots gives a 
-#'   more flexible (wiggly) fit, Default: -1 (= attempts to automatically optimise)
-#' @return List of two data frames containing data and qc codes with imputed values.
-#' @details DETAILS
-#' @examples 
-#' \dontrun{
-#' if(interactive()){
-#'  #EXAMPLE1
-#' l_gf <- list(df = df, df_qc = df_qc)
-#' l_gf <- impute_by_time(y = "G", l_gf, k = 40)
-#'  }
-#' }
-#' @rdname impute_by_time
-#' @export 
-impute_by_time <- function(y, l_gf = l_gf, qc = 2, k = -1, selection = TRUE){
-  df    <- l_gf$df
-  df_qc <- l_gf$df_qc
-  
-  v_y <- df[, y]
-  datect_num <- as.numeric(df$DATECT)  ## !df_qry$
-  hour       <- as.POSIXlt(df$DATECT)$hour
-  
-  m <- gam(v_y ~ s(datect_num, k = k, bs = "cr") +
-                 s(hour, bs = "cc"),
-    na.action = na.exclude #, data = df
-  )
-  v_pred <- predict(m, newdata = data.frame(datect_num, hour))
+"%!in%" <- Negate("%in%")
 
-  # indices of values to change
-  i_sel <- df_qc[, y] != 0 & selection
-
-  df[, y][i_sel] <- v_pred[i_sel]
-  # add code for each replaced value in the qc df
-  df_qc[, y][i_sel] <- qc
-  
-  dft <- data.frame(date = df$date, y = df[, y], qc = df_qc[, y])
-  p <- ggplot(dft, aes(date, y, colour = factor(qc)))
-  p <- p + geom_point() + ylab(y)
-  print(p)
-  return(list(df = df, df_qc = df_qc))
-}
-
-#' @title impute_by_regn
-#' @description Impute missing values using regression with a covariate
-#' @param y Response variable with missing values to be replaced 
+#' @title impute
+#' @description Impute missing values using various methods
+#' @param y Response variable with missing values to be replaced
 #'   (variable name as a "quoted string")
-#' @param x Covariate to be used (name of a variable in the same data frame as 
+#' @param x Covariate to be used (name of a variable in the same data frame as
 #'   a "quoted string")
 #' @param l_gf List of two data frames containing data and qc codes. Default: l_gf
 #' @param qc qc code to denote values imputed by this function, Default: 3
-#' @param fit Whether to fit a linear model or directly replace missing y with 
+#' @param fit Whether to fit a linear model or directly replace missing y with
 #'   x values, Default: TRUE
 #' @return List of two data frames containing data and qc codes with imputed values.
 #' @details DETAILS
-#' @examples 
+#' @examples
 #' \dontrun{
-#' if(interactive()){
+#' if(interactive()) {
 #'  #EXAMPLE1
 #' l_gf <- list(df = df, df_qc = df_qc)
-#' l_gf <- impute_by_regn(y = "SW_IN", x = "PPFD_IN",  l_gf)
+#' l_gf <- impute(y = "SW_IN", x = "PPFD_IN",  l_gf)
 #'  }
 #' }
 #' @rdname impute_by_regn
 #' @export
-impute_by_regn <- function(y, x, l_gf = l_gf, qc = 3, fit = TRUE, selection = TRUE){
+impute <- function(y, l_gf = l_gf, method = "era5", qc_tokeep = 0,
+  selection = TRUE, date_field = "DATECT", k = 40,
+  fit = TRUE, x = NULL, df_era5 = NULL,
+  lat = 55.792, lon = -3.243
+  ) {
+
+  df_method <- data.frame(
+    method = c(
+      "missing",
+      "time",
+      "regn",
+      "nightzero",
+      "noneg",
+      "zero",
+      "era5"
+    ),
+    qc = c(1, 2, 3, 4, 5, 6, 7) # 0 = raw, 1 = missing
+  )
+  # saveRDS(df_method, file = here("data", "df_method.rds"))
+  method <- match.arg(method, df_method$method)
+  # get the qc code for the selected method
+  qc <- df_method$qc[match(method, df_method$method)]
+
   df    <- l_gf$df
   df_qc <- l_gf$df_qc
-  v_y <- df[, y]
-  v_x <- df[, x]
-  if (fit){ # fit a linear regression
-    m <- lm(v_y ~ v_x, na.action = na.exclude, data = df)
-    v_pred <- predict(m, newdata = data.frame(v_x))
-  } else {  # or just replace y with x
-    v_pred <- v_x
+  
+  # df_qc[, y][which(i_sel)]
+  # table(i_sel)
+  # table(df[, y] < 0)
+  # table(df_qc[, y])
+  # indices of values to change
+  # default
+  # qc_tokeep typically set to 0, so this selects any other value (missing or imputed)
+  # selection optionally adds those selected in the metdb app ggiraph plots
+  # isel = TRUE  = missing, imputed (AND selected)
+  # isel = FALSE = raw
+  i_sel <- df_qc[, y] %!in% qc_tokeep & selection
+  if (method == "noneg") i_sel <- i_sel & df[, y] < 0
+  if (method == "nightzero") {
+    df$date <- df[, date_field] # needs to be called "date" for openair functions
+    df <- cutData(df, type = "daylight", latitude = lat, longitude = lon)
+    i_sel <- i_sel & df$daylight == "nighttime"
+    df$daylight <- NULL
+    df$date <- NULL # this would cause a problem if originally called "date"
+  }
+ 
+  # calculate replacement values depending on the method
+  # if a constant zero
+  if (method == "nightzero" | method == "noneg" | method == "zero") {
+    df[, y]   [i_sel] <- 0
+  } else if (method == "time") {
+    v_date  <- df[, date_field]
+    datect_num <- as.numeric(v_date)  ## !df_qry$
+    hour       <- as.POSIXlt(v_date)$hour
+    yday       <- as.POSIXlt(v_date)$yday
+
+    m <- gam(df[, y] ~ s(datect_num, k = k, bs = "cr") +
+                   s(yday, bs = "cr") +
+                   s(hour, bs = "cc"),
+      na.action = na.exclude #, data = df
+    )
+    v_pred <- predict(m, newdata = data.frame(datect_num, hour, yday))
+    df[, y][i_sel] <- v_pred[i_sel]
+  } else if (method == "regn" | method == "era5") {
+    if (method == "era5") {
+      v_x <- df_era5[, y] # use ERA5 data
+    } else {
+      v_x <- df[, x]  # use x variable in the CEDA data
+    }
+    if (fit) {
+      dft <- data.frame(y = df[, y], x = v_x)
+      # exclude indices i_sel i.e. do not fit to those we are replacing
+      dft$y[i_sel] <- NA
+      m <- lm(y ~ x, data = dft, na.action = na.exclude)
+      v_pred <- predict(m, newdata = dft)
+    } else {  # or just replace y with x
+      v_pred <- v_x
+    }
+    df[, y][i_sel] <- v_pred[i_sel]
   }
   
-  # indices of values to change
-  i_sel <- df_qc[, y] != 0 & selection
-  
-  df[, y][i_sel] <- v_pred[i_sel]
   # add code for each replaced value in the qc df
   df_qc[, y][i_sel] <- qc
-   
-  dft <- data.frame(date = df$date, y = df[, y], qc = df_qc[, y])
-  p <- ggplot(dft, aes(date, y, colour = factor(qc)))
-  p <- p + geom_point() + ylab(y)
-  print(p)
   
-  return(list(df = df, df_qc = df_qc))
-}
+  dft <- data.frame(date = df[, date_field], y = df[, y], qc = df_qc[, y])
+  p <- ggplot(dft, aes(date, y))
+  #p <- p + geom_line()
+  if (method == "era5") { # include era5 data in plot
+    p <- p + geom_point(data = df_era5, 
+      aes(x = df_era5[, date_field], y = df_era5[, y]), 
+      colour = "black", size = 1)
+  }
+  p <- p + geom_point(aes(y = y, colour = factor(qc)), size = 1) + ylab(y)
+  print(p)
 
-#' @title impute_nightzero
-#' @description Impute missing night-time values by setting them to zero
-#' @param y Response variable with missing values to be replaced 
-#'   (variable name as a "quoted string")
-#' @param l_gf List of two data frames containing data and qc codes. Default: l_gf
-#' @param qc qc code to denote values imputed by this function, Default: 4
-#' @param lat Latitude of site location, Default: 55.792
-#' @param lon Longitude of site location, Default: -3.243
-#' @return List of two data frames containing data and qc codes with imputed values.
-#' @details DETAILS
-#' @examples 
-#' \dontrun{
-#' if(interactive()){
-#'  #EXAMPLE1
-#' l_gf <- list(df = df, df_qc = df_qc)
-#' l_gf <- impute_nightzero(y = "PPFD_IN",  l_gf)
-#'  }
-#' }
-#' @rdname impute_nightzero
-#' @export
-impute_nightzero <- function(y, l_gf = l_gf, qc = 4, lat = 55.792, lon = -3.243, 
-  selection = TRUE, date_field = "DATECT"){ 
-  # lat/lon defaults to Auchencorth 
-  df    <- l_gf$df
-  df_qc <- l_gf$df_qc
-  v_y <- df[, y]
-  
-  df$date <- df[, date_field]
-  df <- cutData(df, type = "daylight", latitude = lat, longitude = lon)
-  
-  # indices of values to change
-  i_sel <- df_qc[, y] != 0 & selection & df$daylight == "nighttime"
-  
-  df[, y]   [i_sel] <- 0
-  # add code for each replaced value in the qc df
-  df_qc[, y][i_sel] <- qc
-  
-  dft <- data.frame(date = df$date, y = df[, y], qc = df_qc[, y])
-  p <- ggplot(dft, aes(date, y, colour = factor(qc)))
-  p <- p + geom_point() + ylab(y)
-  print(p)
-  
-  df$daylight <- NULL
-  return(list(df = df, df_qc = df_qc))
-}
-
-#' @title impute_noneg
-#' @description Impute (initially missing) negative values by setting them to 
-#'   zero. This is mainly to correct other imputation methods when they erroneously 
-#'   produce ngative values.
-#' @param y Response variable with missing values to be replaced 
-#'   (variable name as a "quoted string")
-#' @param l_gf List of two data frames containing data and qc codes. Default: l_gf
-#' @param qc qc code to denote values imputed by this function, Default: 5
-#' @return List of two data frames containing data and qc codes with imputed values.
-#' @details DETAILS
-#' @examples 
-#' \dontrun{
-#' if(interactive()){
-#'  #EXAMPLE1
-#' l_gf <- list(df = df, df_qc = df_qc)
-#' l_gf <- impute_noneg(y = "PPFD_IN",  l_gf)
-#'  }
-#' }
-#' @rdname impute_noneg
-#' @export
-impute_noneg <- function(y, l_gf = l_gf, qc = 5, selection = TRUE){ 
-  df    <- l_gf$df
-  df_qc <- l_gf$df_qc
-  v_y <- df[, y]
-  
-  # indices of values to change
-  i_sel <- df_qc[, y] != 0 & selection & df[, y] < 0
-  
-  # add code for each replaced value in the qc df
-  df_qc[, y][i_sel] <- qc
-  # and only then replace the values in the df 
-  # bcos condition depends on these values
-  df[, y]   [i_sel] <- 0
-  
-  dft <- data.frame(date = df$date, y = df[, y], qc = df_qc[, y])
-  p <- ggplot(dft, aes(date, y, colour = factor(qc)))
-  p <- p + geom_point() + ylab(y)
-  print(p)
   return(list(df = df, df_qc = df_qc))
 }
 
 
-#' @title impute_zero
-#' @description Impute missing values by setting them to zero.
-#' @param y Response variable with missing values to be replaced 
-#'   (variable name as a "quoted string")
-#' @param l_gf List of two data frames containing data and qc codes. Default: l_gf
-#' @param qc qc code to denote values imputed by this function, Default: 6
-#' @return List of two data frames containing data and qc codes with imputed values.
-#' @details DETAILS
-#' @examples 
-#' \dontrun{
-#' if(interactive()){
-#'  #EXAMPLE1
-#' l_gf <- list(df = df, df_qc = df_qc)
-#' l_gf <- impute_zero(y = "PPFD_IN",  l_gf)
-#'  }
-#' }
-#' @rdname impute_zero
-#' @export
-impute_zero <- function(y, l_gf = l_gf, qc = 6, selection = TRUE){ 
-  df    <- l_gf$df
-  df_qc <- l_gf$df_qc
-  v_y <- df[, y]
+#' library(lintr)
+#' lint(here("R/imputation.R"), linters = with_defaults(line_length_linter = line_length_linter(120)))
 
-  # indices of values to change
-  i_sel <- df_qc[, y] != 0 & selection
-
-  df[, y]   [i_sel] <- 0
-  # add code for each replaced value in the qc df
-  df_qc[, y][i_sel] <- qc
-  
-  dft <- data.frame(date = df$date, y = df[, y], qc = df_qc[, y])
-  p <- ggplot(dft, aes(date, y, colour = factor(qc)))
-  p <- p + geom_point() + ylab(y)
-  print(p)
-  return(list(df = df, df_qc = df_qc))
-}
+# p <- ggplot(dft, aes(x, y))
+# if (method == "era5") { # include era5 data in plot
+  # p <- p + geom_point(data = df_era5, 
+    # aes(x = df_era5[, date_field], y = df_era5[, y]), 
+    # colour = "black", size = 1)
+# }
+# p <- p + geom_point(aes(colour = factor(!i_sel)), size = 1)
+# p

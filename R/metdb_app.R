@@ -27,6 +27,8 @@ library(openair)
 #rm(list=ls(all=TRUE))
 
 metdbApp <- function(...) {
+  # Reading in the gap-filling methods and codes----
+  df_method <- readRDS(file = here("data", "df_method.rds"))
   
   # Define UI for the app
   ui <- dashboardPage(skin = "green",
@@ -82,12 +84,7 @@ metdbApp <- function(...) {
                                                    status = "success", solidHeader = TRUE,
                                                  uiOutput("mytabs"),
                                                  selectInput("select_gapfill", label = h5("Gap-Filling Method"),
-                                                   choices = list("Set to missing value",
-                                                                  "Smoothing by time",
-                                                                  "Regression with covariate", 
-                                                                  "All night-time values = zero", 
-                                                                  "Negative values = zero", 
-                                                                  "Missing = zero")),
+                                                   choices = list(gf_methods = df_method$method)),
                                                  selectInput("select_covariate", label = h5("Covariate"),
                                                    choices = list("TA",
                                                                   "TS",
@@ -123,10 +120,7 @@ metdbApp <- function(...) {
     # Setting up the server----
     Sys.setenv(TZ = "GMT")
     Sys.setenv(ORA_SDTZ = "GMT")
-    
-    # Reading in the data flags----
-    data_flags$code <- as.character(data_flags$code)
-    
+        
     # Making database connection----
     drv <- dbDriver("Oracle")
     con <- dbConnect(drv,
@@ -172,8 +166,8 @@ metdbApp <- function(...) {
     date_of_last_update <- l_gf$df$DATECT[length(l_gf$df$DATECT)]
 
     # subset to remove data already present in db table    
-    l_gf$df    <- subset(l_gf$df,    DATECT > date_of_last_record)
-    l_gf$df_qc <- subset(l_gf$df_qc, DATECT > date_of_last_record)
+    # l_gf$df    <- subset(l_gf$df,    DATECT > date_of_last_record)
+    # l_gf$df_qc <- subset(l_gf$df_qc, DATECT > date_of_last_record)
 
     # and append new records to database tables
     if(dim(l_gf$df)[1] > 0){  # if there is new data
@@ -350,28 +344,13 @@ metdbApp <- function(...) {
         gapfill_options <- gapfill_options$information
         
         # Gapfilling - NOTE, does not yet change depending on method selection
-        df_qc[df_qry$checked %in% selected_state(), input$plotTabs] <<- 1
+        df_qc[df_qry$checked %in% selected_state(), input$plotTabs] <<- 1 # not needed?
         
         l_gf <- list(df = df_qry, df_qc = df_qc)
-        
-        if (input$select_gapfill == "Smoothing by time") {
-          l_gf <- impute_by_time(y = input$plotTabs, l_gf, k = input$intslider, 
-            selection = df_qry$checked %in% selected_state())
-        } else if (input$select_gapfill == "Regression with covariate") {
-          l_gf <- impute_by_regn(y = input$plotTabs, l_gf, x = input$select_covariate,
-            selection = df_qry$checked %in% selected_state())
-        } else if (input$select_gapfill == "All night-time values = zero") {
-          l_gf <- impute_nightzero(y = input$plotTabs, l_gf, 
-            selection = df_qry$checked %in% selected_state())
-        } else if (input$select_gapfill == "Negative values = zero") {
-          l_gf <- impute_noneg(y = input$plotTabs, l_gf, 
-            selection = df_qry$checked %in% selected_state())
-        } else if (input$select_gapfill == "Missing = zero") {
-          l_gf <- impute_zero(y = input$plotTabs, l_gf, 
-            selection = df_qry$checked %in% selected_state())
-        } else {
-          shinyjs::alert("Unknown gap-filling method.")
-        }
+
+        l_gf <- impute(y = input$plotTabs, l_gf, method = input$select_gapfill, 
+          x = input$select_covariate, df_era5 = df_era5, k = input$intslider,
+          selection = df_qry$checked %in% selected_state())
         
         df_qry <<- l_gf$df
         df_qc  <<- l_gf$df_qc
