@@ -1,4 +1,36 @@
+# library(sinew)
+# makeOxygen(pad_data)
 "%!in%" <- Negate("%in%")
+
+#' @title pad_data
+#' @description Adds in any gaps in a data frame representing a time series
+#' @param df A data frame
+#' @param by Time interval of series, Default: '30 min'
+#' @param date_field Column name for POSIX date/time variable in df, Default: 'DATECT'
+#' @param v_dates A vector of POSIX date/times, potentially from another df, to match with it. Default: 'df$DATECT'
+#' @return OUTPUT_DESCRIPTION
+#' @details DETAILS
+#' @examples 
+#' \dontrun{
+#' if(interactive()){
+#'  #EXAMPLE1
+#'  df <- pad_data(df)
+#'  }
+#' }
+#' @rdname pad_data
+#' @export 
+pad_data <- function(df, by = "30 min", date_field = "DATECT", v_dates = NULL){
+  df <- as.data.frame(df)
+  df$DATECT <- df[, date_field]
+  first <- min(v_dates, na.rm = TRUE)
+  last  <- max(v_dates, na.rm = TRUE)
+  # make a dt with complete time series with interval "by"
+  dt_date <- data.table(DATECT = seq.POSIXt(first, last, by = by))
+  dt <- as.data.table(df)
+  dt <- dt[dt_date, on = .(DATECT = DATECT)] 
+  df <- as.data.frame(dt)
+  return(df)
+}
 
 #' @title impute
 #' @description Impute missing values using various methods
@@ -25,7 +57,7 @@
 impute <- function(y, l_gf = l_gf, method = "era5", qc_tokeep = 0,
   selection = TRUE, date_field = "DATECT", k = 40,
   fit = TRUE, x = NULL, df_era5 = NULL,
-  lat = 55.792, lon = -3.243
+  lat = 55.792, lon = -3.243, plot_graph = TRUE
   ) {
 
   df_method <- data.frame(
@@ -65,7 +97,8 @@ impute <- function(y, l_gf = l_gf, method = "era5", qc_tokeep = 0,
     df <- cutData(df, type = "daylight", latitude = lat, longitude = lon)
     i_sel <- i_sel & df$daylight == "nighttime"
     df$daylight <- NULL
-    df$date <- NULL # this would cause a problem if originally called "date"
+    # if date is not the original variable name, delete it - we don't want an extra column
+    if (date_field != "date") df$date <- NULL
   }
  
   # calculate replacement values depending on the method
@@ -77,10 +110,12 @@ impute <- function(y, l_gf = l_gf, method = "era5", qc_tokeep = 0,
     datect_num <- as.numeric(v_date)  ## !df_qry$
     hour       <- as.POSIXlt(v_date)$hour
     yday       <- as.POSIXlt(v_date)$yday
+    n_yday     <- length(unique(yday))
+    k_yday     <- as.integer(n_yday / 2)
 
     m <- gam(df[, y] ~ s(datect_num, k = k, bs = "cr") +
-                   s(yday, bs = "cr") +
-                   s(hour, bs = "cc"),
+                   s(yday, k = k_yday, bs = "cr") +
+                   s(hour, k = -1, bs = "cc"),
       na.action = na.exclude #, data = df
     )
     v_pred <- predict(m, newdata = data.frame(datect_num, hour, yday))
@@ -106,17 +141,18 @@ impute <- function(y, l_gf = l_gf, method = "era5", qc_tokeep = 0,
   # add code for each replaced value in the qc df
   df_qc[, y][i_sel] <- qc
   
-  dft <- data.frame(date = df[, date_field], y = df[, y], qc = df_qc[, y])
-  p <- ggplot(dft, aes(date, y))
-  #p <- p + geom_line()
-  if (method == "era5") { # include era5 data in plot
-    p <- p + geom_point(data = df_era5, 
-      aes(x = df_era5[, date_field], y = df_era5[, y]), 
-      colour = "black", size = 1)
+  if (plot_graph) {                  
+    dft <- data.frame(date = df[, date_field], y = df[, y], qc = df_qc[, y])
+    p <- ggplot(dft, aes(date, y))
+    #p <- p + geom_line()
+    if (method == "era5") { # include era5 data in plot
+      p <- p + geom_point(data = df_era5, 
+        aes(x = df_era5[, date_field], y = df_era5[, y]), 
+        colour = "black", size = 1)
+    }
+    p <- p + geom_point(aes(y = y, colour = factor(qc)), size = 1) + ylab(y)
+    print(p)
   }
-  p <- p + geom_point(aes(y = y, colour = factor(qc)), size = 1) + ylab(y)
-  print(p)
-
   return(list(df = df, df_qc = df_qc))
 }
 
