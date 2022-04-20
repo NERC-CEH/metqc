@@ -1,3 +1,5 @@
+# here::i_am("R/metdb_app.R")
+library(here)
 library(shiny)
 library(shinyWidgets)
 library(shinyjs)
@@ -12,8 +14,25 @@ library(data.table)
 library(shinyalert)
 library(lubridate)
 library(ggExtra)
+library(openair)
+library(powerjoin)
+# source(here("R", "imputation.R"))
+# source(here("R", "plotting.R"))
+# source(here("R", "metdb_app.R"))
+
+# # to run
+# devtools::load_all()
+Sys.setenv(DBNAME = "budbase.nerc-bush.ac.uk/BUA")
+Sys.setenv(DBUID  = "BU_FIELD_SITES")
+Sys.setenv(DBPWD  = "0ig2mtYUL9")
+Sys.getenv("DBUID")
+#rm(list = c("metdbApp"))
+#rm(list=ls(all=TRUE))
 
 metdbApp <- function(...) {
+  # Reading in the gap-filling methods and codes----
+  df_method <- readRDS(file = here("data", "df_method.rds"))
+  v_names <- readRDS(file = here("data", "v_mainmet_name.rds"))
   
   # Define UI for the app
   ui <- dashboardPage(skin = "green",
@@ -29,7 +48,7 @@ metdbApp <- function(...) {
                         tabItems(
                           tabItem(tabName = "dashboard",
                                   fluidRow(
-                                    box(title = "Database Controls",
+                                    box(title = "Data Selection",
                                         status = "success", solidHeader = TRUE,
                                         helpText("Select your required processing start and end times below."),
                                         column(width = 6,
@@ -52,9 +71,6 @@ metdbApp <- function(...) {
                                                numericInput("emin",
                                                             value = 00, label = "Minute",
                                                             min = 0, max = 59, step = 1)),
-                                        sliderInput("intslider",
-                                                    label = "Smoothness (number of knots in cr spline):",
-                                                    min = 1, max = 32, value = 10, step = 1),
                                         uiOutput("select_variables"),
                                         actionButton("retrieve_data", "Retrieve from database")
                                     ),
@@ -68,11 +84,25 @@ metdbApp <- function(...) {
                                              box(title = "Plotted Extracted Data",
                                                  status = "success", solidHeader = TRUE,
                                                  uiOutput("mytabs"),
+                                                 selectInput("select_gapfill", label = h5("Gap-Filling Method"),
+                                                             choices = list(gf_methods = df_method$method)),
+                                                 selectInput("select_covariate", label = h5("Covariate"),
+                                                             choices = list("TA",
+                                                                            "TS",
+                                                                            "SW_IN", 
+                                                                            "PPFD_IN", 
+                                                                            "WTD", 
+                                                                            "SWC")),
+                                                 sliderInput("intslider",
+                                                             label = "Smoothness (number of knots in cr spline):",
+                                                             min = 1, max = 32, value = 10, step = 1),
                                                  shinyjs::disabled(actionButton("reset",
                                                                                 label = "Restart app")),
-                                                 shinyjs::disabled(actionButton("delete",
-                                                                                label = "Delete selection")),
-                                                 shinyjs::disabled(actionButton("nochange",
+                                                 shinyjs::disabled(actionButton("impute",
+                                                                                label = "Impute selection")),
+                                                 shinyjs::disabled(actionButton("replot",
+                                                                                label = "Replot graph")),
+                                                 shinyjs::disabled(actionButton("finished_check",
                                                                                 label = "Finished checking variable for date range.")),
                                              ),
                                              box(title = "Data Change Log",
@@ -91,30 +121,47 @@ metdbApp <- function(...) {
   )
   
   server <- function(input, output, session) {
-    # Setting up the server----
-    Sys.setenv(TZ = "GMT")
-    Sys.setenv(ORA_SDTZ = "GMT")
+    this_year <- as.POSIXlt(Sys.Date())$year + 1900
     
-    # Reading in the data flags ----
-    data_flags$code <- as.character(data_flags$code)
+    # Read in ERA5 data----
+    fname <- here("data", "df_era5.rds")
+    df_era5 <- readRDS(fname)    
     
-    # Making database connection----
-    drv <- dbDriver("Oracle")
-    con <- dbConnect(drv,
-                     dbname = Sys.getenv("DBNAME"),
-                     username = Sys.getenv("DBUID"),
-                     password = Sys.getenv("DBPWD")
-    )
-    table_name <- "MET_30MIN"
-    db_names <<- dbListFields(con, table_name)
-    db_names_for_box <- db_names[!db_names %in%
-                                   c("DATECT", "TIMESTAMP", "datect_num", "checked", "pred")]
+    # Read in the previously validated data----
+    fname <- here("data", "UK-AMo_mainmet_val.rds")
+    l_val <- readRDS(fname)
+    
+    # Reading in the logger data----
+    # url_mainmet <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/UK-AMo_mainmet_", this_year, "_agf.rds")
+    # l_gf <- readRDS(url(url_mainmet, "rb"))
+    ##* WIP temporarily read from local file; the url above should work but not tested thoroughly
+    fname_mainmet <- here("data", "UK-AMo_mainmet_2022_agf.rds")
+    l_gf <- readRDS(fname_mainmet)
+    
+    # add in some variable not yet recorded in ICOS files; this is a temporary fix
+    l_gf$df$RN  <- NA; l_gf$df_qc$RN  <- NA
+    l_gf$df$PWS <- NA; l_gf$df_qc$PWS <- NA
+    l_gf$df$VIS <- NA; l_gf$df_qc$VIS <- NA  
+    
+    l_gf$df    <- l_gf$df   [, v_names]
+    l_gf$df_qc <- l_gf$df_qc[, v_names]
+    
+    l_val$df    <- power_full_join(l_val$df,    l_gf$df,    by = "DATECT", conflict = coalesce_xy)
+    l_val$df_qc <- power_full_join(l_val$df_qc, l_gf$df_qc, by = "DATECT", conflict = coalesce_xy)
+    
+    date_of_first_new_record <- min(l_gf$df$DATECT, na.rm = TRUE)
+    date_of_last_new_record  <- max(l_gf$df$DATECT, na.rm = TRUE)
+    
+    #v_names <<- dbListFields(con, table_name)
+    v_names_for_box <- v_names[!v_names %in%
+                                 c("DATECT", "TIMESTAMP", "datect_num", "checked", "pred")]
+    v_names_checklist <- as.data.frame(v_names_for_box)
+    v_names_checklist$finished_checking <- FALSE
     
     # Format the dates for R----
     df_proc <- data.frame(
       start_date = "1995/01/01 00:00",
-      end_date = "2019/12/31 00:00",
-      ghgName = "co2"
+      end_date = "2022/12/31 00:00"
     )
     df_proc$start_date <- as.POSIXct(
       df_proc$start_date, format = "%Y/%m/%d %H:%M", tz = "UTC")
@@ -134,7 +181,8 @@ metdbApp <- function(...) {
     # Create a date input for the user to select start date
     output$start_date <- renderUI({
       dateInput("sdate",
-                value = as.Date(strptime("01/07/2017", "%d/%m/%Y"), tz = "UTC"),
+                value = as.Date(date_of_first_new_record, tz = "UTC"),
+                #value = as.Date(strptime("01/01/2022", "%d/%m/%Y"), tz = "UTC"),
                 min = first_start_date(),
                 max = last_end_date(), label = "Start date"
       )
@@ -143,7 +191,8 @@ metdbApp <- function(...) {
     # Create a date input for the user to select end date
     output$end_date <- renderUI({
       dateInput("edate",
-                value = as.Date(strptime("01/08/2017", "%d/%m/%Y"), tz = "UTC"),
+                value = as.Date(date_of_last_new_record, tz = "UTC"),
+                #value = as.Date(strptime("01/03/2022", "%d/%m/%Y"), tz = "UTC"),
                 min = first_start_date(), max = last_end_date(), label = "End date"
       )
     })
@@ -151,26 +200,19 @@ metdbApp <- function(...) {
     # Create a dataframe with all the information about the start and end time,
     # and cr spline (do we need this?)----
     job_df <- eventReactive(input$retrieve_data, {
-      start_date <- paste(sprintf("%02d", day(input$sdate)), "/",
-                          sprintf("%02d", month(input$sdate)), "/", year(input$sdate), " ",
-                          sprintf("%02d", input$shour), ":", sprintf("%02d", input$smin), sep = "")
-      start_date <- as.POSIXct(strptime(start_date, "%d/%m/%Y %H:%M"), tz = "UTC")
-      end_date <- paste(sprintf("%02d", day(input$edate)), "/",
-                        sprintf("%02d", month(input$edate)), "/", year(input$edate), " ",
-                        sprintf("%02d", input$ehour), ":",
-                        sprintf("%02d", input$emin), sep = "")
-      end_date <- as.POSIXct(strptime(end_date, "%d/%m/%Y %H:%M"), tz = "UTC")
-      n_times <- input$intslider
-      # create a sequence of timestamps
-      datect <- seq(start_date, end_date,
-                    length = n_times
-      )
-      
-      data.frame(
-        datech = format(datect, "%Y/%m/%d %H:%M"),
-        n_times = n_times,
-        datect = datect
-      )
+      start_date_ch <- paste(sprintf("%02d", day(input$sdate)), "/",
+                             sprintf("%02d", month(input$sdate)), "/", year(input$sdate), " ",
+                             sprintf("%02d", input$shour), ":", sprintf("%02d", input$smin), sep = "")
+      start_date <- as.POSIXct(strptime(start_date_ch, "%d/%m/%Y %H:%M"), tz = "UTC")
+      end_date_ch <- paste(sprintf("%02d", day(input$edate)), "/",
+                           sprintf("%02d", month(input$edate)), "/", year(input$edate), " ",
+                           sprintf("%02d", input$ehour), ":",
+                           sprintf("%02d", input$emin), sep = "")
+      end_date <- as.POSIXct(strptime(end_date_ch, "%d/%m/%Y %H:%M"), tz = "UTC")
+      list(start_date = start_date,
+           end_date = end_date,
+           start_date_ch = start_date_ch,
+           end_date_ch = end_date_ch)
     })
     
     # Rendering the box that we need to allow the user to select
@@ -178,7 +220,7 @@ metdbApp <- function(...) {
     output$select_variables <- renderUI({
       checkboxGroupButtons("variable_check",
                            label = h5("Variables to be checked"),
-                           choices = as.list(db_names_for_box), selected = NULL
+                           choices = as.list(v_names_for_box), selected = v_names_for_box
       )
     })
     
@@ -190,21 +232,41 @@ metdbApp <- function(...) {
       # enabling previously disabled buttons
       shinyjs::show("extracted_data")
       enable("reset")
-      enable("delete")
-      enable("nochange")
+      enable("impute")
+      enable("replot")
+      enable("finished_check")
       
       # make a query for every variable that has been checked by the user.
       if (!is.null(input$variable_check)) {
-        qry_variables <- paste(input$variable_check, collapse = ", ")
+        #qry_variables <- paste(input$variable_check, collapse = ", ")
+        qry_variables <- paste(v_names, collapse = ", ")
+        table_name <- "MAINMET_RAW"
         qry <- paste0(
-          "SELECT DATECT, TIMESTAMP, ", qry_variables, " FROM ", table_name,
-          " WHERE DATECT > TO_DATE('", job_df()$datech[1],
+          "SELECT DATECT, ", qry_variables, " FROM ", table_name,
+          " WHERE DATECT > TO_DATE('", job_df()$start_date_ch,
           "', 'yyyy/mm/dd hh24:mi') AND DATECT < TO_DATE('",
-          job_df()$datech[6], "', 'yyyy/mm/dd hh24:mi')"
+          job_df()$end_date_ch, "', 'yyyy/mm/dd hh24:mi')"
         )
-        df_qry <<- dbGetQuery(con, qry)
-        df_qry$checked <<- as.factor(rownames(df_qry))
-        df_qry$datect_num <<- as.numeric(df_qry$DATECT)
+        
+        df_qry <<- subset(l_val$df,   DATECT >= job_df()$start_date &
+                            DATECT <= job_df()$end_date)
+        ## should rename df_qc_qry for clarity?
+        df_qc <<- subset(l_val$df_qc, DATECT >= job_df()$start_date &
+                           DATECT <= job_df()$end_date)
+        # make a corresponding subset of the ERA5 data
+        df_era5_qry <<- subset(df_era5, DATECT >= job_df()$start_date &
+                                 DATECT <= job_df()$end_date)
+        
+        df_qry$checked <<- as.factor(rownames(df_qry))   
+        df_qry$datect_num <<- as.numeric(df_qry$DATECT)  
+        
+        table_name <- "MAINMET_RAW_QC"
+        qry <- paste0(
+          "SELECT DATECT, ", qry_variables, " FROM ", table_name,
+          " WHERE DATECT > TO_DATE('", job_df()$start_date_ch,
+          "', 'yyyy/mm/dd hh24:mi') AND DATECT < TO_DATE('",
+          job_df()$end_date_ch, "', 'yyyy/mm/dd hh24:mi')"
+        )
         
         # Add a tab to the plotting panel for each variable that has been selected by the user.
         # TO DO: I need to add a condition here that stops the user from adding duplicate variables at a later stage
@@ -245,51 +307,63 @@ metdbApp <- function(...) {
       input[[paste0(input$plotTabs, "_interactive_plot_selected")]]
     })
     
-    # Delete button functionality----
-    observeEvent(input$delete, {
+    # Impute button functionality----
+    observeEvent(input$impute, {
       if (is.null(selected_state())) {
-        shinyjs::alert("Please select a point to delete.")
+        shinyjs::alert("Please select a point to impute.")
       } else {
         shinyjs::enable("submitchanges")
         
-        # Extract all the reasons for deletion for the data points
-        delete_reasons <- data_flags %>%
-          filter(cat == "initial_flag")
-        # Turn it into a list for selection
-        delete_reasons <- delete_reasons$information
+        # # Extract all the reasons for imputation of the data points
+        # impute_reasons <- data_flags %>%
+        # filter(cat == "initial_flag")
+        # # Turn it into a list for selection
+        # impute_reasons <- impute_reasons$information
         
-        # Extract gapfilling methods
-        gapfill_options <- data_flags %>%
-          filter(cat != "initial_flag")
-        gapfill_options <- gapfill_options$information
+        # # Extract gapfilling methods
+        # gapfill_options <- data_flags %>%
+        # filter(cat != "initial_flag")
+        # gapfill_options <- gapfill_options$information
         
-        # Gapfilling - NOTE, does not yet change depending on method selection
-        y <- df_qry[, input$plotTabs]
-        m <- gam(y ~ s(datect_num, bs = "cr", k = input$intslider),
-                 data = df_qry, na.action = na.exclude)
-        df_qry$pred <<- predict(m, newdata = df_qry, na.action = na.exclude)
+        l_gf <- list(df = df_qry, df_qc = df_qc)
         
-        # Pop up modal that will ask the user why a point is being deleted.
-        showModal(modalDialog(
-          h2("Please supply additional information:"),
-          h4("What is the reason for deleting the selected point(s)?"),
-          selectInput("var_reason", label = h5("Reason for point removal."),
-                      choices = delete_reasons),
-          h4("What is the gapfilling method you would like to use?"),
-          selectInput("select_gapfill", label = h5("Gap-Filling Method"),
-                      choices = gapfill_options),
-          sliderInput("intslider",
-                      label = "Smoothness (number of knots in cr spline):",
-                      min = 1, max = 32, value = 10, step = 1),
-          easyClose = TRUE,
-          footer = tagList(
-            actionButton("var_reason1", "Confirm deletion reason and gapfill method.")
-          )
-        ))
+        l_gf <- impute(y = input$plotTabs, l_gf, method = input$select_gapfill, 
+                       x = input$select_covariate, df_era5 = df_era5_qry, k = input$intslider,
+                       selection = df_qry$checked %in% selected_state())
+        
+        df_qry <<- l_gf$df
+        df_qc  <<- l_gf$df_qc
+        
+        # Re-plotting plot after imputation is confirmed to illustrate changes
+        shinyjs::show("plotted_data")
+        enable("reset")
+        enable("impute")
+        enable("finished_check")
+        
+        # Creating a reactive plot that will be plotted depending on the tab selected in plotTabs
+        plot_selected <- reactive({
+          req(input$plotTabs)
+          plotting_function(input$plotTabs)
+        })
+        # Re-render
+        output[[paste0(input$plotTabs, "_interactive_plot")]] <- renderggiraph(plot_selected())
       }
     })
     
+    # Replot button functionality----
+    ##* WIP this does not work; graphs should update after imputation, but do not - PL 11/04/2022
+    observeEvent(input$replot, {
+      # Creating a reactive plot that will be plotted depending on the tab selected in plotTabs
+      plot_selected <- reactive({
+        req(input$plotTabs)
+        plotting_function(input$plotTabs)
+      })
+      # Re-render
+      output[[paste0(input$plotTabs, "_interactive_plot")]] <- renderggiraph(plot_selected())
+    })
+    
     # Confirmation message for deleting a point, and all under-the-hood changes start here
+    ##* WIP this button and actions can be removed - QC df is enough, and reasons not needed - PL 11/04/2022
     observeEvent(input$var_reason1, {
       removeModal()
       sendSweetAlert(
@@ -302,7 +376,7 @@ metdbApp <- function(...) {
       )
       df_list <- list()
       for (i in selected_state()) {
-        # Here I am creating a df to keep track of the changes made to the data.
+        # Here I am creating a dataframe to keep track of the changes made to the data.
         changed_df <- data.frame()
         changed_df <- colnames(c(
           "variable", "checked", "gapfill_code",
@@ -352,11 +426,11 @@ metdbApp <- function(...) {
         "user"
       )]
       
-      # Re-plotting plot after deletion is confirmed to illustrate changes
+      # Re-plotting plot after imputation is confirmed to illustrate changes
       shinyjs::show("plotted_data")
       enable("reset")
-      enable("delete")
-      enable("nochange")
+      enable("impute")
+      enable("finished_check")
       
       # Creating a reactive plot that will be plotted depending on the tab selected in plotTabs
       plot_selected <- reactive({
@@ -399,38 +473,61 @@ metdbApp <- function(...) {
     })
     
     # Finished checking, close tab functionality----
-    observeEvent(input$nochange, {
+    observeEvent(input$finished_check, {
       removeTab("plotTabs", input$plotTabs)
+      
       # Insert validation flag for date range here
+      v_names_checklist$finished_checking[v_names_checklist$v_names_for_box == input$plotTabs] <<- TRUE
+      
+      # Check if all values are true, only then enable the submit button
+      if(all(v_names_checklist$finished_checking) == TRUE) {
+        shinyjs::enable("submitchanges")        
+      }
     })
     
-    # Writing tables to a database----
+    # # Writing tables to a database----
+    ##* WIP - temporarily removed - writes to file instead. Requires SQL UPDATE code here
+    # observeEvent(input$submitchanges, {
+    # if (dbExistsTable(con, "MAINMET")) {
+    # dbWriteTable(con,
+    # "MAINMET",
+    # df_qry,
+    # append = TRUE
+    # )
+    # } else {
+    # dbWriteTable(con,
+    # "MAINMET",
+    # df_qry
+    # )
+    # }
+    
+    # if (dbExistsTable(con, "MAINMET_QC")) {
+    # dbWriteTable(con,
+    # "MAINMET_QC",
+    # change_summary,
+    # append = TRUE
+    # )
+    # } else {
+    # dbWriteTable(con,
+    # "MAINMET_QC",
+    # change_summary
+    # )
+    # }
+    # dbCommit(con) ##* WIP is this the correct place for this?
+    # })    
+    
+    # Writing validated data to file----
     observeEvent(input$submitchanges, {
-      if (dbExistsTable(con, "MET_30MIN_VALIDATED_TEST")) {
-        dbWriteTable(con,
-                     "MET_30MIN_VALIDATED_TEST",
-                     df_qry,
-                     append = TRUE
-        )
-      } else {
-        dbWriteTable(con,
-                     "MET_30MIN_VALIDATED_TEST",
-                     df_qry
-        )
-      }
+      df_qc$validator <- as.character(Sys.info()["user"])
+      # create a backup copy without the changes
+      fname <- here("data", "UK-AMo_mainmet_val_backup.rds")
+      saveRDS(l_val, file = fname)
       
-      if (dbExistsTable(con, "MET_30MIN_VALIDATION_LOG_TEST")) {
-        dbWriteTable(con,
-                     "MET_30MIN_VALIDATION_LOG_TEST",
-                     change_summary,
-                     append = TRUE
-        )
-      } else {
-        dbWriteTable(con,
-                     "MET_30MIN_VALIDATION_LOG_TEST",
-                     change_summary
-        )
-      }
+      # overwrite existing data with changes in query
+      l_val$df    <- power_full_join(l_val$df,    df_qry, by = "DATECT", conflict = coalesce_yx)
+      l_val$df_qc <- power_full_join(l_val$df_qc, df_qc,  by = "DATECT", conflict = coalesce_yx)
+      fname <- here("data", "UK-AMo_mainmet_val.rds")
+      saveRDS(l_val, file = fname)      
     })
   }
   
