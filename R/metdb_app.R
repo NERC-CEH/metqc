@@ -86,16 +86,7 @@ metdbApp <- function(...) {
                                                  uiOutput("mytabs"),
                                                  selectInput("select_gapfill", label = h5("Gap-Filling Method"),
                                                              choices = list(gf_methods = df_method$method)),
-                                                 selectInput("select_covariate", label = h5("Covariate"),
-                                                             choices = list("TA",
-                                                                            "TS",
-                                                                            "SW_IN", 
-                                                                            "PPFD_IN", 
-                                                                            "WTD", 
-                                                                            "SWC")),
-                                                 sliderInput("intslider",
-                                                             label = "Smoothness (number of knots in cr spline):",
-                                                             min = 1, max = 32, value = 10, step = 1),
+                                                 uiOutput("impute_extra_info"),
                                                  shinyjs::disabled(actionButton("reset",
                                                                                 label = "Restart app")),
                                                  shinyjs::disabled(actionButton("impute",
@@ -222,6 +213,23 @@ metdbApp <- function(...) {
                            label = h5("Variables to be checked"),
                            choices = as.list(v_names_for_box), selected = v_names_for_box
       )
+    })
+    
+    output$impute_extra_info <- renderUI({
+      req(input$select_gapfill)
+      if(input$select_gapfill == "missing") {
+        sliderInput("intslider",
+                    label = "Smoothness (number of knots in cr spline):",
+                    min = 1, max = 32, value = 10, step = 1)
+      } else if (input$select_gapfill == "time") {
+        selectInput("select_covariate", label = h5("Covariate"),
+                    choices = list("TA",
+                                   "TS",
+                                   "SW_IN", 
+                                   "PPFD_IN", 
+                                   "WTD", 
+                                   "SWC"))
+      }
     })
     
     # Creating empty dataframes----
