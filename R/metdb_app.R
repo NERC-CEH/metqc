@@ -477,7 +477,7 @@ metdbApp <- function(...) {
       removeTab("plotTabs", input$plotTabs)
       
       # Insert validation flag for date range here
-      v_names_checklist$finished_checking[v_names_checklist$v_names_for_box == input$plotTabs] <- TRUE
+      v_names_checklist$finished_checking[v_names_checklist$v_names_for_box == input$plotTabs] <<- TRUE
       
       # Check if all values are true, only then enable the submit button
       if(all(v_names_checklist$finished_checking) == TRUE) {
