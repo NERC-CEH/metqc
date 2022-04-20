@@ -102,7 +102,7 @@ metdbApp <- function(...) {
                                                                                 label = "Impute selection")),
                                                  shinyjs::disabled(actionButton("replot",
                                                                                 label = "Replot graph")),
-                                                 shinyjs::disabled(actionButton("nochange",
+                                                 shinyjs::disabled(actionButton("finished_check",
                                                                                 label = "Finished checking variable for date range.")),
                                              ),
                                              box(title = "Data Change Log",
@@ -155,6 +155,8 @@ metdbApp <- function(...) {
     #v_names <<- dbListFields(con, table_name)
     v_names_for_box <- v_names[!v_names %in%
                                  c("DATECT", "TIMESTAMP", "datect_num", "checked", "pred")]
+    v_names_checklist <- as.data.frame(v_names_for_box)
+    v_names_checklist$finished_checking <- FALSE
     
     # Format the dates for R----
     df_proc <- data.frame(
@@ -232,7 +234,7 @@ metdbApp <- function(...) {
       enable("reset")
       enable("impute")
       enable("replot")
-      enable("nochange")
+      enable("finished_check")
       
       # make a query for every variable that has been checked by the user.
       if (!is.null(input$variable_check)) {
@@ -323,9 +325,6 @@ metdbApp <- function(...) {
         # filter(cat != "initial_flag")
         # gapfill_options <- gapfill_options$information
         
-        # Gapfilling - NOTE, does not yet change depending on method selection
-        #df_qc[df_qry$checked %in% selected_state(), input$plotTabs] <<- 1 # not needed?
-        
         l_gf <- list(df = df_qry, df_qc = df_qc)
         
         l_gf <- impute(y = input$plotTabs, l_gf, method = input$select_gapfill, 
@@ -339,7 +338,7 @@ metdbApp <- function(...) {
         shinyjs::show("plotted_data")
         enable("reset")
         enable("impute")
-        enable("nochange")
+        enable("finished_check")
         
         # Creating a reactive plot that will be plotted depending on the tab selected in plotTabs
         plot_selected <- reactive({
@@ -347,7 +346,7 @@ metdbApp <- function(...) {
           plotting_function(input$plotTabs)
         })
         # Re-render
-        output$interactive_plot <- renderggiraph(plot_selected())
+        output[[paste0(input$plotTabs, "_interactive_plot")]] <- renderggiraph(plot_selected())
       }
     })
     
@@ -360,7 +359,7 @@ metdbApp <- function(...) {
         plotting_function(input$plotTabs)
       })
       # Re-render
-      output$interactive_plot <- renderggiraph(plot_selected())
+      output[[paste0(input$plotTabs, "_interactive_plot")]] <- renderggiraph(plot_selected())
     })
     
     # Confirmation message for deleting a point, and all under-the-hood changes start here
@@ -431,7 +430,7 @@ metdbApp <- function(...) {
       shinyjs::show("plotted_data")
       enable("reset")
       enable("impute")
-      enable("nochange")
+      enable("finished_check")
       
       # Creating a reactive plot that will be plotted depending on the tab selected in plotTabs
       plot_selected <- reactive({
@@ -474,10 +473,16 @@ metdbApp <- function(...) {
     })
     
     # Finished checking, close tab functionality----
-    observeEvent(input$nochange, {
+    observeEvent(input$finished_check, {
       removeTab("plotTabs", input$plotTabs)
-      shinyjs::enable("submitchanges")
+      
       # Insert validation flag for date range here
+      v_names_checklist$finished_checking[v_names_checklist$v_names_for_box == input$plotTabs] <- TRUE
+      
+      # Check if all values are true, only then enable the submit button
+      if(all(v_names_checklist$finished_checking) == TRUE) {
+        shinyjs::enable("submitchanges")        
+      }
     })
     
     # # Writing tables to a database----
