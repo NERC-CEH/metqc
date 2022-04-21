@@ -106,7 +106,7 @@ metdbApp <- function(...) {
                 title = "Plotted Extracted Data",
                 status = "success", solidHeader = TRUE,
                 uiOutput("mytabs"),
-                selectInput("select_gapfill",
+                selectInput("select_imputation",
                   label = h5("Gap-Filling Method"),
                   choices = list(gf_methods = df_method$method)
                 ),
@@ -116,9 +116,6 @@ metdbApp <- function(...) {
                 )),
                 shinyjs::disabled(actionButton("impute",
                   label = "Impute selection"
-                )),
-                shinyjs::disabled(actionButton("replot",
-                  label = "Replot graph"
                 )),
                 shinyjs::disabled(actionButton("finished_check",
                   label = "Finished checking variable for date range."
@@ -272,14 +269,16 @@ metdbApp <- function(...) {
       )
     })
 
+    # The optional rendering of UI elements depending on which 
+    # imputation method has been selected
     output$impute_extra_info <- renderUI({
-      req(input$select_gapfill)
-      if (input$select_gapfill == "missing") {
+      req(input$select_imputation)
+      if (input$select_imputation == "missing") {
         sliderInput("intslider",
           label = "Smoothness (number of knots in cr spline):",
           min = 1, max = 32, value = 10, step = 1
         )
-      } else if (input$select_gapfill == "time") {
+      } else if (input$select_imputation == "time") {
         selectInput("select_covariate",
           label = h5("Covariate"),
           choices = list(
@@ -294,9 +293,6 @@ metdbApp <- function(...) {
       }
     })
 
-    # Creating empty dataframes----
-    change_summary <- data.frame()
-
     # Data retrieval functionality-----
     observeEvent(input$retrieve_data, {
       # enabling previously disabled buttons
@@ -309,6 +305,9 @@ metdbApp <- function(...) {
       # make a query for every variable that has been checked by the user.
       if (!is.null(input$variable_check)) {
         # qry_variables <- paste(input$variable_check, collapse = ", ")
+        # TZ - this bit of code here now means all variables are queried,
+        # regardless of user selection, in essence that means user selection
+        # only determines which tabs are visible.
         qry_variables <- paste(v_names, collapse = ", ")
         table_name <- "MAINMET_RAW"
         qry <- paste0(
@@ -321,6 +320,7 @@ metdbApp <- function(...) {
         df_qry <<- subset(l_val$df, DATECT >= job_df()$start_date &
           DATECT <= job_df()$end_date)
         ## should rename df_qc_qry for clarity?
+        # TZ - I agree
         df_qc <<- subset(l_val$df_qc, DATECT >= job_df()$start_date &
           DATECT <= job_df()$end_date)
         # make a corresponding subset of the ERA5 data
@@ -339,7 +339,6 @@ metdbApp <- function(...) {
         )
 
         # Add a tab to the plotting panel for each variable that has been selected by the user.
-        # TO DO: I need to add a condition here that stops the user from adding duplicate variables at a later stage
         output$mytabs <- renderUI({
           my_tabs <- lapply(paste(input$variable_check), function(i) {
             tabPanel(i,
@@ -358,6 +357,8 @@ metdbApp <- function(...) {
         )
 
         # Give a warning if there are no variables selected.
+        # TZ - given changes to how variables are queried this might
+        # no longer be necessary
       } else if (is.null(input$variable_check)) {
         shinyjs::alert("Please select one or more variables before extracting data from the database.")
       }
@@ -399,7 +400,7 @@ metdbApp <- function(...) {
         l_gf <- impute(
           y = input$plotTabs,
           l_gf,
-          method = input$select_gapfill,
+          method = input$select_imputation,
           x = input$select_covariate,
           df_era5 = df_era5_qry,
           k = input$intslider,
@@ -423,97 +424,6 @@ metdbApp <- function(...) {
         # Re-render
         output[[paste0(input$plotTabs, "_interactive_plot")]] <- renderggiraph(plot_selected())
       }
-    })
-
-    # Replot button functionality----
-    ##* WIP this does not work; graphs should update after imputation, but do not - PL 11/04/2022
-    observeEvent(input$replot, {
-      # Creating a reactive plot that will be plotted depending on the tab selected in plotTabs
-      plot_selected <- reactive({
-        req(input$plotTabs)
-        plotting_function(input$plotTabs)
-      })
-      # Re-render
-      output[[paste0(input$plotTabs, "_interactive_plot")]] <- renderggiraph(plot_selected())
-    })
-
-    # Confirmation message for deleting a point, and all under-the-hood changes start here
-    ##* WIP this button and actions can be removed - QC df is enough, and reasons not needed - PL 11/04/2022
-    observeEvent(input$var_reason1, {
-      removeModal()
-      sendSweetAlert(
-        session,
-        title = "Success!",
-        type = "success",
-        btn_labels = "Ok",
-        closeOnClickOutside = TRUE,
-        width = NULL
-      )
-      df_list <- list()
-      for (i in selected_state()) {
-        # Here I am creating a dataframe to keep track of the changes made to the data.
-        changed_df <- data.frame()
-        changed_df <- colnames(c(
-          "variable", "checked", "gapfill_code",
-          "gapfill_initials", "gapfill_info", "old_value", "flag_info",
-          "flag_code", "flag_initials", "new_value", "user"
-        ))
-        changed_df$variable <- input$plotTabs
-        changed_df$point_id <- i
-        changed_df$old_value <- df_qry[df_qry$checked %in% i, input$plotTabs]
-        changed_df$flag_info <- input$var_reason
-        add_code <- data_flags %>%
-          dplyr::filter(information == input$var_reason)
-        changed_df$flag_code <- add_code$code
-        changed_df$flag_initials <- add_code$initials
-
-        # Gapfill method information to be added
-        add_fill <- data_flags %>%
-          dplyr::filter(information == add_code$information)
-        changed_df$gapfill_info <- input$select_gapfill
-        changed_df$gapfill_code <- add_fill$code
-        changed_df$gapfill_initials <- add_fill$initials
-
-        changed_df$user <- Sys.info()["user"]
-        # Change the old value to the new value depending on the predicted value
-        df_qry[df_qry$checked %in% i, input$plotTabs] <<- NA
-        df_qry[is.na(df_qry[, input$plotTabs]), input$plotTabs] <<-
-          df_qry$pred[is.na(df_qry[, input$plotTabs])]
-        # Now adding the new value to the changed df, using the exact same command as above for the old value
-        changed_df$new_value <- df_qry[df_qry$checked %in% i, input$plotTabs]
-        changed_df <- bind_rows(changed_df) # %>% as.data.frame()
-        df_list[[i]] <- changed_df
-      }
-      changed_df <- bind_rows(df_list)
-
-      # If statement that creates the dataframe in memory if it does not already exist
-      if (length(change_summary) == 0) {
-        change_summary <<- changed_df
-      } else {
-        # or appends the dataframe if it does already exist
-        change_summary <<- rbind(change_summary, changed_df)
-      }
-
-      change_summary <<- change_summary[c(
-        "variable", "point_id", "old_value", "new_value", "flag_code",
-        "flag_initials", "flag_info",
-        "gapfill_code", "gapfill_initials", "gapfill_info",
-        "user"
-      )]
-
-      # Re-plotting plot after imputation is confirmed to illustrate changes
-      shinyjs::show("plotted_data")
-      enable("reset")
-      enable("impute")
-      enable("finished_check")
-
-      # Creating a reactive plot that will be plotted depending on the tab selected in plotTabs
-      plot_selected <- reactive({
-        req(input$plotTabs)
-        plotting_function(input$plotTabs)
-      })
-      # Re-render
-      output$interactive_plot <- renderggiraph(plot_selected())
     })
 
     # Reset button functionality----
