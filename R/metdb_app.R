@@ -111,15 +111,15 @@ metdbApp <- function(...) {
                   choices = list(gf_methods = df_method$method)
                 ),
                 uiOutput("impute_extra_info"),
-                shinyjs::disabled(actionButton("reset",
+                actionButton("reset",
                   label = "Restart app"
-                )),
-                shinyjs::disabled(actionButton("impute",
+                ),
+                actionButton("impute",
                   label = "Impute selection"
-                )),
-                shinyjs::disabled(actionButton("finished_check",
+                ),
+                actionButton("finished_check",
                   label = "Finished checking variable for date range."
-                )),
+                ),
                 shinyjs::disabled(
                   actionButton("submitchanges", "Submit changes")
                 )
@@ -251,7 +251,8 @@ metdbApp <- function(...) {
       )
       end_date <- as.POSIXct(
         strptime(end_date_ch, "%d/%m/%Y %H:%M"),
-        tz = "UTC")
+        tz = "UTC"
+      )
       list(
         start_date = start_date,
         end_date = end_date,
@@ -269,7 +270,7 @@ metdbApp <- function(...) {
       )
     })
 
-    # The optional rendering of UI elements depending on which 
+    # The optional rendering of UI elements depending on which
     # imputation method has been selected
     output$impute_extra_info <- renderUI({
       req(input$select_imputation)
@@ -297,10 +298,6 @@ metdbApp <- function(...) {
     observeEvent(input$retrieve_data, {
       # enabling previously disabled buttons
       shinyjs::show("extracted_data")
-      enable("reset")
-      enable("impute")
-      enable("replot")
-      enable("finished_check")
 
       # make a query for every variable that has been checked by the user.
       if (!is.null(input$variable_check)) {
