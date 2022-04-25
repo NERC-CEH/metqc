@@ -273,22 +273,15 @@ metdbApp <- function(...) {
     # imputation method has been selected
     output$impute_extra_info <- renderUI({
       req(input$select_imputation)
-      if (input$select_imputation == "missing") {
+      if (input$select_imputation == "time") {
         sliderInput("intslider",
           label = "Smoothness (number of knots in cr spline):",
           min = 1, max = 32, value = 10, step = 1
         )
-      } else if (input$select_imputation == "time") {
+      } else if (input$select_imputation == "regn") {
         selectInput("select_covariate",
           label = h5("Covariate"),
-          choices = list(
-            "TA",
-            "TS",
-            "SW_IN",
-            "PPFD_IN",
-            "WTD",
-            "SWC"
-          )
+          choices = v_names_for_box
         )
       }
     })
