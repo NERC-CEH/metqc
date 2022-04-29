@@ -50,4 +50,7 @@ Imports:
     shinyjs,
     ROracle,
     ggExtra,
-    mgcv
+    mgcv,
+    here, 
+    openair,
+    powerjoin
