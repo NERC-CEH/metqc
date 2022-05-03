@@ -103,7 +103,9 @@ metdbApp <- function(...) {
               id = "extracted_data",
               box(
                 title = "Plotted Extracted Data",
-                status = "success", solidHeader = TRUE,
+                status = "success",
+                solidHeader = TRUE,
+                width = 12,
                 uiOutput("mytabs"),
                 selectInput("select_imputation",
                   label = h5("Gap-Filling Method"),

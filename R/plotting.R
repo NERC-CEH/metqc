@@ -12,6 +12,7 @@ plotting_function <- function(input_variable) {
   )
   
   df <- left_join(df, df_method, by = "qc")
+  df$method[is.na(df$method)] <- "no imputation"
   
   p1_ggplot <- ggplot(
     df,
@@ -31,7 +32,7 @@ plotting_function <- function(input_variable) {
     )
   p1_girafe <- girafe(
     code = print(p1_ggplot),
-    width_svg = 6, height_svg = 5
+    width_svg = 12, height_svg = 5
   )
   p1_girafe <- girafe_options(
     p1_girafe, opts_selection(
