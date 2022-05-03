@@ -30,7 +30,7 @@ Sys.getenv("DBUID")
 
 metdbApp <- function(...) {
   # Reading in the gap-filling methods and codes----
-  df_method <- readRDS(file = here("data", "df_method.rds"))
+  df_method <<- readRDS(file = here("data", "df_method.rds"))
   v_names <- readRDS(file = here("data", "v_mainmet_name.rds"))
 
   # Define UI for the app
@@ -290,7 +290,7 @@ metdbApp <- function(...) {
     observeEvent(input$retrieve_data, {
       # enabling previously disabled buttons
       shinyjs::show("extracted_data")
-
+      
       # make a query for every variable that has been checked by the user.
       if (!is.null(input$variable_check)) {
         # qry_variables <- paste(input$variable_check, collapse = ", ")
@@ -326,7 +326,7 @@ metdbApp <- function(...) {
           "', 'yyyy/mm/dd hh24:mi') AND DATECT < TO_DATE('",
           job_df()$end_date_ch, "', 'yyyy/mm/dd hh24:mi')"
         )
-
+        
         # Add a tab to the plotting panel for each variable that has been selected by the user.
         output$mytabs <- renderUI({
           my_tabs <- lapply(paste(input$variable_check), function(i) {
