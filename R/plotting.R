@@ -1,11 +1,10 @@
 #' Custom plotting function for each variable
 #'
-#' @param input_variable
+#' @param input_variable met variable to be plotted, input variable will be a reactive
 #'
 #' @return
 #' @export
 #'
-#' @examples
 plotting_function <- function(input_variable) {
   df <- data.frame(
     DATECT = df_qry$DATECT, y = df_qry[, input_variable],
@@ -36,19 +35,19 @@ plotting_function <- function(input_variable) {
       type = "multiple",
       css = "fill:#FF3333;stroke:black;"
     ),
-    opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;")
+    opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"),
+    opts_zoom(max = 5)
   )
 }
 
 #' Custom plotting function to construct a heatmap calendar
 #'
-#' @param input_variable
-#' @param df_qry
+#' @param input_variable might not need this anymore, given all variables need checking for the same date
+#' @param df_qry the dataframe of the query, in order to extract the dates
 #'
 #' @return
 #' @export
 #'
-#' @examples
 plot_heatmap_calendar <- function(input_variable, df_qry) {
   # Transforming query dataframe with lubridate to fit the format needed for a heatmap calendar
   date_coverage_df <- df_qry %>%

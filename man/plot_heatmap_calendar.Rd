@@ -7,9 +7,9 @@
 plot_heatmap_calendar(input_variable, df_qry)
 }
 \arguments{
-\item{input_variable}{}
+\item{input_variable}{might not need this anymore, given all variables need checking for the same date}
 
-\item{df_qry}{}
+\item{df_qry}{the dataframe of the query, in order to extract the dates}
 }
 \value{
 

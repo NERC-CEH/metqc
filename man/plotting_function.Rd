@@ -7,7 +7,7 @@
 plotting_function(input_variable)
 }
 \arguments{
-\item{input_variable}{}
+\item{input_variable}{met variable to be plotted, input variable will be a reactive}
 }
 \value{
 
