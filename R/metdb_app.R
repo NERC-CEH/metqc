@@ -278,7 +278,7 @@ metdbApp <- function(...) {
       if (input$select_imputation == "time") {
         sliderInput("intslider",
           label = "Smoothness (number of knots in cr spline):",
-          min = 1, max = 32, value = 10, step = 1
+          min = 1, max = 50, value = 10, step = 1
         )
       } else if (input$select_imputation == "regn") {
         selectInput("select_covariate",
