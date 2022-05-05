@@ -111,6 +111,10 @@ metdbApp <- function(...) {
                   label = h5("Gap-Filling Method"),
                   choices = list(gf_methods = df_method$method)
                 ),
+                checkboxGroupInput("qc_tokeep", "Do not alter data estimated by",
+                  choiceNames = c("Original observation (raw data)", df_method$method),
+                  choiceValues = c(0, df_method$qc),
+                  selected = "Original observation (raw data)"),
                 uiOutput("impute_extra_info"),
                 actionButton("reset",
                   label = "Restart app"
@@ -392,6 +396,7 @@ metdbApp <- function(...) {
           y = input$plotTabs,
           l_gf,
           method = input$select_imputation,
+          qc_tokeep = as.numeric(input$qc_tokeep),
           x = input$select_covariate,
           df_era5 = df_era5_qry,
           k = input$intslider,
