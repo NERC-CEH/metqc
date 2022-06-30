@@ -1,4 +1,4 @@
-# here::i_am("R/metdb_app.R")
+# here::i_am("R/metqc_app.R")
 library(here)
 library(shiny)
 library(shinyWidgets)
@@ -17,18 +17,18 @@ library(openair)
 library(powerjoin)
 # source(here("R", "imputation.R"))
 # source(here("R", "plotting.R"))
-# source(here("R", "metdb_app.R"))
+# source(here("R", "metqc_app.R"))
 
 # # to run
+# rm(list=ls(all=TRUE))
 # devtools::load_all()
+# metqcApp()
 Sys.setenv(DBNAME = "budbase.nerc-bush.ac.uk/BUA")
 Sys.setenv(DBUID = "BU_FIELD_SITES")
 Sys.setenv(DBPWD = "0ig2mtYUL9")
 Sys.getenv("DBUID")
-# rm(list = c("metdbApp"))
-# rm(list=ls(all=TRUE))
 
-metdbApp <- function(...) {
+metqcApp <- function(...) {
   # Reading in the gap-filling methods and codes----
   df_method <<- readRDS(file = here("data", "df_method.rds"))
   v_names <- readRDS(file = here("data", "v_mainmet_name.rds"))
@@ -89,7 +89,7 @@ metdbApp <- function(...) {
                   min = 0, max = 59, step = 1
                 )
               ),
-              uiOutput("select_variables"),
+              # uiOutput("select_variables"),
               actionButton("retrieve_data", "Retrieve from database")
             ),
             box(
@@ -111,6 +111,12 @@ metdbApp <- function(...) {
                   label = h5("Gap-Filling Method"),
                   choices = list(gf_methods = df_method$method)
                 ),
+                actionButton("impute",
+                  label = "Impute selection"
+                ),
+                actionButton("finished_check",
+                  label = "Finished checking variable for date range."
+                ),
                 checkboxGroupInput("qc_tokeep", "Do not alter data estimated by",
                   choiceNames = c("Original observation (raw data)", df_method$method),
                   choiceValues = c(0, df_method$qc),
@@ -118,12 +124,6 @@ metdbApp <- function(...) {
                 uiOutput("impute_extra_info"),
                 actionButton("reset",
                   label = "Restart app"
-                ),
-                actionButton("impute",
-                  label = "Impute selection"
-                ),
-                actionButton("finished_check",
-                  label = "Finished checking variable for date range."
                 ),
                 shinyjs::disabled(
                   actionButton("submitchanges", "Submit changes")
@@ -157,17 +157,6 @@ metdbApp <- function(...) {
     ##* WIP temporarily read from local file; the url above should work but not tested thoroughly
     fname_mainmet <- here("data", "UK-AMo_mainmet_2022_agf.rds")
     l_gf <- readRDS(fname_mainmet)
-
-    # add in some variable not yet recorded in ICOS files; this is a temporary fix
-    l_gf$df$RN <- NA
-    l_gf$df_qc$RN <- NA
-    l_gf$df$PWS <- NA
-    l_gf$df_qc$PWS <- NA
-    l_gf$df$VIS <- NA
-    l_gf$df_qc$VIS <- NA
-
-    l_gf$df <- l_gf$df[, v_names]
-    l_gf$df_qc <- l_gf$df_qc[, v_names]
 
     l_val$df <- power_full_join(l_val$df, l_gf$df,
       by = "DATECT", conflict = coalesce_xy
@@ -268,12 +257,12 @@ metdbApp <- function(...) {
 
     # Rendering the box that we need to allow the user to select
     # all of the variables they wish to check----
-    output$select_variables <- renderUI({
-      checkboxGroupButtons("variable_check",
-        label = h5("Variables to be checked"),
-        choices = as.list(v_names_for_box), selected = v_names_for_box
-      )
-    })
+    # output$select_variables <- renderUI({
+      # checkboxGroupButtons("variable_check",
+        # label = h5("Variables to be checked"),
+        # choices = as.list(v_names_for_box), selected = v_names_for_box
+      # )
+    # })
 
     # The optional rendering of UI elements depending on which
     # imputation method has been selected
@@ -297,71 +286,59 @@ metdbApp <- function(...) {
       # enabling previously disabled buttons
       shinyjs::show("extracted_data")
       
-      # make a query for every variable that has been checked by the user.
-      if (!is.null(input$variable_check)) {
-        # qry_variables <- paste(input$variable_check, collapse = ", ")
-        # TZ - this bit of code here now means all variables are queried,
-        # regardless of user selection, in essence that means user selection
-        # only determines which tabs are visible.
-        qry_variables <- paste(v_names, collapse = ", ")
-        table_name <- "MAINMET_RAW"
-        qry <- paste0(
-          "SELECT DATECT, ", qry_variables, " FROM ", table_name,
-          " WHERE DATECT > TO_DATE('", job_df()$start_date_ch,
-          "', 'yyyy/mm/dd hh24:mi') AND DATECT < TO_DATE('",
-          job_df()$end_date_ch, "', 'yyyy/mm/dd hh24:mi')"
-        )
+      # make a query for date range specified by the user.
+      qry_variables <- paste(v_names_for_box, collapse = ", ")
+      table_name <- "MAINMET_RAW"
+      qry <- paste0(
+        "SELECT DATECT, ", qry_variables, " FROM ", table_name,
+        " WHERE DATECT > TO_DATE('", job_df()$start_date_ch,
+        "', 'yyyy/mm/dd hh24:mi') AND DATECT < TO_DATE('",
+        job_df()$end_date_ch, "', 'yyyy/mm/dd hh24:mi')"
+      )
 
-        df_qry <<- subset(l_val$df, DATECT >= job_df()$start_date &
-          DATECT <= job_df()$end_date)
-        ## should rename df_qc_qry for clarity?
-        # TZ - I agree
-        df_qc <<- subset(l_val$df_qc, DATECT >= job_df()$start_date &
-          DATECT <= job_df()$end_date)
-        # make a corresponding subset of the ERA5 data
-        df_era5_qry <<- subset(df_era5, DATECT >= job_df()$start_date &
-          DATECT <= job_df()$end_date)
+      df_qry <<- subset(l_val$df, DATECT >= job_df()$start_date &
+        DATECT <= job_df()$end_date)
+      ## should rename df_qc_qry for clarity?
+      # TZ - I agree
+      df_qc <<- subset(l_val$df_qc, DATECT >= job_df()$start_date &
+        DATECT <= job_df()$end_date)
+      # make a corresponding subset of the ERA5 data
+      df_era5_qry <<- subset(df_era5, DATECT >= job_df()$start_date &
+        DATECT <= job_df()$end_date)
 
-        df_qry$checked <<- as.factor(rownames(df_qry))
-        df_qry$datect_num <<- as.numeric(df_qry$DATECT)
+      df_qry$checked <<- as.factor(rownames(df_qry))
+      df_qry$datect_num <<- as.numeric(df_qry$DATECT)
 
-        table_name <- "MAINMET_RAW_QC"
-        qry <- paste0(
-          "SELECT DATECT, ", qry_variables, " FROM ", table_name,
-          " WHERE DATECT > TO_DATE('", job_df()$start_date_ch,
-          "', 'yyyy/mm/dd hh24:mi') AND DATECT < TO_DATE('",
-          job_df()$end_date_ch, "', 'yyyy/mm/dd hh24:mi')"
-        )
-        
-        # Add a tab to the plotting panel for each variable that has been selected by the user.
-        output$mytabs <- renderUI({
-          my_tabs <- lapply(paste(input$variable_check), function(i) {
-            tabPanel(i,
-              value = i,
-              girafeOutput(paste0(i, "_interactive_plot")),
-            )
-          })
-          do.call(tabsetPanel, c(my_tabs, id = "plotTabs"))
+      table_name <- "MAINMET_RAW_QC"
+      qry <- paste0(
+        "SELECT DATECT, ", qry_variables, " FROM ", table_name,
+        " WHERE DATECT > TO_DATE('", job_df()$start_date_ch,
+        "', 'yyyy/mm/dd hh24:mi') AND DATECT < TO_DATE('",
+        job_df()$end_date_ch, "', 'yyyy/mm/dd hh24:mi')"
+      )
+      
+      # Add a tab to the plotting panel for each variable that has been selected by the user.
+      output$mytabs <- renderUI({
+        my_tabs <- lapply(paste(v_names_for_box), function(i) {
+          tabPanel(i,
+            value = i,
+            girafeOutput(paste0(i, "_interactive_plot")),
+          )
         })
+        do.call(tabsetPanel, c(my_tabs, id = "plotTabs"))
+      })
 
-        observe(
-          lapply(paste(input$variable_check), function(i) {
-            output[[paste0(i, "_interactive_plot")]] <-
-              renderggiraph(plotting_function(i))
-          })
-        )
-
-        # Give a warning if there are no variables selected.
-        # TZ - given changes to how variables are queried this might
-        # no longer be necessary
-      } else if (is.null(input$variable_check)) {
-        shinyjs::alert("Please select one or more variables before extracting data from the database.")
-      }
+      observe(
+        lapply(paste(v_names_for_box), function(i) {
+          output[[paste0(i, "_interactive_plot")]] <-
+            renderggiraph(plotting_function(i))
+        })
+      )
 
       # Creating a calendar heatmap plot that will be plotted depending on the tab selected in plotTabs
       heatmap_plot_selected <- reactive({
         req(input$plotTabs)
-        plot_heatmap_calendar(input$plotTabs, df_qry)
+        plot_heatmap_calendar(df_qc)
       })
 
       output$heatmap_plot <- renderPlot(heatmap_plot_selected())

@@ -32,6 +32,40 @@ pad_data <- function(df, by = "30 min", date_field = "DATECT", v_dates = NULL){
   return(df)
 }
 
+#' @title detect_gaps
+#' @description Detects any gaps in a data frame representing a time series
+#' @param df A data frame
+#' @param by Time interval of series, Default: '30 min'
+#' @param date_field Column name for POSIX date/time variable in df, Default: 'DATECT'
+#' @return OUTPUT_DESCRIPTION
+#' @details DETAILS
+#' @examples 
+#' \dontrun{
+#' if(interactive()){
+#'  #EXAMPLE1
+#'  gaps <- detect_gaps(l_logr$df)
+#'  }
+#' }
+#' @rdname detect_gaps
+#' @export 
+detect_gaps <- function(df, expected_interval = 30, date_field = "DATECT"){
+# df = l_raw$df
+  dt <- as.data.table(df)
+  v_dates <- df[, date_field]
+  dt[, date_curr := v_dates]
+  dt[, date_prev := shift(date_curr, 1)]
+  dt[, date_int := difftime(date_curr, date_prev, units="mins")]
+  dt$date_int[1] <- expected_interval
+  v_longer  <- sum( dt$date_int > expected_interval )
+  v_shorter <- sum( dt$date_int < expected_interval )
+  v_gaps <- which( dt$date_int != 30 )
+  return(list(
+    v_longer = v_longer, 
+    v_shorter = v_shorter, 
+    v_gaps = v_gaps
+  ))
+}
+
 #' @title impute
 #' @description Impute missing values using various methods
 #' @param y Response variable with missing values to be replaced
@@ -156,7 +190,15 @@ impute <- function(y, l_gf = l_gf, method = "era5", qc_tokeep = 0,
   return(list(df = df, df_qc = df_qc))
 }
 
-
+plot_with_qc <- function(y, l_gf = l_gf, date_field = "DATECT") {
+  df    <- l_gf$df
+  df_qc <- l_gf$df_qc  
+  dft <- data.frame(date = df[, date_field], y = df[, y], qc = df_qc[, y])
+  p <- ggplot(dft, aes(date, y))
+  p <- p + geom_point(aes(y = y, colour = factor(qc)), size = 1) + ylab(y)
+  return(p)
+}
+  
 #' library(lintr)
 #' lint(here("R/imputation.R"), linters = with_defaults(line_length_linter = line_length_linter(120)))
 
