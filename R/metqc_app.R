@@ -15,6 +15,7 @@ library(lubridate)
 library(ggExtra)
 library(openair)
 library(powerjoin)
+library(pins)
 # source(here("R", "imputation.R"))
 # source(here("R", "plotting.R"))
 # source(here("R", "metqc_app.R"))
@@ -125,9 +126,8 @@ metqcApp <- function(...) {
                 actionButton("reset",
                   label = "Restart app"
                 ),
-                shinyjs::disabled(
-                  actionButton("submitchanges", "Submit changes")
-                )
+                actionButton("submitchanges", "Submit changes to file"),
+                actionButton("submitchanges_pin", "Submit changes to pin board")
               ),
             )
           ),
@@ -143,20 +143,34 @@ metqcApp <- function(...) {
 
   server <- function(input, output, session) {
     # Read in ERA5 data----
-    fname <- here("data", "df_era5.rds")
-    df_era5 <- readRDS(fname)
+    # read from JASMIN
+    # url_era5 <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/df_era5.rds")
+    # df_era5 <- readRDS(url(url_era5, "rb"))
+    # OR read from local file
+    # fname <- here("data", "df_era5.rds")
+    # df_era5 <- readRDS(fname)
+    # OR read from pin on Connect server
+    board <- board_rsconnect()
+    df_era5 <- pin_read(board, "plevy/era5_data")
+    names(df_era5); dim(df_era5)
 
     # Read in the previously validated data----
-    fname <- here("data", "UK-AMo_mainmet_val.rds")
-    l_val <- readRDS(fname)
+    # read from local file
+    # fname <- here("data", "UK-AMo_mainmet_val.rds")
+    # l_val <- readRDS(fname)
+    # OR read from pin on Connect server
+    l_val <- pin_read(board, "plevy/level2_data")
 
     # Reading in the logger data----
-    # this_year <- as.POSIXlt(Sys.Date())$year + 190
+    # read from JASMIN
+    # this_year <- as.POSIXlt(Sys.Date())$year + 1900
     # url_mainmet <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/UK-AMo_mainmet_", this_year, "_agf.rds")
-    # l_gf <- readRDS(url(url_mainmet, "rb"))
-    ##* WIP temporarily read from local file; the url above should work but not tested thoroughly
-    fname_mainmet <- here("data", "UK-AMo_mainmet_2022_agf.rds")
-    l_gf <- readRDS(fname_mainmet)
+    #l_gf <- readRDS(url(url_mainmet, "rb"))
+    # OR read from local file
+    # fname_mainmet <- here("data", "UK-AMo_mainmet_2022_agf.rds")
+    # l_gf <- readRDS(fname_mainmet)
+    # OR read from pin on Connect server
+    l_gf <- pin_read(board, "plevy/level1_data")
 
     l_val$df <- power_full_join(l_val$df, l_gf$df,
       by = "DATECT", conflict = coalesce_xy
@@ -354,7 +368,6 @@ metqcApp <- function(...) {
       if (is.null(selected_state())) {
         shinyjs::alert("Please select a point to impute.")
       } else {
-        shinyjs::enable("submitchanges")
 
         # # Extract all the reasons for imputation of the data points
         # impute_reasons <- data_flags %>%
@@ -377,6 +390,7 @@ metqcApp <- function(...) {
           x = input$select_covariate,
           df_era5 = df_era5_qry,
           k = input$intslider,
+          plot_graph = FALSE,
           selection = df_qry$checked %in% selected_state()
         )
 
@@ -422,10 +436,10 @@ metqcApp <- function(...) {
       # Insert validation flag for date range here
       v_names_checklist$finished_checking[v_names_checklist$v_names_for_box == input$plotTabs] <<- TRUE
 
-      # Check if all values are true, only then enable the submit button
-      if (all(v_names_checklist$finished_checking) == TRUE) {
-        shinyjs::enable("submitchanges")
-      }
+      # # Check if all values are true, only then enable the submit button
+      # if (all(v_names_checklist$finished_checking) == TRUE) {
+        # shinyjs::enable("submitchanges")
+      # }
     })
 
     # # Writing tables to a database----
@@ -467,10 +481,19 @@ metqcApp <- function(...) {
       saveRDS(l_val, file = fname)
 
       # overwrite existing data with changes in query
-      l_val$df <- power_full_join(l_val$df, df_qry, by = "DATECT", conflict = coalesce_yx)
-      l_val$df_qc <- power_full_join(l_val$df_qc, df_qc, by = "DATECT", conflict = coalesce_yx)
+      l_val$df    <<- power_full_join(l_val$df,    df_qry, by = "DATECT", conflict = coalesce_yx)
+      l_val$df_qc <<- power_full_join(l_val$df_qc, df_qc,  by = "DATECT", conflict = coalesce_yx)
+      # save to local file
       fname <- here("data", "UK-AMo_mainmet_val.rds")
       saveRDS(l_val, file = fname)
+    })
+    
+    # Writing validated data to pin----
+    observeEvent(input$submitchanges_pin, {
+      # write to pin on Connect server
+      pin_write(board,
+        l_val,
+        name = "level2_data", type = "rds")
     })
   }
 

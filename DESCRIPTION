@@ -1,10 +1,10 @@
-Package: metdb
+Package: metqc
 Title: Quality Control Of Field Site Meteorological Data 
-Version: 0.0.0.9000
+Version: 0.0.1
 Authors@R: 
     c(
     person(
-    given = "Pete",
+    given = "Peter",
     family = "Levy",
     email = "plevy@ceh.ac.uk",
     role = c("aut"),
@@ -53,4 +53,5 @@ Imports:
     mgcv,
     here, 
     openair,
-    powerjoin
+    powerjoin,
+    pins
