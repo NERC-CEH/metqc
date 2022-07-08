@@ -2,16 +2,22 @@
 % Please edit documentation in R/plotting.R
 \name{plotting_function}
 \alias{plotting_function}
-\title{Custom plotting function for each variable}
+\title{plotting_function}
 \usage{
 plotting_function(input_variable)
 }
 \arguments{
-\item{input_variable}{met variable to be plotted, input variable will be a reactive}
+\item{input_variable}{The name of the variable within the query data frame to plot.}
 }
 \value{
-
+OUTPUT_DESCRIPTION
 }
 \description{
+Creates an interactive girafe plot, whereby the user can select
+points for flagging as poor quality and imputing new values.
+}
+\details{
 Custom plotting function for each variable
+
+DETAILS
 }

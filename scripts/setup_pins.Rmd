@@ -1,0 +1,55 @@
+---
+title: "Update Auchencorth Meteorological Data"
+author: "Peter Levy"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: yes
+    fig_caption: yes
+---
+
+
+```{r startup, eval=TRUE}
+library(pins)
+board <- pins::board_rsconnect()
+```
+
+```{r update, eval=TRUE}
+# Read in ERA5 data----
+url_era5 <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/df_era5.rds")
+df_era5 <- readRDS(url(url_era5, "rb"))
+names(df_era5); dim(df_era5); class(df_era5)
+min(df_era5$DATECT); max(df_era5$DATECT)
+
+dfs <- subset(df_era5, DATECT > "2022-01-01")
+with(dfs, plot(DATECT, TS))
+summary(dfs)
+
+# Reading in the logger data----
+this_year <- as.POSIXlt(Sys.Date())$year + 1900
+url_mainmet <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/UK-AMo_mainmet_", this_year, "_agf.rds")
+l_lev1 <- readRDS(url(url_mainmet, "rb"))
+
+# # Read in the previously validated data----
+# fname <- here("data", "UK-AMo_mainmet_val.rds")
+# l_lev2 <- readRDS(fname)
+
+pins::pin_write(board,
+  df_era5,
+  name = "era5_data", type = "rds") # use qs instead? qs is actually slower somehow
+  
+pins::pin_write(board,
+  l_lev1,
+  name = "level1_data", type = "rds")
+  
+# pins::pin_write(board,
+  # l_lev2,
+  # name = "level2_data", type = "rds")
+```
+  
+```{r readpins, eval=FALSE}
+# and to read the data back
+system.time(dft <- pin_read(
+  board, 
+  "plevy/era5_data"))
+```

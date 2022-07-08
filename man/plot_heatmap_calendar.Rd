@@ -2,18 +2,21 @@
 % Please edit documentation in R/plotting.R
 \name{plot_heatmap_calendar}
 \alias{plot_heatmap_calendar}
-\title{Custom plotting function to construct a heatmap calendar}
+\title{plot_heatmap_calendar}
 \usage{
-plot_heatmap_calendar(input_variable, df_qry)
+plot_heatmap_calendar(df)
 }
 \arguments{
-\item{input_variable}{might not need this anymore, given all variables need checking for the same date}
-
-\item{df_qry}{the dataframe of the query, in order to extract the dates}
+\item{df}{A data frame of met data}
 }
 \value{
-
+OUTPUT_DESCRIPTION
 }
 \description{
+Plots a calendar showing who has checked the data by date
+}
+\details{
 Custom plotting function to construct a heatmap calendar
+
+DETAILS
 }

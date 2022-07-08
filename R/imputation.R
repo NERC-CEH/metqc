@@ -33,9 +33,10 @@ pad_data <- function(df, by = "30 min", date_field = "DATECT", v_dates = NULL){
 }
 
 #' @title detect_gaps
-#' @description Detects any gaps in a data frame representing a time series
-#' @param df A data frame
-#' @param by Time interval of series, Default: '30 min'
+#' @description Detects any gaps in a data frame representing a time series, 
+#'   ie. find any intervals greater than the expected interval.
+#' @param df A data frame of met data
+#' @param expected_interval Expected time interval of series, Default: '30 min'
 #' @param date_field Column name for POSIX date/time variable in df, Default: 'DATECT'
 #' @return OUTPUT_DESCRIPTION
 #' @details DETAILS
@@ -73,9 +74,18 @@ detect_gaps <- function(df, expected_interval = 30, date_field = "DATECT"){
 #' @param x Covariate to be used (name of a variable in the same data frame as
 #'   a "quoted string")
 #' @param l_met List of two data frames containing data and qc codes. Default: l_met
-#' @param qc qc code to denote values imputed by this function, Default: 3
+#' @param method Method to use for imputing missing values, Default: "era5"
+#' @param qc_tokeep Which QC codes to leave unaltered when selecting values to impute, Default: 0 (raw data)
+#' @param selection Denotes the points selected interactivelt by user in app Default: TRUE (= all)
+#' @param date_field Name of the date field or variable in the data frame. Default: DATECT
+#' @param k Number of knots to use when imputing using a GAM in the "time" method. Higher values give more flexibility = more wiggliness. Default: 40
 #' @param fit Whether to fit a linear model or directly replace missing y with
-#'   x values, Default: TRUE
+#'   x values when using either "regn" or "era5" methods, Default: TRUE
+#' @param x The covariate with which to fit a linear model in the "regn" method. Default: NULL
+#' @param df_era5 The name of the data frame containing the corresponding ERA5 data. Default: df_era5
+#' @param lat Latitude of the site for calculating day/night-time in "nightzero" method. Default: 55.792 (= Auchencorth)
+#' @param lon Longitude of the site for calculating day/night-time in "nightzero" method. Default: -3.243 (= Auchencorth)
+#' @param plot_graph Whether to produce a ggplot graphic - can be slow for large data sets. Default: TRUE
 #' @return List of two data frames containing data and qc codes with imputed values.
 #' @details DETAILS
 #' @examples
@@ -86,7 +96,7 @@ detect_gaps <- function(df, expected_interval = 30, date_field = "DATECT"){
 #' l_met <- impute(y = "SW_IN", x = "PPFD_IN",  l_met)
 #'  }
 #' }
-#' @rdname impute_by_regn
+#' @rdname impute
 #' @export
 impute <- function(y, l_met = l_met, method = "era5", qc_tokeep = 0,
   selection = TRUE, date_field = "DATECT", k = 40,

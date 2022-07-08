@@ -1,8 +1,12 @@
 #' Custom plotting function for each variable
 #'
-#' @param input_variable 
-#'
-#' @return
+
+#' @title plotting_function
+#' @description Creates an interactive girafe plot, whereby the user can select 
+#'   points for flagging as poor quality and imputing new values.
+#' @param input_variable The name of the variable within the query data frame to plot.
+#' @return OUTPUT_DESCRIPTION
+#' @details DETAILS
 #' @export
 #'
 #' @examples
@@ -29,10 +33,12 @@ plotting_function <- function(input_variable) {
 
 #' Custom plotting function to construct a heatmap calendar
 #'
-#' @param input_variable 
-#' @param df 
-#'
-#' @return
+
+#' @title plot_heatmap_calendar
+#' @description Plots a calendar showing who has checked the data by date
+#' @param df A data frame of met data
+#' @return OUTPUT_DESCRIPTION
+#' @details DETAILS
 #' @export
 #'
 #' @examples

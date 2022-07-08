@@ -1,0 +1,895 @@
+---
+title: "Auchencorth Meteorological Data"
+author: "Peter Levy"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: no
+    fig_caption: yes
+params:
+  n_days: 7
+  dir_out_mainmet: "/gws/nopw/j04/dare_uk/public/plevy/UK-AMo"
+  validate_mainmet: TRUE
+---
+
+<!--- { rendering -->
+```{r rendering, eval=FALSE, echo=FALSE}
+library(rmarkdown)
+system.time(render("plot_UK-AMo_met.Rmd", output_file = "plot_UK-AMo_met.html"))
+
+system.time(
+  render("plot_UK-AMo_met.Rmd", 
+    output_file = "plot_UK-AMo_met.html",
+    params = list(
+      n_days = 7, 
+      dir_out_mainmet = "/gws/nopw/j04/dare_uk/public/plevy/UK-AMo",
+      #dir_out_mainmet = "./daily",
+      validate_mainmet = TRUE
+    )
+  )
+)
+tools::texi2pdf("plot_UK-AMo_met.tex")
+```
+<!--- } -->
+
+<!--- { startup -->
+```{r startup, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+#rm(list=ls(all=TRUE))
+library(errorlocate)
+#library(validate)
+library(readxl)
+library(openair)
+library(ggplot2)
+library(fs)
+library(stringr)
+library(tools)
+library(yaml)
+library(data.table)
+library(mgcv)
+source("/gws/nopw/j04/ceh_generic/plevy/amo_met/R/imputation.R")
+#source("../metdb/R/imputation.R")
+knitr::opts_chunk$set(fig.width = 7, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE)
+# Use UTC time throughout
+Sys.setenv(TZ = "UTC")
+"%!in%" <- Negate("%in%")
+"%!like%" <- Negate("%like%")
+
+# constants
+v_names_for_db <- read.table("./v_names_for_db.txt", stringsAsFactors = FALSE)$V1
+dir_in  <- "./server_mirror"
+dir_out <- "./daily"
+#dir_out_mainmet <- "./daily"
+dir_out_mainmet <- params$dir_out_mainmet
+secsPerDay <- 24*60*60
+
+# get processing interval, based on today's date and n_days
+n <- 1 # or n days ago - usually 1 i.e. uploading yesterday's data
+last_date_to_process <- as.POSIXlt(Sys.Date() - n)
+#last_date_to_process <- as.POSIXlt(Sys.Date() - 16)
+last_date_to_process
+n_days <- params$n_days # now a markdown parameter
+#n_days <- 7           # now a markdown parameter
+#n_days <- 31 + 31 + 28 + 31 +15           # now a markdown parameter
+first_date <- last_date_to_process - (n_days * 24*60*60)
+this_year <- as.POSIXlt(Sys.Date())$year + 1900
+```
+<!--- } -->
+
+<!--- { process_data -->
+```{r process_data, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+
+# R script to:
+#   read ICOS logger BM files,
+#   subset to day of interest,
+#   write daily files, and
+#   upload daily files to ICOS server, with MD5 hash 
+
+# Peter Levy
+# Centre for Ecology & Hydrology, Edinburgh, U.K.
+# plevy@ceh.ac.uk
+
+# define function to read TOA5 data
+importCSdata <- function(filename,RetOpt="data"){
+	if(RetOpt=="info"){
+		# bring in entire header of CSI TOA5 data file for metadata
+		stn.info <- scan(file=filename,nlines=4,what=character(),sep="\r")
+		return(stn.info)
+	} else {
+		# second line of header contains variable names
+		header <- scan(file=filename,skip=1,nlines=1,what=character(),sep=",")
+		# bring in data
+		stn.data <- read.table(file=filename,skip=4,header=FALSE, na.strings=c("NAN"),sep=",")
+		names(stn.data) <- header
+		# add column of R-formatted date/timestamps
+		stn.data$TIMESTAMP <- as.POSIXlt(strptime(stn.data$TIMESTAMP,"%Y-%m-%d %H:%M:%S"))
+		return(stn.data)}
+}
+
+# read data
+read_data <- function(dir_in, fname_in){
+  fname <- path(dir_in, fname_in)
+  df <- importCSdata(fname)
+
+  # remove duplicate rows - sometimes occur in the Campbell files
+  df <- df[!duplicated(df$TIMESTAMP), ]
+
+  df$date <- as.POSIXct(df$TIMESTAMP)
+  df$TIMESTAMP <- NULL
+  df$RECORD <- NULL
+  return(df)
+}
+
+# subset data
+subset_data <- function(df, last_date_to_process, n_days = 7){
+
+  first_date <- last_date_to_process - (n_days * 24*60*60)
+
+  # subset to dates n_days prior to last_date_to_process
+  df <- subset(df, date >= first_date & date <= last_date_to_process)
+
+  return(df)
+}
+
+# define function to plot all data within n_days
+plot_all_timePlots <- function(df){
+
+  # date is the last column, so minus 1
+  n_var <- length(names(df)) - 1
+
+  # First 2 cols are TIMESTAMP and RECORD, so start at 3
+  for (i in 3:n_var){
+    timePlot(df, pollutant = names(df)[i])
+  }
+}
+
+# define function to plot read names of variables to plot
+plot_named_timePlots <- function(df, fname = "v_names_to_plot.txt"){
+
+  df_names <- read.csv(fname, header = FALSE)
+  v_names_to_plot <- df_names[,1]
+  df <- df[, v_names_to_plot]
+
+  n_var <- length(names(df))
+
+  for (i in 2:n_var){
+    timePlot(df, pollutant = names(df)[i])
+  }
+}
+
+# define function to concatenate the ec summary files
+concat_ec_summaries <- function(
+  dir_in  = "./server_mirror/ec/summaries", 
+  dir_out = "./daily"){
+
+  v_fnames <- list.files(dir_in, pattern = "AIU.+EP-Summary.txt", # .+ means AND
+    recursive = FALSE, full.names = TRUE) 
+  # read from the query URL into a list of data tables
+  l_dt <- lapply(v_fnames, fread, na.strings = "NaN", header = TRUE)
+  # remove 2nd row containing units text
+  l_dt <- lapply(l_dt, "[", -1)
+  # concatenate list into one data table
+  dt <- rbindlist(l_dt)
+
+  # write all to a csv
+  fname <- paste0(dir_out, "/ec_summary.csv")
+  fwrite(dt, file = fname)
+  # read back without 2nd row, so colClasses set correctly 
+  dt <- fread(file = fname, na.strings = "NaN")
+  
+  # make the time POSIX
+  dt$date <- paste(dt$date, dt$time)
+  dt$date <- as.POSIXct(dt$date, format="%Y-%m-%d %H:%M:%S")
+  
+  return(dt)
+}
+
+# run the functions 
+
+#### 1. Main Met Mast 30-min data
+fname_in <- "Metmast_MainMet_30min.dat"
+
+df <- read_data(dir_in, fname_in)
+df <- subset_data(df, last_date_to_process, n_days)
+
+#plot_named_timePlots(df, fname = "v_names_to_plot.txt")
+#plot_all_timePlots(df)
+df_main <- df
+
+
+#### 2.      UK-AMo_BM_L02_F01 data
+fname_in <- "UK-AMo_BM_L02_F01.dat"
+
+df <- read_data(dir_in, fname_in)
+df <- subset_data(df, last_date_to_process, n_days)
+df <- timeAverage(df, avg.time = "30 min", start.date = first_date)
+df_main <- merge(df_main, df, by = "date")
+
+#### 3.      UK-AMo_BM_L03_F02 data
+fname_in <- "UK-AMo_BM_L03_F02.dat"
+
+df <- read_data(dir_in, fname_in)
+df <- subset_data(df, last_date_to_process, n_days)
+df <- timeAverage(df, avg.time = "30 min", start.date = first_date)
+# precip needs to be mult by no. of mins to get the total since we have averaged
+df$P_12_1_1 <- df$P_12_1_1 * 30
+df_main <- merge(df_main, df, by = "date")
+
+#### 4.      UK-AMo_BM_L04_F01 data
+fname_in <- "UK-AMo_BM_L04_F01.dat"
+
+df <- read_data(dir_in, fname_in)
+df <- subset_data(df, last_date_to_process, n_days)
+df <- timeAverage(df, avg.time = "30 min", start.date = first_date)
+df_main <- merge(df_main, df, by = "date")
+
+
+#### 5.      UK-AMo_BM_L04_F02 data
+fname_in <- "UK-AMo_BM_L04_F02.dat"
+
+df <- read_data(dir_in, fname_in)
+df <- subset_data(df, last_date_to_process, n_days)
+df <- timeAverage(df, avg.time = "30 min", start.date = first_date)
+df_main <- merge(df_main, df, by = "date")
+
+#### 6.      UK-AMo_BM_L04_F03 data
+fname_in <- "UK-AMo_BM_L04_F03.dat"
+
+df <- read_data(dir_in, fname_in)
+df <- subset_data(df, last_date_to_process, n_days)
+df <- timeAverage(df, avg.time = "30 min", start.date = first_date)
+df_main <- merge(df_main, df, by = "date")
+
+#### 7.      UK-AMo_BM_L04_F04 data
+fname_in <- "UK-AMo_BM_L04_F04.dat"
+
+df <- read_data(dir_in, fname_in)
+df <- subset_data(df, last_date_to_process, n_days)
+# use sum for precip, not mean
+df <- timeAverage(df, avg.time = "30 min", start.date = first_date, statistic = "sum")
+df_main <- merge(df_main, df, by = "date")
+
+#### 8.      UK-AMo_BM_L05_F01 data
+fname_in <- "UK-AMo_BM_L05_F01.dat"
+
+df <- read_data(dir_in, fname_in)
+df <- subset_data(df, last_date_to_process, n_days)
+df <- timeAverage(df, avg.time = "30 min", start.date = first_date)
+df_main <- merge(df_main, df, by = "date")
+# dim(df_main)
+# head(df_main$date); tail(df_main$date)
+
+#### 9.      UK-AMo EC 30-min summary data
+dt <- concat_ec_summaries()
+dt <- subset_data(dt, last_date_to_process, n_days)
+# are there any EC data in this time period?
+EC_data_available <- dim(dt)[1] > 0
+##* WIP add some alert if no EC data?
+df_main <- merge(df_main, dt, by = "date", all.x = TRUE)
+
+df <- df_main
+names(df) <- make.names(names(df))
+
+# some extra calculations - better placed elsewhere?
+# renaming
+# remove "_Avg" suffix - inconsistent and unnecessary
+names(df) <- str_replace(names(df), "_Avg", "")
+
+# find duplicate cols and remove - there is only D_SNOW
+df <- df[, !duplicated(names(df))]
+
+# remove standard deviations columns - no need for these
+sd_cols <- str_detect(names(df), "_Std")
+df <- df[, !sd_cols]
+
+# ad hoc renaming and changes
+names(df) <- str_replace(names(df), "_HMP", "")
+
+# energy balance
+df$RN_5_1_2 <- df$RN # NRlite values, misnamed RN_5_1_1 in the logger program
+df$RN_5_1_1 <- 
+  df$SW_IN_5_1_1 + 
+  df$LW_IN_5_1_1 -
+  df$SW_OUT_5_1_1 -
+  df$LW_OUT_5_1_1
+  
+# soil heat flux
+# the validation rules do not seem to remove all cases
+df$G_10_1_1[df$G_ISCAL_10_1_1 != 0] <- NA
+df$G_11_1_1[df$G_ISCAL_11_1_1 != 0] <- NA
+df$G_8_1_1[df$G_ISCAL_8_1_1 != 0]   <- NA
+df$G_9_1_1[df$G_ISCAL_9_1_1 != 0]   <- NA
+df$G <- rowMeans(data.frame(df$G_8_1_1, df$G_10_1_1, df$G_11_1_1))
+
+# mainmet WTD in cm not m, but pos not neg? or just needs a -ve offset for installation depth?
+df$WTD_4_1_1 <- df$WTD_4_1_1 * 0.01 - 0.6 # guessing installation depth of -0.6 m
+
+# mainmet SWC in frac not %
+df$SWC_4_1_1 <- df$SWC_4_1_1 * 100 
+df$SWC_4_2_1 <- df$SWC_4_2_1 * 100 
+df$SWC_4_3_1 <- df$SWC_4_3_1 * 100 
+df$SWC_4_4_1 <- df$SWC_4_4_1 * 100 
+
+# windspeed and direction from WindSonic @10 m
+df$WS_6_1_1 <- df$WS_6_1_1_WVc.1.
+df$WD_6_1_1 <- df$WS_6_1_1_WVc.2.
+
+# prior to 19 Feb 2022, there was a program error whereby the WindSonic gave wrong data
+# so we use instead windspeed and direction from EC sonic @3 m
+df$WS_6_1_1[df$date < "2022-02-19"] <- df$wind_speed[df$date < "2022-02-19"]
+df$WD_6_1_1[df$date < "2022-02-19"] <- df$wind_dir[df$date < "2022-02-19"]
+
+df$WS_6_1_1_WVc.1. <- NULL
+df$WS_6_1_1_WVc.2. <- NULL
+df$WS_6_1_1_WVc.3. <- NULL
+
+## export the vector with all variable names, for adding rules
+# write.csv(names(df), file = "v_names_all_UK-Amo.csv")
+```
+<!--- } -->
+
+# Time series plots {.tabset}
+Data from the past week  is available [here](https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/plot_UK-AMo_week.html).
+
+Data from the past month is available [here](https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/plot_UK-AMo_month.html).
+
+Data from the past year  is available [here](https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/plot_UK-AMo_year.html).
+
+<!--- { create_rules -->
+```{r create_rules, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+##* WIP can set to eval = FALSE ? - make rules once, then just read in
+df_range <- read_excel("variable_ranges.xlsx", sheet = "rules")
+df_range <- subset(df_range, !is.na(min))
+v_icos_names <- unique(df_range$symbol)
+# we do not want to keep the soil heat flux sensitivity factor
+v_icos_names <- v_icos_names[!str_starts(v_icos_names, "G_SF")]
+
+df_range$rule_min <- paste(df_range$var_name, ">=", df_range$min)
+df_range$rule_max <- paste(df_range$var_name, "<=", df_range$max)
+
+write.table(df_range$rule_min, file = "rule_min.csv", col.names = FALSE, quote = FALSE, row.names = FALSE)
+rule_min <- validator(.file = "rule_min.csv")
+names(rule_min) <- paste0(df_range$var_name, "_min_ok")
+
+write.table(df_range$rule_max, file = "rule_max.csv", col.names = FALSE, quote = FALSE, row.names = FALSE)
+rule_max <- validator(.file = "rule_max.csv")
+names(rule_max) <- paste0(df_range$var_name, "_max_ok")
+
+rule_G <- validator(.file = "rule_G.csv")
+names(rule_G) <- paste0("IsCal_G_", 8:11)
+
+rules <- rule_min + rule_max + rule_G
+saveRDS(rules, file = "rules_amo_met_all.rds")
+
+# make rules for main met variables
+df_range <- read_excel("variable_ranges.xlsx", sheet = "rules_mainmet")
+df_range <- subset(df_range, !is.na(min))
+write.table(df_range$rule, file = "rules_mainmet.csv", col.names = FALSE, quote = FALSE, row.names = FALSE)
+rule_range <- validator(.file = "rules_mainmet.csv")
+names(rule_range) <- paste0(df_range$var_name, "_range_ok")
+saveRDS(rule_range, file = "rules_amo_mainmet.rds")
+
+# # make rules for main met variables
+# df_rules <- read_excel("variable_ranges.xlsx", sheet = "names")
+# df_rules <- df_rules[df_rules$symbol %in% v_icos_names, ]
+# write.table(df_rules$rule_expr, file = "rules_mainmet.csv", col.names = FALSE, quote = FALSE, row.names = FALSE)
+# rules_mainmet <- validator(.file = "rules_mainmet.csv")
+# names(rules_mainmet) <- paste0(df_rules$symbol, "_range_ok")
+# saveRDS(rules_mainmet, file = "rules_mainmet.rds")
+```
+<!--- } -->
+
+
+## validation
+<!--- { confront_data -->
+```{r confront_data, eval=TRUE, results='asis', echo=FALSE, warning=FALSE, message=FALSE}
+# read the rules created earlier
+rules <- readRDS(file = "rules_amo_met_all.rds")
+# confront the data with these rules
+confrontation   <- confront(df, rules)
+df_confrontation <- summary(confrontation)
+# confrontation
+# summary(confrontation)
+
+# get list of logical vectors for pass/fail of rules
+l_validation <- confrontation$._value
+# some will be null if rules not broken
+#v_null <- sapply(l_validation, is.null) # not needed?
+df_validation <- as.data.frame(t(do.call(rbind, l_validation)))
+
+# identify variables which never missing/never fail validation
+ind_fails <- which(df_confrontation$fails > 0)
+ind_nas   <- which(df_confrontation$nNA > 0)
+
+if (any(summary(confrontation)$error)) {
+  print("Validation produced errors.  No graphical output produced")
+} else {
+  if (length(ind_fails) > 0) plot(confrontation[ind_fails])
+}
+
+if (any(summary(confrontation)$error)) {
+  print("Validation produced errors.  No graphical output produced")
+} else {
+  if (length(ind_nas) > 0) plot(confrontation[ind_nas])
+}
+```
+
+
+Variables which fail validation rules:
+
+```{r, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+knitr::kable(df_confrontation[ind_fails, ])
+```
+
+Variables which have missing values:
+
+```{r, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+knitr::kable(df_confrontation[ind_nas  , ])
+```
+
+```{r, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+#violating(df, confrontation)
+for (i in 1:length(df_confrontation[, 1])){
+  # i = 1
+  if (df_confrontation$fails[i] > 0){
+    v_names_to_plot = df_confrontation$name[i]
+    timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, key = TRUE)
+    print(knitr::kable(data.frame(date = violating(df, confrontation[i])$date), 
+      caption = paste(names(rules)[i], "rule invalid at these times:")))
+  }
+}
+```
+<!--- } -->
+
+<!--- { timeseries_plots -->
+## energy balance {.active}
+```{r EB, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+v_names_to_plot = c("H", "LE", "G", "RN_5_1_1", "RN_5_1_2")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = FALSE, y.relation = "free", date.format = "%d-%b")
+```
+
+## turbulence
+```{r turbulence, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# turbulence
+df$ustar <- df$u.
+v_names_to_plot = c("ustar", "L")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 2, group = FALSE, y.relation = "free", date.format = "%d-%b")
+```
+
+## co2/ h2o
+### mixing ratios
+```{r co2mixingratio, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# co2 flux
+v_names_to_plot = c("co2_mixing_ratio", "h2o_mixing_ratio")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 2, group = FALSE, y.relation = "free", date.format = "%d-%b")
+#timeVariation(df, pollutant = "co2_mixing_ratio")
+```
+
+### co2 flux
+```{r co2flux, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# co2 flux
+v_names_to_plot = c("co2_flux", "h2o_flux")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 2, group = FALSE, y.relation = "free", date.format = "%d-%b")
+# scatterPlot by day of the week
+scatterPlot(df, x = "PPFD_IN_4_1_1", y = "co2_flux", type = "weekday")
+scatterPlot(df, x = "ustar", y = "co2_flux", type = "weekday")
+```
+
+## met data
+### air temperature
+```{r TA, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# air temperature
+df$sonic_temperature <- df$sonic_temperature - 273.15
+df$air_temperature   <- df$air_temperature   - 273.15
+v_names_to_plot = c("TA_2_1_1", "TA_7_1_1", "TA_4_1_1", 
+  "sonic_temperature", "air_temperature")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, date.format = "%d-%b")
+```
+
+### relative humidity
+```{r RH, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# relative humidity
+v_names_to_plot = c("RH_2_1_1", "RH_7_1_1", "RH_4_1_1", "RH")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, date.format = "%d-%b")
+```
+
+### leaf wetness
+```{r LWS, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# relative humidity
+v_names_to_plot = c("P_12_1_1", "LWS_4_1_1", "LWS_4_1_2")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = FALSE, y.relation = "free", date.format = "%d-%b")
+```
+
+### air pressure
+```{r PA, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# air pressure
+# convert to hPa
+df$air_pressure <- df$air_pressure / 1000
+v_names_to_plot = c("PA_4_1_1", "air_pressure")
+timePlot(df, pollutant = v_names_to_plot, group = TRUE, date.format = "%d-%b")
+```
+
+### precipitation
+```{r P, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# precipitation
+# looks like "P_12_1_1", "P_13_1_1" are averaged not summed - separate df for precip?
+v_names_to_plot = c("P_12_1_1", "P_13_1_1", "P_TB_Tot")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = FALSE, date.format = "%d-%b")
+```
+
+### snow depth
+```{r DSNOW, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# snow depth
+v_names_to_plot = c("D_SNOW_4_1_1")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, date.format = "%d-%b")
+```
+
+## wind
+### wind dir
+```{r WD, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# wind dir
+v_names_to_plot = c("WD_6_1_1", "wind_dir")
+timePlot(df, pollutant = v_names_to_plot, group = TRUE, date.format = "%d-%b")
+```
+
+### wind speed
+```{r WS, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# wind
+v_names_to_plot = c("WS_6_1_1", "wind_speed", "max_wind_speed")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, date.format = "%d-%b")
+```
+
+### wind rose from EC sonic at 3 m
+```{r windrose3m, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+df$ws <- df$wind_speed
+df$wd <- df$wind_dir
+if (EC_data_available) windRose(df)
+```
+
+### wind rose from WindSonic at 10 m
+```{r windrose10m, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+df$ws <- df$WS_6_1_1
+df$wd <- df$WD_6_1_1
+windRose(df)
+```
+
+## radiation
+### photosynthetic photon flux density
+```{r PPFD, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# photosynthetic photon flux density
+v_names_to_plot = c("PPFD_DIF_4_1_1", "PPFD_DIR_4_1_1", "PPFD_IN_4_1_1", "PPFD_IN_5_1_2", "PPFD_OUT_5_1_1")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = FALSE, date.format = "%d-%b")
+```
+
+### short-wave radiation
+```{r SW, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# short-wave radiation
+v_names_to_plot = c("SW_IN_5_1_1", "SW_IN_7_1_1", "SW_OUT_5_1_1")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = FALSE, date.format = "%d-%b")
+```
+
+### long-wave radiation
+```{r LW, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# long-wave radiation
+v_names_to_plot = c("LW_IN_5_1_1", "LW_INr_5_1_1", "LW_OUT_5_1_1", "LW_OUTr_5_1_1" )
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, date.format = "%d-%b")
+```
+
+### NDVI
+```{r NDVI, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# NDVI
+v_names_to_plot = c("NDVI_649IN_5_1_1", "NDVI_649OUT_5_1_1", "NDVI_797IN_5_1_1", "NDVI_797OUT_5_1_1")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = FALSE, date.format = "%d-%b")
+```
+
+## soil
+### soil temperature
+```{r TS, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# soil temperature
+#v_names_to_plot = c("TS_4_2_1", "TwoMin_SoilTavg", "TS_4_3_1", "TS_4_1_1", "TS_4_1_1", "TS_4_4_1")
+v_names_to_plot = c(   "TS_4_1_1",   "TS_4_2_1",   "TS_4_3_1",   "TS_4_4_1",     "TS_AVG_4_1_1",   "TwoMin_SoilTavg")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, date.format = "%d-%b")
+v_names_to_plot = c(   "TS_8_1_1",   "TS_8_2_1",   "TS_8_3_1",   "TS_8_4_1",   "TS_8_5_1",   "TS_9_1_1",   "TS_9_2_1",   "TS_9_3_1",   "TS_9_4_1",   "TS_9_5_1")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, date.format = "%d-%b")
+v_names_to_plot = c(   "TS_10_1_1",   "TS_10_2_1",   "TS_10_3_1",   "TS_10_4_1",   "TS_10_5_1",   "TS_11_1_1",   "TS_11_2_1",   "TS_11_3_1",   "TS_11_4_1",   "TS_11_5_1")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, date.format = "%d-%b")
+```
+
+### soil heat flux
+```{r G, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# soil heat flux
+v_names_to_plot = c("G_10_1_1", "G_11_1_1", "G_4_1_1", "G_4_1_2", "G_8_1_1", "G_9_1_1")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = FALSE, y.relation  = "free", date.format = "%d-%b")
+```
+
+### water column pressure
+```{r WCP, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# water column pressure
+v_names_to_plot = c("WCP_10_1_1", "WCP_11_1_1", "WCP_4_1_1", "WCP_8_1_1", "WCP_9_1_1")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, date.format = "%d-%b")
+```
+
+### water table depth
+```{r WTD, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# water table depth
+v_names_to_plot = c("P_12_1_1", "WTD_10_1_1", "WTD_11_1_1", "WTD_8_1_1", "WTD_9_1_1")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = FALSE, y.relation = "free", date.format = "%d-%b")
+v_names_to_plot = c("WTD_10_1_1", "WTD_11_1_1", "WTD_8_1_1", "WTD_9_1_1")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, y.relation = "same", date.format = "%d-%b")
+#v_names_to_plot = c("WTD_10_1_1", "WTD_11_1_1", "WTD_8_1_1", "WTD_9_1_1")
+# looks like WTD_4_1_1 is reverse sign and in cm
+v_names_to_plot = c("WTD_4_1_1", "WTD_10_1_1", "WTD_11_1_1", "WTD_8_1_1", "WTD_9_1_1")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, y.relation = "same", date.format = "%d-%b")
+```
+
+### soil water content
+```{r SWC, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+# soil water content
+#v_names_to_plot = c("SWC_4_1_1", "SWC_4_2_1", "SWC_4_3_1", "SWC_4_4_1", "SWC_10_1_1", "SWC_10_2_1", "SWC_10_3_1", "SWC_10_4_1", "SWC_11_1_1", "SWC_11_2_1", "SWC_11_3_1", "SWC_11_4_1", "SWC_8_1_1", "SWC_8_2_1", "SWC_8_3_1", "SWC_8_4_1", "SWC_9_1_1", "SWC_9_2_1", "SWC_9_3_1", "SWC_9_4_1")
+v_names_to_plot = c("SWC_4_1_1", "SWC_4_2_1", "SWC_4_3_1", "SWC_4_4_1")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, date.format = "%d-%b")
+v_names_to_plot = c("SWC_10_1_1", "SWC_10_2_1", "SWC_10_3_1", "SWC_10_4_1", "SWC_11_1_1", "SWC_11_2_1", "SWC_11_3_1", "SWC_11_4_1")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, date.format = "%d-%b")
+v_names_to_plot = c("SWC_8_1_1", "SWC_8_2_1", "SWC_8_3_1", "SWC_8_4_1", "SWC_9_1_1", "SWC_9_2_1", "SWC_9_3_1", "SWC_9_4_1")
+timePlot(df, pollutant = v_names_to_plot, key.columns = 3, group = TRUE, date.format = "%d-%b")
+```
+<!--- } -->
+
+<!--- { mainmet_week -->
+## Main Met (past week)
+Missing or out-of-range values (`NA`) are filled by six possible methods, 
+given by the QC codes below.
+```{r removeInvalid, eval=params$validate_mainmet, echo=FALSE, warning=FALSE, message=FALSE}
+# Reading in the gap-filling methods and codes----
+#  df_method <- readRDS(file = here("data", "df_method.rds"))
+
+df_qc_codes <- data.frame(
+  qc_code = c(  0, 1, 2 , 3, 4, 5, 6, 7),
+  method_name = c(
+    "", 
+    "", 
+    "time", 
+    "regn", 
+    "nightzero", 
+    "noneg", 
+    "zero",
+    "era5" 
+  ),
+  meaning = c(
+    "raw data", 
+    "missing", 
+    "NA set to prediction from a smoothing regression against time", 
+    "NA set to prediction from regression with covariate x", 
+    "Night-time NA set to zero (mainly solar radiation sensors)", 
+    "Negative values (initially NA) set to zero (mainly imputed solar radiation values)", 
+    "NA set to zero (mainly snow and rain sensors)",
+    "NA set to prediction from regression with covariate from ERA5"
+  )
+)
+knitr::kable(df_qc_codes)
+
+# is_linear(rules)
+# is_categorical(rules)
+# is_conditional(rules)
+
+
+
+#system.time(le  <- locate_errors(df, rules))
+## investigate timing - worth parallelising for longer periods, not for 1 week
+system.time( le  <- locate_errors(df, rules, Ncpus = 7))
+#summary(le)
+
+df <- replace_errors(df, le)
+#confront(df, rules)
+#summary(confront(df, rules))
+
+for (var_name in v_icos_names){
+ # print(var_name)
+ v_matching_names <- 
+   names(df)[str_starts(names(df), paste0(var_name, "_")) &
+   names(df) %!like% "_IU_" &
+   names(df) %!like% "_SF" &
+   names(df) %!like% "_ISCAL_" &
+   names(df) %!like% "_Max" &
+   # names(df) %!like% "_Tot" &
+   names(df) %!like% "_Std"
+ ]
+ # print(v_matching_names)
+ # calculate each of the ICOS vars as the mean of all replicates
+ # possible limit soil vars to one depth?
+ df <- within(df, assign(var_name, rowMeans(df[, v_matching_names, drop = FALSE], na.rm = TRUE)))
+ #print(summary(df[, v_matching_names, drop = FALSE]))
+}
+
+# exception for soil heat flux - removing values during self-calibration is 
+# imperfect - works in these three
+df$G <- rowMeans(data.frame(df$G_8_1_1, df$G_10_1_1, df$G_11_1_1))
+df$P <- df$P_12_1_1 # previously P_TB_Tot
+#df$WTD <- df$WTD_4_1_1
+
+# summary(df[, c(v_names_for_db)])
+# with(df, summary(name)))
+# for (name in v_names_for_db) {
+  # print(with(df, summary(name)))
+# }
+
+# summary(df$NDVI_649IN_5_1_1)
+
+df$DATECT <- df$date
+df$date <- NULL
+
+#* WIP swap these lines below and check imputation list works
+sum(v_names_for_db %in% names(df))
+sum(v_names_for_db %!in% names(df))
+v_names_for_db[v_names_for_db %in% names(df)]
+v_names_for_db[v_names_for_db %!in% names(df)]
+# str_split_fixed(v_names_for_db, "_", n = 2)
+
+# make df of variables for Main Met data set
+df <- df[, c("DATECT", v_names_for_db)]
+#### alternative
+# # make df of variables for Main Met data set
+# df <- df[, c("DATECT", v_icos_names)]
+
+# make df of qc values
+df_qc <- df 
+df_qc[, -1] <- as.numeric(is.na(df[, -1]))
+
+# list of data frames containing raw data and qc codes
+l_lev0 <- list(df = df, df_qc = df_qc)
+
+# add in any missing date-timestamps
+names(l_lev0$df)
+str(l_lev0$df)
+dim(l_lev0$df); dim(l_lev0$df_qc)
+l_lev0$df       <- pad_data(l_lev0$df,    v_dates = l_lev0$df$DATECT)   
+l_lev0$df_qc    <- pad_data(l_lev0$df_qc, v_dates = l_lev0$df_qc$DATECT)   
+dim(l_lev0$df); dim(l_lev0$df_qc)
+
+# write to file
+fname_mainmet <- paste0(dir_out_mainmet, "/UK-AMo_mainmet_",    this_year, "_raw.rds")
+saveRDS(l_lev0, file = fname_mainmet)
+
+# list of data frames for auto-imputed data and qc codes
+l_lev1 <- l_lev0
+
+datect_num <- as.numeric(df$DATECT)
+hour <- as.POSIXlt(df$DATECT)$hour
+
+# before gap-filling
+# summary(df)
+sum(is.na(df))
+sum(is.na(l_lev0$df))
+sum(is.na(l_lev1$df))
+
+# fill in the gaps by imputation
+plot_graph = FALSE # TRUE # FALSE
+# set night-time values to zero
+l_lev1 <- impute(y = "SW_IN", l_met = l_lev1, method = "nightzero", plot_graph = plot_graph)
+l_lev1 <- impute(y = "SW_OUT", l_met = l_lev1, method = "nightzero", plot_graph = plot_graph)
+l_lev1 <- impute(y = "PPFD_IN_4_1_1", l_met = l_lev1, method = "nightzero", plot_graph = plot_graph)
+l_lev1 <- impute(y = "PPFD_OUT", l_met = l_lev1, method = "nightzero", plot_graph = plot_graph)
+l_lev1 <- impute(y = "PPFD_DIF", l_met = l_lev1, method = "nightzero", plot_graph = plot_graph)
+l_lev1 <- impute(y = "RG_4_1_0", l_met = l_lev1, method = "nightzero", plot_graph = plot_graph)
+
+# impute by smoothing regression with time
+l_lev1 <- impute(y = "TS", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "SWC", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "G", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "WTD", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "WTD_4_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "PA_4_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "SW_IN", l_met = l_lev1, method = "time", k = 20,  qc_tokeep = c(0, 4), plot_graph = plot_graph)
+l_lev1 <- impute(y = "SW_OUT", l_met = l_lev1, method = "time", k = 20, qc_tokeep = c(0, 4), plot_graph = plot_graph)
+l_lev1 <- impute(y = "LW_IN", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "LW_OUT", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "PPFD_IN_4_1_1", l_met = l_lev1, method = "time", k = 20, qc_tokeep = c(0, 4), plot_graph = plot_graph)
+l_lev1 <- impute(y = "PPFD_OUT", l_met = l_lev1, method = "time", k = 20, qc_tokeep = c(0, 4), plot_graph = plot_graph)
+l_lev1 <- impute(y = "PPFD_DIF", l_met = l_lev1, method = "time", k = 20, qc_tokeep = c(0, 4), plot_graph = plot_graph)
+# not approp for rain
+#l_lev1 <- impute(y = "P_12_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "WS_6_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "WD_6_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+# just junk anyway
+# l_lev1 <- impute(y = "D_SNOW", l_met = l_lev1, method = "zero", plot_graph = plot_graph)
+l_lev1 <- impute(y = "RN_5_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "TS_4_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "TS_4_2_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "TS_4_3_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "TS_4_4_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "SWC_4_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "SWC_4_2_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "SWC_4_3_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "SWC_4_4_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "G_4_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "G_4_1_2", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "TA_4_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "RH_4_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "RG_4_1_0", l_met = l_lev1, method = "time", k = 20, qc_tokeep = c(0, 4), plot_graph = plot_graph)
+l_lev1 <- impute(y = "NDVI_649IN_5_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "NDVI_649OUT_5_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "NDVI_797IN_5_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "NDVI_797OUT_5_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "LWS_4_1_1", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+l_lev1 <- impute(y = "LWS_4_1_2", l_met = l_lev1, method = "time", k = 20, plot_graph = plot_graph)
+
+# after gap-filling
+#summary(l_lev1$df)
+sum(is.na(l_lev1$df))
+
+# confront the data with these rules
+confrontation   <- confront(l_lev1$df, rule_range)
+confrontation
+summary(confrontation)
+
+system.time(le  <- locate_errors(l_lev1$df, rule_range))
+summary(le)
+l_lev1$df <- replace_errors(l_lev1$df, le)
+#confront(l_lev1$df, rule_range)
+
+# add name of validator - later replaced by username when manually checked
+l_lev1$df_qc$validator <- "auto"
+# some values in 2021 produce NAs in qc
+l_lev1$df_qc[(is.na(l_lev1$df_qc))] <- 1
+
+# first time round, have to save old data
+# fname_mainmet <- paste0(dir_out_mainmet, "/UK-AMo_mainmet_",    this_year, "_agf.rds")
+# saveRDS(l_lev1, file = fname_mainmet)
+
+# add new data to old
+fname_mainmet <- paste0(dir_out_mainmet, "/UK-AMo_mainmet_",    this_year, "_agf.rds")
+l_lev1_old  <- readRDS(fname_mainmet)
+
+## could replace lines below (rbind and remove duplicates) with powerjoin
+#l_lev1$df <- power_full_join(l_lev1_old$df, l_lev1$df, by = "DATECE", conflict = coalesce_yx)
+
+dim(l_lev1$df_qc)
+# add old and new data, remove duplicates
+l_lev1$df <- rbind(l_lev1_old$df, l_lev1$df)
+l_lev1$df <- l_lev1$df[!duplicated(l_lev1$df[, "DATECT"], fromLast = TRUE), ]
+
+# add old and new qc codes, remove duplicates
+l_lev1$df_qc <- rbind(l_lev1_old$df_qc, l_lev1$df_qc)
+l_lev1$df_qc <- l_lev1$df_qc[!duplicated(l_lev1$df_qc[, "DATECT"], fromLast = TRUE), ]
+
+l_lev1$df <- l_lev1$df[, c("DATECT", v_names_for_db)]
+l_lev1$df_qc <- l_lev1$df_qc[, c("DATECT", v_names_for_db, "validator")]
+
+# need to write manually at start of year, thereafter:
+# write to file
+fname_mainmet <- paste0(dir_out_mainmet, "/UK-AMo_mainmet_",    this_year, "_agf.rds")
+saveRDS  (l_lev1,       file = fname_mainmet)
+write.csv(l_lev1$df,    file = paste0(dir_out_mainmet, "/UK-AMo_mainmet_",    this_year, "_agf.csv"), row.names = FALSE)
+write.csv(l_lev1$df_qc, file = paste0(dir_out_mainmet, "/UK-AMo_mainmet_qc_", this_year, "_agf.csv"), row.names = FALSE)
+
+# l_lev1 <- readRDS(file = fname_mainmet)
+# head(l_lev1$df$DATECT); tail(l_lev1$df$DATECT)
+# summary(l_lev1$df)
+
+# # write backup files
+# saveRDS  (l_lev1,       file = paste0("UK-AMo_mainmet_",    this_year, "_backup.rds"))
+# write.csv(l_lev1$df,    file = paste0("UK-AMo_mainmet_",    this_year, "_backup.csv"), row.names = FALSE)
+# write.csv(l_lev1$df_qc, file = paste0("UK-AMo_mainmet_qc_", this_year, "_backup.csv"), row.names = FALSE)
+
+##* WIP
+## get ukv data as extra correlates?
+## get other site data as extra correlates
+# do any other bespoke things
+```
+<!--- } -->
+
+
+<!--- { mainmet_year -->
+## Main Met (year to date)
+
+```{r yeartodate, eval=params$validate_mainmet, echo=FALSE, warning=FALSE, message=FALSE}
+for(y in names(l_lev1$df)[-1]){
+  #y <- "TA"
+  dft <- data.frame(date = l_lev1$df$DATECT, y = l_lev1$df[, y], qc = l_lev1$df_qc[, y])
+  p <- ggplot(dft, aes(date, y))
+  p <- p + ylab(y)
+  p <- p + geom_line()
+  p <- p + geom_point(aes(colour = factor(qc)))
+  print(p)
+}
+```
+<!--- } -->
