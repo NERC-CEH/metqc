@@ -13,7 +13,7 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 The goal of metdb is to create an application to help with the quality
 control of field site meteorological data. The working version is
 deployed at
-<https://connect-apps.ceh.ac.uk/content/1943fcd9-7dde-4477-928c-01ae7701a69b>.
+<https://connect-apps.ceh.ac.uk/metqc/>.
 This version may differ slightly from the version on here while the
 lifecycle is experimental.
 
