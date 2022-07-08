@@ -94,19 +94,17 @@ impute <- function(y, l_gf = l_gf, method = "era5", qc_tokeep = 0,
   lat = 55.792, lon = -3.243, plot_graph = TRUE
   ) {
 
-  df_method <- data.frame(
-    method = c(
-      "missing",
-      "time",
-      "regn",
-      "nightzero",
-      "noneg",
-      "zero",
-      "era5"
-    ),
-    qc = c(1, 2, 3, 4, 5, 6, 7) # 0 = raw, 1 = missing
-  )
+  # df_method <- data.frame(
+  #   method = c('raw', "missing", "time", "regn", "nightzero", "noneg", "zero", "era5"),
+  #   method_lab = c('Original observation (raw data)', "Missing", "Time", "REGN", "Night-zero", "NoneG", "Zero", "ERA5"),
+  #   qc = c(0, 1, 2, 3, 4, 5, 6, 7) # 0 = raw, 1 = missing
+  # )
   # saveRDS(df_method, file = here("data", "df_method.rds"))
+  
+  df_method <<- readRDS(file = here("data", "df_method.rds"))
+  
+  df_method$method[which(df_method$method_lab == method)] # link method_lab back to method.
+  
   method <- match.arg(method, df_method$method)
   # get the qc code for the selected method
   qc <- df_method$qc[match(method, df_method$method)]

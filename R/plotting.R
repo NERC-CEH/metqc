@@ -9,10 +9,13 @@
 plotting_function <- function(input_variable) {
   df <- data.frame(DATECT = df_qry$DATECT, y = df_qry[, input_variable], 
     qc = df_qc[, input_variable], checked = df_qry$checked)
+  
+  df <- left_join(df, df_method, by = "qc")
+  
   p1_ggplot <- ggplot(df, 
                       aes(DATECT, y)) +
-    geom_point_interactive(aes(data_id = checked, tooltip = qc,
-                               colour = factor(qc)), size = 3) +
+    geom_point_interactive(aes(data_id = checked, tooltip = method_lab,
+                               colour = factor(method_lab)), size = 3) +
     #geom_line(aes(y = df$pred), colour = "red") +
     xlab("Date") +
     ylab(paste("Your variable:", input_variable)) +
