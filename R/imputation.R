@@ -72,7 +72,7 @@ detect_gaps <- function(df, expected_interval = 30, date_field = "DATECT"){
 #'   (variable name as a "quoted string")
 #' @param x Covariate to be used (name of a variable in the same data frame as
 #'   a "quoted string")
-#' @param l_gf List of two data frames containing data and qc codes. Default: l_gf
+#' @param l_met List of two data frames containing data and qc codes. Default: l_met
 #' @param qc qc code to denote values imputed by this function, Default: 3
 #' @param fit Whether to fit a linear model or directly replace missing y with
 #'   x values, Default: TRUE
@@ -82,13 +82,13 @@ detect_gaps <- function(df, expected_interval = 30, date_field = "DATECT"){
 #' \dontrun{
 #' if(interactive()) {
 #'  #EXAMPLE1
-#' l_gf <- list(df = df, df_qc = df_qc)
-#' l_gf <- impute(y = "SW_IN", x = "PPFD_IN",  l_gf)
+#' l_met <- list(df = df, df_qc = df_qc)
+#' l_met <- impute(y = "SW_IN", x = "PPFD_IN",  l_met)
 #'  }
 #' }
 #' @rdname impute_by_regn
 #' @export
-impute <- function(y, l_gf = l_gf, method = "era5", qc_tokeep = 0,
+impute <- function(y, l_met = l_met, method = "era5", qc_tokeep = 0,
   selection = TRUE, date_field = "DATECT", k = 40,
   fit = TRUE, x = NULL, df_era5 = NULL,
   lat = 55.792, lon = -3.243, plot_graph = TRUE
@@ -111,8 +111,8 @@ impute <- function(y, l_gf = l_gf, method = "era5", qc_tokeep = 0,
   # get the qc code for the selected method
   qc <- df_method$qc[match(method, df_method$method)]
 
-  df    <- l_gf$df
-  df_qc <- l_gf$df_qc
+  df    <- l_met$df
+  df_qc <- l_met$df_qc
   
   # df_qc[, y][which(i_sel)]
   # table(i_sel)
@@ -190,9 +190,9 @@ impute <- function(y, l_gf = l_gf, method = "era5", qc_tokeep = 0,
   return(list(df = df, df_qc = df_qc))
 }
 
-plot_with_qc <- function(y, l_gf = l_gf, date_field = "DATECT") {
-  df    <- l_gf$df
-  df_qc <- l_gf$df_qc  
+plot_with_qc <- function(y, l_met = l_met, date_field = "DATECT") {
+  df    <- l_met$df
+  df_qc <- l_met$df_qc  
   dft <- data.frame(date = df[, date_field], y = df[, y], qc = df_qc[, y])
   p <- ggplot(dft, aes(date, y))
   p <- p + geom_point(aes(y = y, colour = factor(qc)), size = 1) + ylab(y)

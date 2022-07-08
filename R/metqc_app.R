@@ -154,33 +154,36 @@ metqcApp <- function(...) {
     df_era5 <- pin_read(board, "plevy/era5_data")
     names(df_era5); dim(df_era5)
 
-    # Read in the previously validated data----
-    # read from local file
-    # fname <- here("data", "UK-AMo_mainmet_val.rds")
-    # l_val <- readRDS(fname)
-    # OR read from pin on Connect server
-    l_val <- pin_read(board, "plevy/level2_data")
-
-    # Reading in the logger data----
+    # Reading in this year's Level 1 data----
     # read from JASMIN
     # this_year <- as.POSIXlt(Sys.Date())$year + 1900
     # url_mainmet <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/UK-AMo_mainmet_", this_year, "_agf.rds")
-    #l_gf <- readRDS(url(url_mainmet, "rb"))
+    #l_lev1 <- readRDS(url(url_mainmet, "rb"))
     # OR read from local file
     # fname_mainmet <- here("data", "UK-AMo_mainmet_2022_agf.rds")
-    # l_gf <- readRDS(fname_mainmet)
+    # l_lev1 <- readRDS(fname_mainmet)
     # OR read from pin on Connect server
-    l_gf <- pin_read(board, "plevy/level1_data")
+    l_lev1 <- pin_read(board, "plevy/level1_data")
 
-    l_val$df <- power_full_join(l_val$df, l_gf$df,
+    # Read in the previously validated data----
+    # read from local file
+    # fname <- here("data", "UK-AMo_mainmet_val.rds")
+    # l_lev2 <- readRDS(fname)
+    # OR read from pin on Connect server
+    l_lev2 <- pin_read(board, "plevy/level2_data")
+
+    # Here we join the existing Level 2 data with new Level 1 data
+    # Where records already exist in the Level 2 data, these are preserved
+    # and only new Level 1 data is added to the resulting data frame.
+    l_lev2$df <- power_full_join(l_lev2$df, l_lev1$df,
       by = "DATECT", conflict = coalesce_xy
     )
-    l_val$df_qc <- power_full_join(l_val$df_qc, l_gf$df_qc,
+    l_lev2$df_qc <- power_full_join(l_lev2$df_qc, l_lev1$df_qc,
       by = "DATECT", conflict = coalesce_xy
     )
 
-    date_of_first_new_record <- min(l_gf$df$DATECT, na.rm = TRUE)
-    date_of_last_new_record <- max(l_gf$df$DATECT, na.rm = TRUE)
+    date_of_first_new_record <- min(l_lev1$df$DATECT, na.rm = TRUE)
+    date_of_last_new_record  <- max(l_lev1$df$DATECT, na.rm = TRUE)
 
     # v_names <<- dbListFields(con, table_name)
     v_names_for_box <- v_names[!v_names %in%
@@ -234,9 +237,8 @@ metqcApp <- function(...) {
       )
     })
 
-    # Create a dataframe with all the information about the start and end time,
-    # and cr spline (do we need this?)----
-    job_df <- eventReactive(input$retrieve_data, {
+    # Create a dataframe with the start and end dates,
+    df_daterange <- eventReactive(input$retrieve_data, {
       start_date_ch <- paste(sprintf("%02d", day(input$sdate)), "/",
         sprintf("%02d", month(input$sdate)),
         "/", year(input$sdate),
@@ -300,36 +302,37 @@ metqcApp <- function(...) {
       # enabling previously disabled buttons
       shinyjs::show("extracted_data")
       
-      # make a query for date range specified by the user.
-      qry_variables <- paste(v_names_for_box, collapse = ", ")
-      table_name <- "MAINMET_RAW"
-      qry <- paste0(
-        "SELECT DATECT, ", qry_variables, " FROM ", table_name,
-        " WHERE DATECT > TO_DATE('", job_df()$start_date_ch,
-        "', 'yyyy/mm/dd hh24:mi') AND DATECT < TO_DATE('",
-        job_df()$end_date_ch, "', 'yyyy/mm/dd hh24:mi')"
-      )
+      l_qry <<- list()
+      
+      # # database version
+      # # make a query for date range specified by the user.
+      # qry_variables <- paste(v_names_for_box, collapse = ", ")
+      # table_name <- "MAINMET_RAW"
+      # l_qry$df <<- paste0(
+        # "SELECT DATECT, ", qry_variables, " FROM ", table_name,
+        # " WHERE DATECT > TO_DATE('", df_daterange()$start_date_ch,
+        # "', 'yyyy/mm/dd hh24:mi') AND DATECT < TO_DATE('",
+        # df_daterange()$end_date_ch, "', 'yyyy/mm/dd hh24:mi')"
+      # )
+      # table_name <- "MAINMET_RAW_QC"
+      # l_qry$df_qc <<- paste0(
+        # "SELECT DATECT, ", qry_variables, " FROM ", table_name,
+        # " WHERE DATECT > TO_DATE('", df_daterange()$start_date_ch,
+        # "', 'yyyy/mm/dd hh24:mi') AND DATECT < TO_DATE('",
+        # df_daterange()$end_date_ch, "', 'yyyy/mm/dd hh24:mi')"
+      # )
 
-      df_qry <<- subset(l_val$df, DATECT >= job_df()$start_date &
-        DATECT <= job_df()$end_date)
-      ## should rename df_qc_qry for clarity?
-      # TZ - I agree
-      df_qc <<- subset(l_val$df_qc, DATECT >= job_df()$start_date &
-        DATECT <= job_df()$end_date)
+      # file / dataframe version      
+      l_qry$df <<- subset(l_lev2$df, DATECT >= df_daterange()$start_date &
+        DATECT <= df_daterange()$end_date)
+      l_qry$df_qc <<- subset(l_lev2$df_qc, DATECT >= df_daterange()$start_date &
+        DATECT <= df_daterange()$end_date)
       # make a corresponding subset of the ERA5 data
-      df_era5_qry <<- subset(df_era5, DATECT >= job_df()$start_date &
-        DATECT <= job_df()$end_date)
+      df_era5_qry <<- subset(df_era5, DATECT >= df_daterange()$start_date &
+        DATECT <= df_daterange()$end_date)
 
-      df_qry$checked <<- as.factor(rownames(df_qry))
-      df_qry$datect_num <<- as.numeric(df_qry$DATECT)
-
-      table_name <- "MAINMET_RAW_QC"
-      qry <- paste0(
-        "SELECT DATECT, ", qry_variables, " FROM ", table_name,
-        " WHERE DATECT > TO_DATE('", job_df()$start_date_ch,
-        "', 'yyyy/mm/dd hh24:mi') AND DATECT < TO_DATE('",
-        job_df()$end_date_ch, "', 'yyyy/mm/dd hh24:mi')"
-      )
+      l_qry$df$checked <<- as.factor(rownames(l_qry$df))
+      l_qry$df$datect_num <<- as.numeric(l_qry$df$DATECT)
       
       # Add a tab to the plotting panel for each variable that has been selected by the user.
       output$mytabs <- renderUI({
@@ -352,7 +355,7 @@ metqcApp <- function(...) {
       # Creating a calendar heatmap plot that will be plotted depending on the tab selected in plotTabs
       heatmap_plot_selected <- reactive({
         req(input$plotTabs)
-        plot_heatmap_calendar(df_qc)
+        plot_heatmap_calendar(l_qry$df_qc)
       })
 
       output$heatmap_plot <- renderPlot(heatmap_plot_selected())
@@ -380,22 +383,21 @@ metqcApp <- function(...) {
         # filter(cat != "initial_flag")
         # gapfill_options <- gapfill_options$information
 
-        l_gf <- list(df = df_qry, df_qc = df_qc)
+        #l_imp <- l_qry
 
-        l_gf <- impute(
+        l_qry <<- impute(
           y = input$plotTabs,
-          l_gf,
+          l_met = l_qry,
           method = input$select_imputation,
           qc_tokeep = as.numeric(input$qc_tokeep),
           x = input$select_covariate,
           df_era5 = df_era5_qry,
           k = input$intslider,
           plot_graph = FALSE,
-          selection = df_qry$checked %in% selected_state()
+          selection = l_qry$df$checked %in% selected_state()
         )
 
-        df_qry <<- l_gf$df
-        df_qc <<- l_gf$df_qc
+        #l_qry <<- l_imp
 
         # Re-plotting plot after imputation is confirmed to illustrate changes
         shinyjs::show("plotted_data")
@@ -448,13 +450,13 @@ metqcApp <- function(...) {
     # if (dbExistsTable(con, "MAINMET")) {
     # dbWriteTable(con,
     # "MAINMET",
-    # df_qry,
+    # l_qry$df,
     # append = TRUE
     # )
     # } else {
     # dbWriteTable(con,
     # "MAINMET",
-    # df_qry
+    # l_qry$df
     # )
     # }
 
@@ -475,24 +477,24 @@ metqcApp <- function(...) {
 
     # Writing validated data to file----
     observeEvent(input$submitchanges, {
-      df_qc$validator <- as.character(Sys.info()["user"])
+      l_qry$df_qc$validator <- as.character(Sys.info()["user"])
       # create a backup copy without the changes
       fname <- here("data", "UK-AMo_mainmet_val_backup.rds")
-      saveRDS(l_val, file = fname)
+      saveRDS(l_lev2, file = fname)
 
       # overwrite existing data with changes in query
-      l_val$df    <<- power_full_join(l_val$df,    df_qry, by = "DATECT", conflict = coalesce_yx)
-      l_val$df_qc <<- power_full_join(l_val$df_qc, df_qc,  by = "DATECT", conflict = coalesce_yx)
+      l_lev2$df    <<- power_full_join(l_lev2$df,    l_qry$df, by = "DATECT", conflict = coalesce_yx)
+      l_lev2$df_qc <<- power_full_join(l_lev2$df_qc, l_qry$df_qc,  by = "DATECT", conflict = coalesce_yx)
       # save to local file
       fname <- here("data", "UK-AMo_mainmet_val.rds")
-      saveRDS(l_val, file = fname)
+      saveRDS(l_lev2, file = fname)
     })
     
     # Writing validated data to pin----
     observeEvent(input$submitchanges_pin, {
       # write to pin on Connect server
       pin_write(board,
-        l_val,
+        l_lev2,
         name = "level2_data", type = "rds")
     })
   }

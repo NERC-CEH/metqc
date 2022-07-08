@@ -7,8 +7,8 @@
 #'
 #' @examples
 plotting_function <- function(input_variable) {
-  df <- data.frame(DATECT = df_qry$DATECT, y = df_qry[, input_variable], 
-    qc = df_qc[, input_variable], checked = df_qry$checked)
+  df <- data.frame(DATECT = l_qry$df$DATECT, y = l_qry$df[, input_variable], 
+    qc = l_qry$df_qc[, input_variable], checked = l_qry$df$checked)
   p1_ggplot <- ggplot(df, 
                       aes(DATECT, y)) +
     geom_point_interactive(aes(data_id = checked, tooltip = qc,
@@ -30,7 +30,7 @@ plotting_function <- function(input_variable) {
 #' Custom plotting function to construct a heatmap calendar
 #'
 #' @param input_variable 
-#' @param df_qry 
+#' @param df 
 #'
 #' @return
 #' @export
