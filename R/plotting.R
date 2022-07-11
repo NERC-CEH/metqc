@@ -13,11 +13,16 @@
 plotting_function <- function(input_variable) {
   df <- data.frame(DATECT = l_qry$df$DATECT, y = l_qry$df[, input_variable], 
     qc = l_qry$df_qc[, input_variable], checked = l_qry$df$checked)
+  
+  df <- left_join(df, df_method, by = "qc")
+  
+  col_pal <- c('Original observation (raw data)' = '#E41A1C', 'Missing' = '#377EB8',  'Time' = '#4DAF4A', 'REGN' = '#984EA3', 'Night-zero' = '#FF7F00', 'NoneG' = '#FFFF33', 'Zero' = '#A65628', 'ERA5' = '#F781BF')
+
   p1_ggplot <- ggplot(df, 
                       aes(DATECT, y)) +
-    geom_point_interactive(aes(data_id = checked, tooltip = qc,
-                               colour = factor(qc)), size = 3) +
-    #geom_line(aes(y = df$pred), colour = "red") +
+    geom_point_interactive(aes(data_id = checked, tooltip = method_lab,
+                               colour = method_lab), size = 3) +
+    scale_colour_manual(values = col_pal, limits = force) +
     xlab("Date") +
     ylab(paste("Your variable:", input_variable)) +
     ggtitle(paste(input_variable, "time series")) +
@@ -45,7 +50,7 @@ plotting_function <- function(input_variable) {
 plot_heatmap_calendar <- function(df) {
   # Transforming query dataframe with lubridate to fit the format needed for a heatmap calendar
   df <- df %>%
-    mutate(year = year(DATECT),
+	  mutate(year = year(DATECT),
            day_of_the_week = lubridate::wday(DATECT, label = TRUE, week_start = 1),
            month = lubridate::month(DATECT, label = TRUE, abbr = FALSE),
            week = isoweek(DATECT),
