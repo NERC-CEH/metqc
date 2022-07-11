@@ -97,9 +97,11 @@ impute <- function(y, l_gf = l_gf, method = "era5", qc_tokeep = 0,
   # df_method <- data.frame(
   #   method = c('raw', "missing", "time", "regn", "nightzero", "noneg", "zero", "era5"),
   #   method_lab = c('Original observation (raw data)', "Missing", "Time", "REGN", "Night-zero", "NoneG", "Zero", "ERA5"),
-  #   qc = c(0, 1, 2, 3, 4, 5, 6, 7) # 0 = raw, 1 = missing
+  #   qc = c(0, 1, 2, 3, 4, 5, 6, 7), # 0 = raw, 1 = missing
+  #   col = c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#FFFF33", "#A65628", "#F781BF")
   # )
-  # saveRDS(df_method, file = here("data", "df_method.rds"))
+  # df_method$method_lab <- factor(df_method$method_lab, levels = c('Original observation (raw data)', "Missing", "Time", "REGN", "Night-zero", "NoneG", "Zero", "ERA5"))
+#   saveRDS(df_method, file = here("data", "df_method.rds"))
   
   df_method <<- readRDS(file = here("data", "df_method.rds"))
   

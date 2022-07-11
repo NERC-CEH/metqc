@@ -12,10 +12,13 @@ plotting_function <- function(input_variable) {
   
   df <- left_join(df, df_method, by = "qc")
   
+  col_pal <- c('Original observation (raw data)' = '#E41A1C', 'Missing' = '#377EB8',  'Time' = '#4DAF4A', 'REGN' = '#984EA3', 'Night-zero' = '#FF7F00', 'NoneG' = '#FFFF33', 'Zero' = '#A65628', 'ERA5' = '#F781BF')
+
   p1_ggplot <- ggplot(df, 
                       aes(DATECT, y)) +
     geom_point_interactive(aes(data_id = checked, tooltip = method_lab,
-                               colour = factor(method_lab)), size = 3) +
+                               colour = method_lab), size = 3) +
+    scale_colour_manual(values = col_pal, limits = force) +
     #geom_line(aes(y = df$pred), colour = "red") +
     xlab("Date") +
     ylab(paste("Your variable:", input_variable)) +
