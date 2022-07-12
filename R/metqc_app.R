@@ -31,7 +31,6 @@ Sys.getenv("DBUID")
 
 metqcApp <- function(...) {
   # Reading in the gap-filling methods and codes----
-  df_method <<- readRDS(file = here("data", "df_method.rds"))
   v_names <- readRDS(file = here("data", "v_mainmet_name.rds"))
 
   # Define UI for the app
