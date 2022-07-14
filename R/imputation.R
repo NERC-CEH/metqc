@@ -104,9 +104,8 @@ impute <- function(y, l_met = l_met, method = "era5", qc_tokeep = 0,
   lat = 55.792, lon = -3.243, plot_graph = TRUE
   ) {
   
-  df_method$method[which(df_method$method_lab == method)] # link method_lab back to method.
-  
   method <- match.arg(method, df_method$method)
+  
   # get the qc code for the selected method
   qc <- df_method$qc[match(method, df_method$method)]
 

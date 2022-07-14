@@ -109,7 +109,7 @@ metqcApp <- function(...) {
                 uiOutput("mytabs"),
                 selectInput("select_imputation",
                   label = h5("Gap-Filling Method"),
-                  choices = list(gf_methods = df_method$method_lab)
+                  choices = list(gf_methods = df_method$method)
                 ),
                 actionButton("impute",
                   label = "Impute selection"
@@ -118,7 +118,7 @@ metqcApp <- function(...) {
                   label = "Finished checking variable for date range."
                 ),
                 checkboxGroupInput("qc_tokeep", "Do not alter data estimated by",
-                  choiceNames = df_method$method_lab,
+                  choiceNames = df_method$method,
                   choiceValues = df_method$qc),
                 uiOutput("impute_extra_info"),
                 actionButton("reset",
