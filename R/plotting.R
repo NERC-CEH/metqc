@@ -18,8 +18,8 @@ plotting_function <- function(input_variable) {
 
   p1_ggplot <- ggplot(df, 
                       aes(DATECT, y)) +
-    geom_point_interactive(aes(data_id = checked, tooltip = qc,
-                               colour = factor(qc)), size = 3) +
+    geom_point_interactive(aes(data_id = checked, tooltip = method,
+                               colour = factor(method)), size = 3) +
     xlab("Date") +
     ylab(paste("Your variable:", input_variable)) +
     ggtitle(paste(input_variable, "time series")) +
@@ -30,7 +30,8 @@ plotting_function <- function(input_variable) {
   p1_girafe <- girafe_options(p1_girafe, opts_selection(
     type = "multiple",
     css = "fill:#FF3333;stroke:black;"),
-    opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"))
+    opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"),
+    opts_zoom(max = 5))
 }
 
 #' Custom plotting function to construct a heatmap calendar
