@@ -16,12 +16,12 @@ plotting_function <- function(input_variable) {
   
   df <- left_join(df, df_method, by = "qc")
   
-  col_pal <- c('#E41A1C', '#377EB8', '#4DAF4A', '#984EA3', '#FF7F00', '#FFFF33', '#A65628', '#F781BF')
+  col_pal <- c('#5b5b5b', '#377EB8', '#4DAF4A', '#984EA3', '#FF7F00', '#FFFF33', '#A65628', '#F781BF')
   names(col_pal) <- levels(df_method$method_longname)
 
   p1_ggplot <- ggplot(df, 
                       aes(DATECT, y)) +
-    geom_point_interactive(aes(data_id = checked, tooltip = qc,
+    geom_point_interactive(aes(data_id = checked, tooltip = glue("Timestamp: {DATECT}\nMeasure: {y}"),
                                colour = factor(method_longname)), size = 3) +
     scale_color_manual(values = col_pal, limits = force) +
     xlab("Date") +
@@ -34,6 +34,7 @@ plotting_function <- function(input_variable) {
   p1_girafe <- girafe_options(p1_girafe, opts_selection(
     type = "multiple",
     css = "fill:#FF3333;stroke:black;"),
+    opts_tooltip(zindex = 9999),
     opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"),
     opts_zoom(max = 5))
 }
