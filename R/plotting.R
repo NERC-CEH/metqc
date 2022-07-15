@@ -18,8 +18,8 @@ plotting_function <- function(input_variable) {
 
   p1_ggplot <- ggplot(df, 
                       aes(DATECT, y)) +
-    geom_point_interactive(aes(data_id = checked, tooltip = method,
-                               colour = factor(method)), size = 3) +
+    geom_point_interactive(aes(data_id = checked, tooltip = qc,
+                               colour = factor(method_longname)), size = 3) +
     xlab("Date") +
     ylab(paste("Your variable:", input_variable)) +
     ggtitle(paste(input_variable, "time series")) +
