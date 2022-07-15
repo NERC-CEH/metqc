@@ -30,7 +30,7 @@ path <- find.package(pack)
 system(paste(shQuote(file.path(R.home("bin"), "R")),"CMD", "Rd2pdf", shQuote(path)))
 #C:/PROGRA~1/R/R-32~1.4RE/bin/x64/R R CMD Rd2pdf --no-clean N:/0Peter/prop/UKinverseFlux/GHG_TAP/DelD/anthEmis/metqc
 
-#check()
+check(error_on = "error")
 build()
 build(manual = FALSE, vignettes = TRUE)
 build(binary = TRUE)
