@@ -34,6 +34,8 @@ metqcApp <- function(...) {
   # Reading in the gap-filling methods and codes----
   v_names <- readRDS(file = here("data", "v_mainmet_name.rds"))
 
+  gf_choices <- setNames(df_method$method, df_method$method_longname)
+  
   # Define UI for the app
   ui <- dashboardPage(
     skin = "green",
@@ -110,7 +112,7 @@ metqcApp <- function(...) {
                 uiOutput("mytabs"),
                 selectInput("select_imputation",
                   label = h5("Gap-Filling Method"),
-                  choices = list(gf_methods = df_method$method)
+                  choices = gf_choices
                 ),
                 actionButton("impute",
                   label = "Impute selection"
