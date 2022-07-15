@@ -47,12 +47,12 @@ plotting_function <- function(input_variable) {
 plot_heatmap_calendar <- function(df) {
   # Transforming query dataframe with lubridate to fit the format needed for a heatmap calendar
   df <- df %>%
-	  mutate(year = year(DATECT),
+	  mutate(year = lubridate::year(DATECT),
            day_of_the_week = lubridate::wday(DATECT, label = TRUE, week_start = 1),
            month = lubridate::month(DATECT, label = TRUE, abbr = FALSE),
-           week = isoweek(DATECT),
-           day = day(DATECT)) %>%
-    select(year, month, day, week,
+           week = lubridate::isoweek(DATECT),
+           day = lubridate::day(DATECT)) %>%
+    dplyr::select(year, month, day, week,
            day_of_the_week, validator)
   df$week <- as.double(df$week)
   df <- dplyr::mutate(df,
@@ -75,6 +75,6 @@ plot_heatmap_calendar <- function(df) {
     theme(axis.text = element_text(size = 7)) +
     theme(legend.title = element_text(size = 8)) +
     theme(legend.text = element_text(size = 6)) +
-    removeGrid()
+    ggExtra::removeGrid()
   heatmap_plot
 }
