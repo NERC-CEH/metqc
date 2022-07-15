@@ -15,11 +15,16 @@ plotting_function <- function(input_variable) {
     qc = l_qry$df_qc[, input_variable], checked = l_qry$df$checked)
   
   df <- left_join(df, df_method, by = "qc")
+  
+  #df$model_longname <- factor(df$method_longname, levels = levels(df_method$method_longname))
+  
+  col_pal <- c('Original observation (raw data)' = '#E41A1C', 'Missing' = '#377EB8', 'Time' = '#4DAF4A', 'Regression with covariate' = '#984EA3', 'Night-time zero' = '#FF7F00', 'No negative values' = '#FFFF33', 'All zeros' = '#A65628', 'Regression with ERA5 covariate' = '#F781BF')
 
   p1_ggplot <- ggplot(df, 
                       aes(DATECT, y)) +
     geom_point_interactive(aes(data_id = checked, tooltip = qc,
                                colour = factor(method_longname)), size = 3) +
+    scale_color_manual(values = col_pal, limits = force) +
     xlab("Date") +
     ylab(paste("Your variable:", input_variable)) +
     ggtitle(paste(input_variable, "time series")) +
