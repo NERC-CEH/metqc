@@ -70,6 +70,7 @@ plot_heatmap_calendar <- function(df) {
                          aes(day_of_the_week, -week,
                              fill = validator)) +
     geom_tile(color = "white", size = 0.1) +
+    labs(x = 'Day of week', y = 'Week', fill = 'Validator') +
     facet_wrap(year~month, nrow = 4, ncol = 3, scales = "free") +
     theme_minimal(base_size = 8) +
     theme(legend.position = "bottom") +
