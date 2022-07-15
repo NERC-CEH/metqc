@@ -94,7 +94,7 @@ metqcApp <- function(...) {
               actionButton("retrieve_data", "Retrieve from database")
             ),
             box(
-              title = "Calendar heatmap plot",
+              title = "Validation Calendar",
               status = "success", solidHeader = TRUE,
               plotOutput("heatmap_plot")
             ),
@@ -103,7 +103,7 @@ metqcApp <- function(...) {
             fluidRow(
               id = "extracted_data",
               box(
-                title = "Plotted Extracted Data",
+                title = "Extracted Data",
                 status = "success",
                 solidHeader = TRUE,
                 width = 12,
