@@ -16,9 +16,8 @@ plotting_function <- function(input_variable) {
   
   df <- left_join(df, df_method, by = "qc")
   
-  #df$model_longname <- factor(df$method_longname, levels = levels(df_method$method_longname))
-  
-  col_pal <- c('Original observation (raw data)' = '#E41A1C', 'Missing' = '#377EB8', 'Time' = '#4DAF4A', 'Regression with covariate' = '#984EA3', 'Night-time zero' = '#FF7F00', 'No negative values' = '#FFFF33', 'All zeros' = '#A65628', 'Regression with ERA5 covariate' = '#F781BF')
+  col_pal <- c('#E41A1C', '#377EB8', '#4DAF4A', '#984EA3', '#FF7F00', '#FFFF33', '#A65628', '#F781BF')
+  names(col_pal) <- levels(df_method$method_longname)
 
   p1_ggplot <- ggplot(df, 
                       aes(DATECT, y)) +
