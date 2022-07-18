@@ -121,7 +121,7 @@ metqcApp <- function(...) {
                   label = "Finished checking variable for date range."
                 ),
                 checkboxGroupInput("qc_tokeep", "Do not alter data estimated by",
-                  choiceNames = df_method$method,
+                  choiceNames = df_method$method_longname,
                   choiceValues = df_method$qc),
                 uiOutput("impute_extra_info"),
                 actionButton("reset",
