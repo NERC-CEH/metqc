@@ -189,8 +189,8 @@ metqcApp <- function(...) {
     # v_names <<- dbListFields(con, table_name)
     v_names_for_box <- v_names[!v_names %in%
       c("DATECT", "TIMESTAMP", "datect_num", "checked", "pred")]
-    v_names_checklist <- as.data.frame(v_names_for_box)
-    v_names_checklist$finished_checking <- FALSE
+    
+    v_names_checklist <- reactiveValues()
 
     # Format the dates for R----
     df_proc <- data.frame(
@@ -300,6 +300,11 @@ metqcApp <- function(...) {
 
     # Data retrieval functionality-----
     observeEvent(input$retrieve_data, {
+
+      for(i in 1:length(v_names)){
+        v_names_checklist[[v_names[i]]] <- FALSE
+      }
+      
       # enabling previously disabled buttons
       shinyjs::show("extracted_data")
       
@@ -334,18 +339,19 @@ metqcApp <- function(...) {
 
       l_qry$df$checked <<- as.factor(rownames(l_qry$df))
       l_qry$df$datect_num <<- as.numeric(l_qry$df$DATECT)
-      
+
       # Add a tab to the plotting panel for each variable that has been selected by the user.
       output$mytabs <- renderUI({
         my_tabs <- lapply(paste(v_names_for_box), function(i) {
           tabPanel(i,
             value = i,
+            tags$style(HTML(paste0('.tabbable > .nav > li > a[data-value=', i, '] {border: transparent;background-color:', ifelse(v_names_checklist[[i]] == TRUE, '#bcbcbc', 'transparent'), ';}'))),
             girafeOutput(paste0(i, "_interactive_plot")),
           )
         })
         do.call(tabsetPanel, c(my_tabs, id = "plotTabs"))
       })
-
+      
       observe(
         lapply(paste(v_names_for_box), function(i) {
           output[[paste0(i, "_interactive_plot")]] <-
@@ -434,10 +440,10 @@ metqcApp <- function(...) {
 
     # Finished checking, close tab functionality----
     observeEvent(input$finished_check, {
-      removeTab("plotTabs", input$plotTabs)
+      #removeTab("plotTabs", input$plotTabs)
 
       # Insert validation flag for date range here
-      v_names_checklist$finished_checking[v_names_checklist$v_names_for_box == input$plotTabs] <<- TRUE
+      v_names_checklist[[input$plotTabs]] <- TRUE
 
       # # Check if all values are true, only then enable the submit button
       # if (all(v_names_checklist$finished_checking) == TRUE) {
