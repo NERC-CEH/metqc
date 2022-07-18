@@ -30,7 +30,7 @@ plotting_function <- function(input_variable) {
     theme(plot.title = element_text(hjust = 0.5),
           legend.title = element_blank())
   p1_girafe <- girafe(code = print(p1_ggplot),
-                      width_svg = 6, height_svg = 5)
+                      width_svg = 10, height_svg = 5)
   p1_girafe <- girafe_options(p1_girafe, opts_selection(
     type = "multiple",
     css = "fill:#FF3333;stroke:black;"),
