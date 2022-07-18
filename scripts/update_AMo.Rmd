@@ -12,6 +12,7 @@ output:
 library(pins)
 library(dplyr)
 library(ggplot2)
+library(data.table)
 board <- pins::board_rsconnect()
 ```
 
@@ -43,9 +44,22 @@ system.time(l_lev2 <- pin_read(
   board, 
   "plevy/level2_data"))
 paste("Level 2 (checked by user) data exists from", min(l_lev2$df$DATECT), "to",  max(l_lev2$df$DATECT))
-df <- subset(l_lev2$df_qc, DATECT > "2022-01-01")
+df    <- subset(l_lev2$df,    DATECT >= "2022-01-01")
+df_qc <- subset(l_lev2$df_qc, DATECT >= "2022-01-01")
 
-df <- df %>%
+# write to pins
+pins::pin_write(board, df,    name = "UK-AMo_met_level2_data",    type = "csv")
+pins::pin_write(board, df_qc, name = "UK-AMo_met_level2_data_qc", type = "csv")
+# write csv version for current year
+# https://connect-apps.ceh.ac.uk/AMo_met_level2_data/
+# https://connect-apps.ceh.ac.uk/UK-AMo_met_level2_data_qc/
+# write to file on P: drive - doesnt work on Connect server - no write access
+# dir_output <- "//nercbuctdb.adceh.ceh.ac.uk/projects1/NECXXXX_Auchencorth/metqc/output/"
+# fwrite(df,    file = paste0(dir_output, "UK-AMo_met_level2.csv"))
+# fwrite(df_qc, file = paste0(dir_output, "UK-AMo_met_level2_qc.csv"))
+
+# plot calendar heatmap
+df <- df_qc %>%
   mutate(year = lubridate::year(DATECT),
          day_of_the_week = lubridate::wday(DATECT, label = TRUE, week_start = 1),
          month = lubridate::month(DATECT, label = TRUE, abbr = FALSE),

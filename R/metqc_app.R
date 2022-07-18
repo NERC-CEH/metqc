@@ -128,7 +128,7 @@ metqcApp <- function(...) {
                   label = "Restart app"
                 ),
                 actionButton("submitchanges", "Submit changes to file"),
-                actionButton("submitchanges_pin", "Submit changes to pin board")
+                actionButton("submitchanges_cloud", "Submit changes to cloud")
               ),
             )
           ),
@@ -143,6 +143,30 @@ metqcApp <- function(...) {
   )
 
   server <- function(input, output, session) {
+    
+    # list of possible users - hard-coded for now  
+    v_usernames <- c("leav", "dunhar", "karung", "plevy", "matj", "MauGre", "mcoy", "neimul",
+      "sarle", "wilfinc")
+    
+    # a modal dialog where the user can enter their user name.
+    username_modal <- modalDialog(
+      title = "Enter user name",
+      selectInput('input_username','Select from:', v_usernames),
+      easyClose = F,
+      footer = tagList(
+        actionButton("ok", "OK")
+      )
+    )
+
+    # Show the model on start up ...
+    showModal(username_modal)
+
+    observeEvent(input$ok, {
+      removeModal()
+      # save the username
+      username <<- input$input_username
+    })
+
     # Read in ERA5 data----
     # read from JASMIN
     # url_era5 <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/df_era5.rds")
@@ -484,7 +508,8 @@ metqcApp <- function(...) {
 
     # Writing validated data to file----
     observeEvent(input$submitchanges, {
-      l_qry$df_qc$validator <- as.character(Sys.info()["user"])
+      #l_qry$df_qc$validator <- as.character(Sys.info()["user"])
+      l_qry$df_qc$validator <- username
       # create a backup copy without the changes
       fname <- here("data", "UK-AMo_mainmet_val_backup.rds")
       saveRDS(l_lev2, file = fname)
@@ -498,7 +523,7 @@ metqcApp <- function(...) {
     })
     
     # Writing validated data to pin----
-    observeEvent(input$submitchanges_pin, {
+    observeEvent(input$submitchanges_cloud, {
       # write to pin on Connect server
       pin_write(board,
         l_lev2,
