@@ -39,7 +39,8 @@ metqcApp <- function(...) {
   # Define UI for the app
   ui <- dashboardPage(
     skin = "green",
-    dashboardHeader(title = "Met Data Validation"),
+    dashboardHeader(title = "Met Data Validation",
+                    tags$li(class = "dropdown", actionLink("change_user", textOutput('user_name_text'), style="font-weight: bold;color:white;"))),
     dashboardSidebar(
       sidebarMenu(
         menuItem("Dashboard", tabName = "dashboard"),
@@ -160,11 +161,17 @@ metqcApp <- function(...) {
 
     # Show the model on start up ...
     showModal(username_modal)
+    
+    # allow user to trigger modal with button press
+    observeEvent(input$change_user, {
+      showModal(username_modal)
+    })
 
     observeEvent(input$ok, {
       removeModal()
       # save the username
       username <<- input$input_username
+      output$user_name_text <- renderText({paste0('Current user:  ', input$input_username)})
     })
 
     # Read in ERA5 data----
