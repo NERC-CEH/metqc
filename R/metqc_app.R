@@ -110,7 +110,7 @@ metqcApp <- function(...) {
                 status = "success",
                 solidHeader = TRUE,
                 width = 12,
-                uiOutput("mytabs"),
+                shinycssloaders::withSpinner(uiOutput("mytabs")), 
                 selectInput("select_imputation",
                   label = h5("Gap-Filling Method"),
                   choices = gf_choices
@@ -331,7 +331,7 @@ metqcApp <- function(...) {
 
     # Data retrieval functionality-----
     observeEvent(input$retrieve_data, {
-
+      
       for(i in 1:length(v_names)){
         v_names_checklist[[v_names[i]]] <- FALSE
       }
@@ -397,6 +397,7 @@ metqcApp <- function(...) {
       })
 
       output$heatmap_plot <- renderPlot(heatmap_plot_selected())
+      
     })
 
     # Creating reactive variables-----
