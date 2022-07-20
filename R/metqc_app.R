@@ -99,12 +99,17 @@ metqcApp <- function(...) {
               # uiOutput("select_variables"),
               actionButton("retrieve_data", "Retrieve from database")
             ),
-            box(
-              title = "Validation Calendar",
-              status = "success", solidHeader = TRUE,
-              plotOutput("heatmap_plot")
+            hidden(
+              div(id = "validation_calendar_outer",
+                  box(
+                    id = 'validation_calendar',
+                    title = "Validation Calendar",
+                    status = "success", solidHeader = TRUE,
+                    shinycssloaders::withSpinner(plotOutput("heatmap_plot"))
+                    )
+              )
+            )
             ),
-          ),
           hidden(
             fluidRow(
               id = "extracted_data",
@@ -151,6 +156,8 @@ metqcApp <- function(...) {
     # list of possible users - hard-coded for now  
     v_usernames <- c("leav", "dunhar", "karung", "plevy", "matj", "MauGre", "mcoy", "neimul",
       "sarle", "wilfinc")
+    
+    #shinyjs::hide("validation_calendar")
     
     # a modal dialog where the user can enter their user name.
     username_modal <- modalDialog(
@@ -341,6 +348,7 @@ metqcApp <- function(...) {
       
       # enabling previously disabled buttons
       shinyjs::show("extracted_data")
+      shinyjs::show("validation_calendar_outer")
       
       l_qry <<- list()
       
