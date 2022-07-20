@@ -79,7 +79,8 @@ metqcApp <- function(...) {
               ),
               column(
                 width = 6,
-                uiOutput("end_date")
+                uiOutput("end_date"),
+                tags$style(HTML(".datepicker {z-index:99999 !important;}"))
               ),
               column(
                 width = 3,
@@ -269,7 +270,7 @@ metqcApp <- function(...) {
         max = last_end_date(),
         label = "End date"
       )
-    })
+      })
 
     # Create a dataframe with the start and end dates,
     df_daterange <- eventReactive(input$retrieve_data, {
