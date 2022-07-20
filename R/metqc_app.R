@@ -18,6 +18,7 @@ library(powerjoin)
 library(pins)
 library(glue)
 library(shinycssloaders)
+library(shinyalert)
 # source(here("R", "imputation.R"))
 # source(here("R", "plotting.R"))
 # source(here("R", "metqc_app.R"))
@@ -332,7 +333,7 @@ metqcApp <- function(...) {
 
     # Data retrieval functionality-----
     observeEvent(input$retrieve_data, {
-      
+
       for(i in 1:length(v_names)){
         v_names_checklist[[v_names[i]]] <- FALSE
       }
@@ -457,6 +458,7 @@ metqcApp <- function(...) {
 
     # Reset button functionality----
     observeEvent(input$reset, {
+    
       showModal(modalDialog(
         title = "Are you sure you want to restart the app? All progress will be lost",
         footer = tagList(
@@ -517,6 +519,11 @@ metqcApp <- function(...) {
 
     # Writing validated data to file----
     observeEvent(input$submitchanges, {
+      
+      # disable button and show working
+      runjs('document.getElementById("submitchanges").textContent="Submitting changes...";')
+      shinyjs::disable("submitchanges")
+      
       #l_qry$df_qc$validator <- as.character(Sys.info()["user"])
       l_qry$df_qc$validator <- username
       # create a backup copy without the changes
@@ -529,16 +536,71 @@ metqcApp <- function(...) {
       # save to local file
       fname <- here("data", "UK-AMo_mainmet_val.rds")
       saveRDS(l_lev2, file = fname)
+      
+      runjs('document.getElementById("submitchanges").textContent="Submit changes to file";')
+      shinyjs::enable("submitchanges")
     })
     
     # Writing validated data to pin----
     observeEvent(input$submitchanges_cloud, {
+    
+      # Update button text
+      runjs('document.getElementById("submitchanges_cloud").textContent="Submitting changes...";')
+
+      # disable button while working
+      shinyjs::disable("submitchanges_cloud")
+
       # write to pin on Connect server
       pin_write(board,
         l_lev2,
         name = "level2_data", type = "rds")
-    })
-  }
+        
+      time_diff <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created), units = 'mins')
+
+      if(time_diff < 2){
+          shinyalert(
+          title = "Data successfully saved to cloud",
+          #text = "This is a modal",
+          size = "m", 
+          closeOnEsc = TRUE,
+          closeOnClickOutside = TRUE,
+          html = FALSE,
+          type = "success",
+          showConfirmButton = TRUE,
+          showCancelButton = FALSE,
+          confirmButtonText = "OK",
+          confirmButtonCol = "#AEDEF4",
+          timer = 10000,
+          imageUrl = "",
+          animation = TRUE
+        )
+
+        } else{
+          shinyalert(
+            title = "Error saving data",
+            text = "Data took over 2 minuets to write. Data may not have saved correctly to the cloud.",
+            size = "m", 
+            closeOnEsc = FALSE,
+            closeOnClickOutside = FALSE,
+            html = FALSE,
+            type = "error",
+            showConfirmButton = FALSE,
+            showCancelButton = TRUE,
+            cancelButtonText = "Cancel",
+            timer = 10000,
+            imageUrl = "",
+            animation = TRUE
+          )
+
+        }
+      
+      # remove button activation and reactivate button
+      runjs('document.getElementById("submitchanges_cloud").textContent="Submit";')
+      shinyjs::enable("submitchanges_cloud")
+      
+      })
+    
+    }
 
   shinyApp(ui, server, ...)
 }
