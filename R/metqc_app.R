@@ -45,8 +45,9 @@ metqcApp <- function(...) {
                     tags$li(class = "dropdown", actionLink("change_user", textOutput('user_name_text'), style="font-weight: bold;color:white;"))),
     dashboardSidebar(
       sidebarMenu(
-        menuItem("Dashboard", tabName = "dashboard"),
-        menuItem("Information", tabName = "information")
+        menuItem("Dashboard", tabName = "dashboard", icon = icon('database')),
+        menuItem("Download", tabName = "download", icon = icon('download')),
+        menuItem("Information", tabName = "information", icon = icon('info'))
       )
     ),
     dashboardBody(
@@ -142,6 +143,9 @@ metqcApp <- function(...) {
             )
           ),
         ),
+        tabItem(
+          tabName = 'download'
+          ),
         tabItem(
           tabName = "information",
           h2("Information placeholder"),
