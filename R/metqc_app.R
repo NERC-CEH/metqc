@@ -97,7 +97,8 @@ metqcApp <- function(...) {
                 )
               ),
               # uiOutput("select_variables"),
-              actionButton("retrieve_data", "Retrieve from database")
+              actionButton("retrieve_data", "Retrieve from database"),
+              actionButton("compare_vars", "Compare variables")
             ),
             hidden(
               div(id = "validation_calendar_outer",
@@ -184,6 +185,8 @@ metqcApp <- function(...) {
       output$user_name_text <- renderText({paste0('Current user:  ', input$input_username)})
     })
 
+    disable('compare_vars')
+    
     # Read in ERA5 data----
     # read from JASMIN
     # url_era5 <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/df_era5.rds")
@@ -409,8 +412,43 @@ metqcApp <- function(...) {
 
       output$heatmap_plot <- renderPlot(heatmap_plot_selected())
       
+      enable('compare_vars')
+      
     })
 
+    # compare variables modal
+    observeEvent(input$compare_vars, {
+      
+      plot_data <- reactive({
+        data.frame(x = l_qry$df[,input$x_var], y = l_qry$df[,input$y_var])
+      })
+      
+      output$compare_vars_plot <- renderPlot({
+        ggplot(data = plot_data(), aes(x = x, y = y)) +
+          geom_point() +
+          labs(x = input$x_var, y = input$y_var) +
+          theme_bw()
+      })
+
+      showModal(
+        modalDialog(
+          fluidPage(
+            fluidRow(
+              column(6, selectInput('x_var', 'X variable:', choices = v_names_for_box)),
+              column(6, selectInput('y_var', 'Y variable:', choices = v_names_for_box, selected = v_names_for_box[2]))
+            ),
+            fluidRow(
+              shinycssloaders::withSpinner(plotOutput("compare_vars_plot"))
+            )
+          ),
+          footer = modalButton("Close"),
+          easyClose = FALSE,
+          size = "l"
+        )
+      )
+ 
+    })
+    
     # Creating reactive variables-----
     selected_state <- reactive({
       input[[paste0(input$plotTabs, "_interactive_plot_selected")]]
