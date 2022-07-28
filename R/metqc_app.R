@@ -44,8 +44,9 @@ metqcApp <- function(...) {
     dashboardHeader(title = "Met Data Validation",
                     tags$li(class = "dropdown", actionLink("change_user", textOutput('user_name_text'), style="font-weight: bold;color:white;"))),
     dashboardSidebar(
-      sidebarMenu(
+      sidebarMenu(id = 'tabs',
         menuItem("Dashboard", tabName = "dashboard"),
+        menuItem("Edit data", tabName = "edit_data"),
         menuItem("Information", tabName = "information")
       )
     ),
@@ -98,7 +99,8 @@ metqcApp <- function(...) {
               ),
               # uiOutput("select_variables"),
               actionButton("retrieve_data", "Retrieve from database"),
-              actionButton("compare_vars", "Compare variables")
+              actionButton("edit_data_btn", "Manually edit data"),
+              actionButton("compare_vars", "Compare variables"),
             ),
             hidden(
               div(id = "validation_calendar_outer",
@@ -144,6 +146,17 @@ metqcApp <- function(...) {
           ),
         ),
         tabItem(
+          tabName = "edit_data",
+          #h2('placeholder')
+          #selectizeInput('edit_table_cols', 'Select variables:', choices = v_names, options = list(placeholder = 'select a state name')),
+         selectizeInput('edit_table_cols', 'Select variable to edit:', choices = NULL, multiple = F),
+         shinycssloaders::withSpinner(
+           DT::dataTableOutput('edit_table', 
+                               width = '30%')
+           ),
+         actionButton('save_edits_btn', 'Save edits')
+        ),
+        tabItem(
           tabName = "information",
           h2("Information placeholder"),
           p("This app provides an interface to the field sites database and allows a user to plot data, remove dubious data and fill gaps with predictions.")
@@ -186,6 +199,7 @@ metqcApp <- function(...) {
     })
 
     disable('compare_vars')
+    disable('edit_data_btn')
     
     # Read in ERA5 data----
     # read from JASMIN
@@ -413,9 +427,42 @@ metqcApp <- function(...) {
       output$heatmap_plot <- renderPlot(heatmap_plot_selected())
       
       enable('compare_vars')
+      enable('edit_data_btn')
       
     })
 
+    # manually edit data button actions
+    
+    observeEvent(input$edit_data_btn, {
+      updateTabItems(session, "tabs", "edit_data")
+    })
+
+    #edit_table_selected_cols <- reactive({c('DATECT', input$edit_table_cols)})
+    
+    edit_table_data <- reactive({
+      
+      df <- cbind(data.frame(DATECT = l_qry$df$DATECT), l_qry$df[,input$edit_table_cols], l_qry$df_qc[,input$edit_table_cols])
+    df$DATECT <- as.character(as.POSIXct(df$DATECT))
+    colnames(df) <- c('DATECT', input$edit_table_cols, 'QC')
+    df
+    })
+  
+    updateSelectizeInput(session, 'edit_table_cols', choices = v_names_for_box, server = TRUE, options = list(placeholder = 'Select variables...'))
+
+    output$edit_table <- DT::renderDataTable({
+        DT::datatable(edit_table_data(),
+                     selection = 'none',
+                     rownames = FALSE,
+                     editable = list(target = "column", disable = list(columns = c(0, 2))),
+                     options = list(dom = 'lrtip',
+                                    scrollX = TRUE,
+                                    pageLength = 10, 
+                                    info = FALSE,
+                                    lengthMenu = list(c(10, 25, 50, 100, -1), c('10', '25', '50', '100', 'All'))
+                    )
+      )
+    })
+    
     # compare variables modal
     observeEvent(input$compare_vars, {
       
