@@ -97,7 +97,6 @@ metqcApp <- function(...) {
                   min = 0, max = 59, step = 1
                 )
               ),
-              # uiOutput("select_variables"),
               actionButton("retrieve_data", "Retrieve from database"),
               actionButton("edit_data_btn", "Manually edit data"),
               actionButton("compare_vars", "Compare variables"),
@@ -147,8 +146,6 @@ metqcApp <- function(...) {
         ),
         tabItem(
           tabName = "edit_data",
-          #h2('placeholder')
-          #selectizeInput('edit_table_cols', 'Select variables:', choices = v_names, options = list(placeholder = 'select a state name')),
          selectizeInput('edit_table_cols', 'Select variable to edit:', choices = NULL, multiple = F),
          shinycssloaders::withSpinner(
            DT::dataTableOutput('edit_table', 
@@ -170,8 +167,6 @@ metqcApp <- function(...) {
     # list of possible users - hard-coded for now  
     v_usernames <- c("leav", "dunhar", "karung", "plevy", "matj", "MauGre", "mcoy", "neimul",
       "sarle", "wilfinc")
-    
-    #shinyjs::hide("validation_calendar")
     
     # a modal dialog where the user can enter their user name.
     username_modal <- modalDialog(
@@ -224,15 +219,13 @@ metqcApp <- function(...) {
     # l_lev1 <- readRDS(fname_mainmet)
     # OR read from pin on Connect server
     l_lev1 <- pin_read(board, "plevy/level1_data")
-    #l_lev1 <- pin_read(board, "wilfinc/WF_level1_data")
-    
+
     # Read in the previously validated data----
     # read from local file
     # fname <- here("data", "UK-AMo_mainmet_val.rds")
     # l_lev2 <- readRDS(fname)
     # OR read from pin on Connect server
     l_lev2 <- pin_read(board, "plevy/level2_data")
-    #l_lev2 <- pin_read(board, "wilfinc/WF_level2_data")
 
     # Here we join the existing Level 2 data with new Level 1 data
     # Where records already exist in the Level 2 data, these are preserved
@@ -333,15 +326,6 @@ metqcApp <- function(...) {
       )
     })
 
-    # Rendering the box that we need to allow the user to select
-    # all of the variables they wish to check----
-    # output$select_variables <- renderUI({
-      # checkboxGroupButtons("variable_check",
-        # label = h5("Variables to be checked"),
-        # choices = as.list(v_names_for_box), selected = v_names_for_box
-      # )
-    # })
-
     # The optional rendering of UI elements depending on which
     # imputation method has been selected
     output$impute_extra_info <- renderUI({
@@ -372,24 +356,6 @@ metqcApp <- function(...) {
       
       l_qry <<- list()
       
-      # # database version
-      # # make a query for date range specified by the user.
-      # qry_variables <- paste(v_names_for_box, collapse = ", ")
-      # table_name <- "MAINMET_RAW"
-      # l_qry$df <<- paste0(
-        # "SELECT DATECT, ", qry_variables, " FROM ", table_name,
-        # " WHERE DATECT > TO_DATE('", df_daterange()$start_date_ch,
-        # "', 'yyyy/mm/dd hh24:mi') AND DATECT < TO_DATE('",
-        # df_daterange()$end_date_ch, "', 'yyyy/mm/dd hh24:mi')"
-      # )
-      # table_name <- "MAINMET_RAW_QC"
-      # l_qry$df_qc <<- paste0(
-        # "SELECT DATECT, ", qry_variables, " FROM ", table_name,
-        # " WHERE DATECT > TO_DATE('", df_daterange()$start_date_ch,
-        # "', 'yyyy/mm/dd hh24:mi') AND DATECT < TO_DATE('",
-        # df_daterange()$end_date_ch, "', 'yyyy/mm/dd hh24:mi')"
-      # )
-
       # file / dataframe version      
       l_qry$df <<- subset(l_lev2$df, DATECT >= df_daterange()$start_date &
         DATECT <= df_daterange()$end_date)
@@ -435,12 +401,9 @@ metqcApp <- function(...) {
     })
 
     # manually edit data button actions
-    
     observeEvent(input$edit_data_btn, {
       updateTabItems(session, "tabs", "edit_data")
     })
-
-    #edit_table_selected_cols <- reactive({c('DATECT', input$edit_table_cols)})
 
     edit_table_data <- reactive({
       df <- cbind(data.frame(DATECT = l_qry$df$DATECT), l_qry$df[,input$edit_table_cols], l_qry$df_qc[,input$edit_table_cols])
@@ -480,7 +443,6 @@ metqcApp <- function(...) {
     observeEvent(input$reset_edit_table, {
       shinyjs::reset("edit_table_cols")
     })
-    
     
     # compare variables modal
     observeEvent(input$compare_vars, {
@@ -525,20 +487,7 @@ metqcApp <- function(...) {
       if (is.null(selected_state())) {
         shinyjs::alert("Please select a point to impute.")
       } else {
-
-        # # Extract all the reasons for imputation of the data points
-        # impute_reasons <- data_flags %>%
-        # filter(cat == "initial_flag")
-        # # Turn it into a list for selection
-        # impute_reasons <- impute_reasons$information
-
-        # # Extract gapfilling methods
-        # gapfill_options <- data_flags %>%
-        # filter(cat != "initial_flag")
-        # gapfill_options <- gapfill_options$information
-
-        #l_imp <- l_qry
-
+        
         l_qry <<- impute(
           y = input$plotTabs,
           l_met = l_qry,
@@ -550,8 +499,6 @@ metqcApp <- function(...) {
           plot_graph = FALSE,
           selection = l_qry$df$checked %in% selected_state()
         )
-
-        #l_qry <<- l_imp
 
         # Re-plotting plot after imputation is confirmed to illustrate changes
         shinyjs::show("plotted_data")
@@ -593,42 +540,7 @@ metqcApp <- function(...) {
       # Insert validation flag for date range here
       v_names_checklist[[input$plotTabs]] <- TRUE
 
-      # # Check if all values are true, only then enable the submit button
-      # if (all(v_names_checklist$finished_checking) == TRUE) {
-        # shinyjs::enable("submitchanges")
-      # }
     })
-
-    # # Writing tables to a database----
-    ##* WIP - temporarily removed - writes to file instead. Requires SQL UPDATE code here
-    # observeEvent(input$submitchanges, {
-    # if (dbExistsTable(con, "MAINMET")) {
-    # dbWriteTable(con,
-    # "MAINMET",
-    # l_qry$df,
-    # append = TRUE
-    # )
-    # } else {
-    # dbWriteTable(con,
-    # "MAINMET",
-    # l_qry$df
-    # )
-    # }
-
-    # if (dbExistsTable(con, "MAINMET_QC")) {
-    # dbWriteTable(con,
-    # "MAINMET_QC",
-    # change_summary,
-    # append = TRUE
-    # )
-    # } else {
-    # dbWriteTable(con,
-    # "MAINMET_QC",
-    # change_summary
-    # )
-    # }
-    # dbCommit(con) ##* WIP is this the correct place for this?
-    # })
 
     # Writing validated data to file----
     observeEvent(input$submitchanges, {
@@ -654,80 +566,6 @@ metqcApp <- function(...) {
       shinyjs::enable("submitchanges")
     })
     
-    # # Writing validated data to pin----
-    # observeEvent({
-    #   input$submitchanges_cloud
-    #   input$edit_table_cols
-    #   1
-    #   }, {
-    # 
-    #   # Update button text
-    #   runjs('document.getElementById("submitchanges_cloud").textContent="Submitting changes...";')
-    # 
-    #   # disable button while working
-    #   shinyjs::disable("submitchanges_cloud")
-    #   shinyjs::disable("edit_table_cols")
-    # 
-    #   # update lev2 with l_qry
-    # 
-    #   l_qry$df_qc$validator <- username
-    # 
-    #   # overwrite existing data with changes in query
-    #   l_lev2$df    <<- power_full_join(l_lev2$df,    l_qry$df, by = "DATECT", conflict = coalesce_yx)
-    #   l_lev2$df_qc <<- power_full_join(l_lev2$df_qc, l_qry$df_qc,  by = "DATECT", conflict = coalesce_yx)
-    #   
-    #   # write to pin on Connect server
-    #   pin_write(board,
-    #     l_lev2,
-    #     #name = "WF_level2_data", type = "rds")
-    #     name = "level2_data", type = "rds")
-    #     
-    #   time_diff <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created), units = 'mins')
-    # 
-    #   if(time_diff < 2){
-    #       shinyalert(
-    #       title = "Data successfully saved to cloud",
-    #       #text = "This is a modal",
-    #       size = "m", 
-    #       closeOnEsc = TRUE,
-    #       closeOnClickOutside = TRUE,
-    #       html = FALSE,
-    #       type = "success",
-    #       showConfirmButton = TRUE,
-    #       showCancelButton = FALSE,
-    #       confirmButtonText = "OK",
-    #       confirmButtonCol = "#AEDEF4",
-    #       timer = 10000,
-    #       imageUrl = "",
-    #       animation = TRUE
-    #     )
-    # 
-    #     } else{
-    #       shinyalert(
-    #         title = "Error saving data",
-    #         text = "Data took over 2 minuets to write. Data may not have saved correctly to the cloud.",
-    #         size = "m", 
-    #         closeOnEsc = FALSE,
-    #         closeOnClickOutside = FALSE,
-    #         html = FALSE,
-    #         type = "error",
-    #         showConfirmButton = FALSE,
-    #         showCancelButton = TRUE,
-    #         cancelButtonText = "Cancel",
-    #         timer = 10000,
-    #         imageUrl = "",
-    #         animation = TRUE
-    #       )
-    # 
-    #     }
-    #   
-    #   # remove button activation and reactivate button
-    #   runjs('document.getElementById("submitchanges_cloud").textContent="Submit";')
-    #   shinyjs::enable("submitchanges_cloud")
-    #   
-    #   })
-    
-    
     # Writing validated data to pin---- From Edits
     observeEvent(input$save_edits_btn, {
       
@@ -738,7 +576,6 @@ metqcApp <- function(...) {
       shinyjs::disable("save_edits_btn")
       
       # update lev2 with l_qry
-     
       # overwrite existing data with changes in query
       l_lev2$df    <<- power_full_join(l_lev2$df,    l_qry$df, by = "DATECT", conflict = coalesce_yx)
       l_lev2$df_qc <<- power_full_join(l_lev2$df_qc, l_qry$df_qc,  by = "DATECT", conflict = coalesce_yx)
@@ -746,7 +583,6 @@ metqcApp <- function(...) {
       # write to pin on Connect server
       pin_write(board,
                 l_lev2,
-                #name = "WF_level2_data", type = "rds")
                 name = "level2_data", type = "rds")
       
       time_diff <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created), units = 'mins')
@@ -806,7 +642,6 @@ metqcApp <- function(...) {
       shinyjs::disable("edit_table_cols")
 
       # update lev2 with l_qry
-
       l_qry$df_qc$validator <- username
 
       # overwrite existing data with changes in query
@@ -816,7 +651,6 @@ metqcApp <- function(...) {
       # write to pin on Connect server
       pin_write(board,
         l_lev2,
-        #name = "WF_level2_data", type = "rds")
         name = "level2_data", type = "rds")
 
       time_diff <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created), units = 'mins')
@@ -824,7 +658,6 @@ metqcApp <- function(...) {
       if(time_diff < 2){
           shinyalert(
           title = "Data successfully saved to cloud",
-          #text = "This is a modal",
           size = "m",
           closeOnEsc = TRUE,
           closeOnClickOutside = TRUE,
