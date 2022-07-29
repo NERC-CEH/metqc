@@ -154,7 +154,7 @@ metqcApp <- function(...) {
            DT::dataTableOutput('edit_table', 
                                width = '30%')
            ),
-         actionButton('save_edits_btn', 'Save edits')
+         actionButton('save_edits_btn', 'Save')
         ),
         tabItem(
           tabName = "information",
@@ -200,6 +200,7 @@ metqcApp <- function(...) {
 
     disable('compare_vars')
     disable('edit_data_btn')
+    disable('edit_data_btn')
     
     # Read in ERA5 data----
     # read from JASMIN
@@ -211,7 +212,7 @@ metqcApp <- function(...) {
     # OR read from pin on Connect server
     board <- board_rsconnect()
     df_era5 <- pin_read(board, "plevy/era5_data")
-    names(df_era5); dim(df_era5)
+    #names(df_era5); dim(df_era5)
 
     # Reading in this year's Level 1 data----
     # read from JASMIN
@@ -223,13 +224,15 @@ metqcApp <- function(...) {
     # l_lev1 <- readRDS(fname_mainmet)
     # OR read from pin on Connect server
     l_lev1 <- pin_read(board, "plevy/level1_data")
-
+    #l_lev1 <- pin_read(board, "wilfinc/WF_level1_data")
+    
     # Read in the previously validated data----
     # read from local file
     # fname <- here("data", "UK-AMo_mainmet_val.rds")
     # l_lev2 <- readRDS(fname)
     # OR read from pin on Connect server
     l_lev2 <- pin_read(board, "plevy/level2_data")
+    #l_lev2 <- pin_read(board, "wilfinc/WF_level2_data")
 
     # Here we join the existing Level 2 data with new Level 1 data
     # Where records already exist in the Level 2 data, these are preserved
@@ -438,15 +441,14 @@ metqcApp <- function(...) {
     })
 
     #edit_table_selected_cols <- reactive({c('DATECT', input$edit_table_cols)})
-    
+
     edit_table_data <- reactive({
-      
       df <- cbind(data.frame(DATECT = l_qry$df$DATECT), l_qry$df[,input$edit_table_cols], l_qry$df_qc[,input$edit_table_cols])
     df$DATECT <- as.character(as.POSIXct(df$DATECT))
-    colnames(df) <- c('DATECT', input$edit_table_cols, 'QC')
+    colnames(df) <- c('Timestamp', input$edit_table_cols, 'QC')
     df
     })
-  
+
     updateSelectizeInput(session, 'edit_table_cols', choices = v_names_for_box, server = TRUE, options = list(placeholder = 'Select variables...'))
 
     output$edit_table <- DT::renderDataTable({
@@ -462,6 +464,23 @@ metqcApp <- function(...) {
                     )
       )
     })
+  
+    # update data with manual edits
+    observeEvent(input$edit_table_cell_edit, {
+      enable('edit_data_btn')
+      req(input$edit_table_cell_edit)
+      # update $df
+      l_qry$df[input$edit_table_cell_edit$row, input$edit_table_cols] <<- input$edit_table_cell_edit$value
+      l_qry$df_qc[input$edit_table_cell_edit$row, input$edit_table_cols] <<- 8 # qc code 8 == manual edit/flag
+      l_qry$df_qc$validator[input$edit_table_cell_edit$row] <<- username # issue of surname being applied to EVERY variable/measure for these time points...
+
+    })
+
+    # reset edit table
+    observeEvent(input$reset_edit_table, {
+      shinyjs::reset("edit_table_cols")
+    })
+    
     
     # compare variables modal
     observeEvent(input$compare_vars, {
@@ -635,27 +654,178 @@ metqcApp <- function(...) {
       shinyjs::enable("submitchanges")
     })
     
-    # Writing validated data to pin----
-    observeEvent(input$submitchanges_cloud, {
+    # # Writing validated data to pin----
+    # observeEvent({
+    #   input$submitchanges_cloud
+    #   input$edit_table_cols
+    #   1
+    #   }, {
+    # 
+    #   # Update button text
+    #   runjs('document.getElementById("submitchanges_cloud").textContent="Submitting changes...";')
+    # 
+    #   # disable button while working
+    #   shinyjs::disable("submitchanges_cloud")
+    #   shinyjs::disable("edit_table_cols")
+    # 
+    #   # update lev2 with l_qry
+    # 
+    #   l_qry$df_qc$validator <- username
+    # 
+    #   # overwrite existing data with changes in query
+    #   l_lev2$df    <<- power_full_join(l_lev2$df,    l_qry$df, by = "DATECT", conflict = coalesce_yx)
+    #   l_lev2$df_qc <<- power_full_join(l_lev2$df_qc, l_qry$df_qc,  by = "DATECT", conflict = coalesce_yx)
+    #   
+    #   # write to pin on Connect server
+    #   pin_write(board,
+    #     l_lev2,
+    #     #name = "WF_level2_data", type = "rds")
+    #     name = "level2_data", type = "rds")
+    #     
+    #   time_diff <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created), units = 'mins')
+    # 
+    #   if(time_diff < 2){
+    #       shinyalert(
+    #       title = "Data successfully saved to cloud",
+    #       #text = "This is a modal",
+    #       size = "m", 
+    #       closeOnEsc = TRUE,
+    #       closeOnClickOutside = TRUE,
+    #       html = FALSE,
+    #       type = "success",
+    #       showConfirmButton = TRUE,
+    #       showCancelButton = FALSE,
+    #       confirmButtonText = "OK",
+    #       confirmButtonCol = "#AEDEF4",
+    #       timer = 10000,
+    #       imageUrl = "",
+    #       animation = TRUE
+    #     )
+    # 
+    #     } else{
+    #       shinyalert(
+    #         title = "Error saving data",
+    #         text = "Data took over 2 minuets to write. Data may not have saved correctly to the cloud.",
+    #         size = "m", 
+    #         closeOnEsc = FALSE,
+    #         closeOnClickOutside = FALSE,
+    #         html = FALSE,
+    #         type = "error",
+    #         showConfirmButton = FALSE,
+    #         showCancelButton = TRUE,
+    #         cancelButtonText = "Cancel",
+    #         timer = 10000,
+    #         imageUrl = "",
+    #         animation = TRUE
+    #       )
+    # 
+    #     }
+    #   
+    #   # remove button activation and reactivate button
+    #   runjs('document.getElementById("submitchanges_cloud").textContent="Submit";')
+    #   shinyjs::enable("submitchanges_cloud")
+    #   
+    #   })
     
+    
+    # Writing validated data to pin---- From Edits
+    observeEvent(input$save_edits_btn, {
+      
+      # Update button text
+      runjs('document.getElementById("save_edits_btn").textContent="Saving...";')
+      
+      # disable button while working
+      shinyjs::disable("save_edits_btn")
+      
+      # update lev2 with l_qry
+     
+      # overwrite existing data with changes in query
+      l_lev2$df    <<- power_full_join(l_lev2$df,    l_qry$df, by = "DATECT", conflict = coalesce_yx)
+      l_lev2$df_qc <<- power_full_join(l_lev2$df_qc, l_qry$df_qc,  by = "DATECT", conflict = coalesce_yx)
+      
+      # write to pin on Connect server
+      pin_write(board,
+                l_lev2,
+                #name = "WF_level2_data", type = "rds")
+                name = "level2_data", type = "rds")
+      
+      time_diff <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created), units = 'mins')
+      
+      if(time_diff < 2){
+        shinyalert(
+          title = "Data successfully saved to cloud",
+          #text = "This is a modal",
+          size = "m",
+          closeOnEsc = TRUE,
+          closeOnClickOutside = TRUE,
+          html = FALSE,
+          type = "success",
+          showConfirmButton = TRUE,
+          showCancelButton = FALSE,
+          confirmButtonText = "OK",
+          confirmButtonCol = "#AEDEF4",
+          timer = 10000,
+          imageUrl = "",
+          animation = TRUE
+        )
+        
+      } else{
+        shinyalert(
+          title = "Error saving data",
+          text = "Data took over 2 minuets to write. Data may not have saved correctly to the cloud.",
+          size = "m",
+          closeOnEsc = FALSE,
+          closeOnClickOutside = FALSE,
+          html = FALSE,
+          type = "error",
+          showConfirmButton = FALSE,
+          showCancelButton = TRUE,
+          cancelButtonText = "Cancel",
+          timer = 10000,
+          imageUrl = "",
+          animation = TRUE
+        )
+        
+      }
+      
+      # remove button activation and reactivate button
+      runjs('document.getElementById("submitchanges_cloud").textContent="Submit";')
+      shinyjs::enable("submitchanges_cloud")
+      
+    })
+    
+
+    # Writing validated data to pin---- From main Dashboard
+    observeEvent(input$submitchanges_cloud, {
+
       # Update button text
       runjs('document.getElementById("submitchanges_cloud").textContent="Submitting changes...";')
 
       # disable button while working
       shinyjs::disable("submitchanges_cloud")
+      shinyjs::disable("edit_table_cols")
+
+      # update lev2 with l_qry
+
+      l_qry$df_qc$validator <- username
+
+      # overwrite existing data with changes in query
+      l_lev2$df    <<- power_full_join(l_lev2$df,    l_qry$df, by = "DATECT", conflict = coalesce_yx)
+      l_lev2$df_qc <<- power_full_join(l_lev2$df_qc, l_qry$df_qc,  by = "DATECT", conflict = coalesce_yx)
 
       # write to pin on Connect server
       pin_write(board,
         l_lev2,
+        #name = "WF_level2_data", type = "rds")
         name = "level2_data", type = "rds")
-        
+
       time_diff <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created), units = 'mins')
 
       if(time_diff < 2){
           shinyalert(
           title = "Data successfully saved to cloud",
           #text = "This is a modal",
-          size = "m", 
+          size = "m",
           closeOnEsc = TRUE,
           closeOnClickOutside = TRUE,
           html = FALSE,
@@ -673,7 +843,7 @@ metqcApp <- function(...) {
           shinyalert(
             title = "Error saving data",
             text = "Data took over 2 minuets to write. Data may not have saved correctly to the cloud.",
-            size = "m", 
+            size = "m",
             closeOnEsc = FALSE,
             closeOnClickOutside = FALSE,
             html = FALSE,
@@ -687,13 +857,13 @@ metqcApp <- function(...) {
           )
 
         }
-      
+
       # remove button activation and reactivate button
       runjs('document.getElementById("submitchanges_cloud").textContent="Submit";')
       shinyjs::enable("submitchanges_cloud")
-      
+
       })
-    
+
     }
 
   shinyApp(ui, server, ...)
