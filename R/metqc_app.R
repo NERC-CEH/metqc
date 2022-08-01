@@ -46,7 +46,7 @@ metqcApp <- function(...) {
     dashboardSidebar(
       sidebarMenu(id = 'tabs',
         menuItem("Dashboard", tabName = "dashboard"),
-        menuItem("Edit data", tabName = "edit_data"),
+        menuItem("Flags", tabName = "flags"),
         menuItem("Information", tabName = "information")
       )
     ),
@@ -98,7 +98,7 @@ metqcApp <- function(...) {
                 )
               ),
               actionButton("retrieve_data", "Retrieve from database"),
-              actionButton("edit_data_btn", "Manually edit data"),
+              #actionButton("edit_data_btn", "Manually edit data"),
               actionButton("compare_vars", "Compare variables"),
             ),
             hidden(
@@ -145,13 +145,40 @@ metqcApp <- function(...) {
           ),
         ),
         tabItem(
-          tabName = "edit_data",
-         selectizeInput('edit_table_cols', 'Select variable to edit:', choices = NULL, multiple = F),
-         shinycssloaders::withSpinner(
-           DT::dataTableOutput('edit_table', 
-                               width = '30%')
-           ),
-         actionButton('save_edits_btn', 'Save')
+          tabName = "flags",
+          fluidRow(
+#          column(6, 
+          box(
+            title = 'Add data flag',
+            status = "success", solidHeader = TRUE,
+            helpText("Select the start and end times for the data flag."),
+            width = 6,
+            column(6, 
+                   dateRangeInput('flag_date_range', 'Date Range', start = as.Date(Sys.time(), tz = "UTC"), end = as.Date(Sys.time(), tz = "UTC"))
+                   ),
+            column(6, 
+                   selectInput('flag_var', label = 'Variable', choices = v_names[!v_names %in% "DATECT"])
+            ),
+            column(6, 
+                   textInput('flag_comm', label = 'Comment', placeholder = 'Why is this data being flagged?')
+            ),
+            column(6, 
+                   actionButton("add_flag", "Add Flag")
+            )
+            ),
+#           column(6, 
+#                  box(title = 'Data flag:',
+# #                     width = 6, 
+#                      dataTableOutput('tmp'))
+#           )),
+),
+          shinycssloaders::withSpinner(
+            DT::dataTableOutput('flag_table',
+                                width = '30%')
+          ),
+
+          actionButton('save_flags_btn', 'Save'),
+          actionButton('reset_flags_btn', 'Reset')
         ),
         tabItem(
           tabName = "information",
@@ -194,9 +221,17 @@ metqcApp <- function(...) {
     })
 
     disable('compare_vars')
-    disable('edit_data_btn')
+    #disable('edit_data_btn')
     disable('edit_data_btn')
     
+    board <- board_rsconnect()
+    
+    # Read in data flags df
+    data_flags <- pin_read(board, "wilfinc/data_flags")
+    df_data_flags <- reactiveVal(data_flags)
+    
+    #df_data_flags <- pin_read(board, "wilfinc/data_flags")
+
     # Read in ERA5 data----
     # read from JASMIN
     # url_era5 <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/df_era5.rds")
@@ -205,7 +240,6 @@ metqcApp <- function(...) {
     # fname <- here("data", "df_era5.rds")
     # df_era5 <- readRDS(fname)
     # OR read from pin on Connect server
-    board <- board_rsconnect()
     df_era5 <- pin_read(board, "plevy/era5_data")
     #names(df_era5); dim(df_era5)
 
@@ -396,30 +430,35 @@ metqcApp <- function(...) {
       output$heatmap_plot <- renderPlot(heatmap_plot_selected())
       
       enable('compare_vars')
-      enable('edit_data_btn')
+      #enable('edit_data_btn')
       
     })
 
-    # manually edit data button actions
-    observeEvent(input$edit_data_btn, {
-      updateTabItems(session, "tabs", "edit_data")
-    })
+    # # manually edit data button actions
+    # observeEvent(input$edit_data_btn, {
+    #   updateTabItems(session, "tabs", "edit_data")
+    # })
+    # 
+    # edit_table_data <- reactive({
+    #   df <- cbind(data.frame(DATECT = l_qry$df$DATECT), l_qry$df[,input$edit_table_cols], l_qry$df_qc[,input$edit_table_cols])
+    # df$DATECT <- as.character(as.POSIXct(df$DATECT))
+    # colnames(df) <- c('Timestamp', input$edit_table_cols, 'QC')
+    # df
+    # })
 
-    edit_table_data <- reactive({
-      df <- cbind(data.frame(DATECT = l_qry$df$DATECT), l_qry$df[,input$edit_table_cols], l_qry$df_qc[,input$edit_table_cols])
-    df$DATECT <- as.character(as.POSIXct(df$DATECT))
-    colnames(df) <- c('Timestamp', input$edit_table_cols, 'QC')
-    df
-    })
+  #  updateSelectizeInput(session, 'edit_table_cols', choices = v_names_for_box, server = TRUE, options = list(placeholder = 'Select variables...'))#
+    # 
+    # df_tmp <- reactive({
+    #   expand.grid(date = v_flag_date_seq(), variable = input$flag_var, qc = 8, comment = input$flag_comm)
+    #   #expand.grid(date = as.POSIXct(Sys.time()), variable = rep('HELLO', 10), qc = 8, comment = NA)
+    # })
 
-    updateSelectizeInput(session, 'edit_table_cols', choices = v_names_for_box, server = TRUE, options = list(placeholder = 'Select variables...'))
-
-    output$edit_table <- DT::renderDataTable({
-        DT::datatable(edit_table_data(),
+    output$flag_table <- DT::renderDataTable({
+     
+        DT::datatable(df_data_flags(),
                      selection = 'none',
                      rownames = FALSE,
-                     editable = list(target = "column", disable = list(columns = c(0, 2))),
-                     options = list(dom = 'lrtip',
+                     options = list(dom = 'rtilp',
                                     scrollX = TRUE,
                                     pageLength = 10, 
                                     info = FALSE,
@@ -427,21 +466,36 @@ metqcApp <- function(...) {
                     )
       )
     })
-  
-    # update data with manual edits
-    observeEvent(input$edit_table_cell_edit, {
-      enable('edit_data_btn')
-      req(input$edit_table_cell_edit)
-      # update $df
-      l_qry$df[input$edit_table_cell_edit$row, input$edit_table_cols] <<- input$edit_table_cell_edit$value
-      l_qry$df_qc[input$edit_table_cell_edit$row, input$edit_table_cols] <<- 8 # qc code 8 == manual edit/flag
-      l_qry$df_qc$validator[input$edit_table_cell_edit$row] <<- username # issue of surname being applied to EVERY variable/measure for these time points...
-
+    
+    v_flag_date_seq <- reactive({
+      seq(input$flag_date_range[1], input$flag_date_range[2], by ='day')
     })
+    
+    # add flag
+    observeEvent(input$add_flag, {
 
+      new_df <- expand.grid(date = v_flag_date_seq(), variable = input$flag_var, qc = 8, comment = input$flag_comm)
+      
+      updated_flags <- rbind(new_df, df_data_flags())
+      df_data_flags(updated_flags)
+    })
+    
     # reset edit table
-    observeEvent(input$reset_edit_table, {
-      shinyjs::reset("edit_table_cols")
+    observeEvent(input$reset_flags_btn, {
+      
+      showModal(modalDialog(
+        title = "Are you sure you want to reset the data flags? All unsaved flags will be lost",
+        footer = tagList(
+          actionButton("confirm_flag_reset", "Reset flags"),
+          modalButton("Cancel")
+          ),
+          easyClose = TRUE
+        ))
+        
+        observeEvent(input$confirm_flag_reset, {
+          df_data_flags(data_flags)
+          removeModal()
+        })
     })
     
     # compare variables modal
@@ -566,70 +620,70 @@ metqcApp <- function(...) {
       shinyjs::enable("submitchanges")
     })
     
-    # Writing validated data to pin---- From Edits
-    observeEvent(input$save_edits_btn, {
-      
-      # Update button text
-      runjs('document.getElementById("save_edits_btn").textContent="Saving...";')
-      
-      # disable button while working
-      shinyjs::disable("save_edits_btn")
-      
-      # update lev2 with l_qry
-      # overwrite existing data with changes in query
-      l_lev2$df    <<- power_full_join(l_lev2$df,    l_qry$df, by = "DATECT", conflict = coalesce_yx)
-      l_lev2$df_qc <<- power_full_join(l_lev2$df_qc, l_qry$df_qc,  by = "DATECT", conflict = coalesce_yx)
-      
-      # write to pin on Connect server
-      pin_write(board,
-                l_lev2,
-                name = "level2_data", type = "rds")
-      
-      time_diff <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created), units = 'mins')
-      
-      if(time_diff < 2){
-        shinyalert(
-          title = "Data successfully saved to cloud",
-          #text = "This is a modal",
-          size = "m",
-          closeOnEsc = TRUE,
-          closeOnClickOutside = TRUE,
-          html = FALSE,
-          type = "success",
-          showConfirmButton = TRUE,
-          showCancelButton = FALSE,
-          confirmButtonText = "OK",
-          confirmButtonCol = "#AEDEF4",
-          timer = 10000,
-          imageUrl = "",
-          animation = TRUE
-        )
-        
-      } else{
-        shinyalert(
-          title = "Error saving data",
-          text = "Data took over 2 minuets to write. Data may not have saved correctly to the cloud.",
-          size = "m",
-          closeOnEsc = FALSE,
-          closeOnClickOutside = FALSE,
-          html = FALSE,
-          type = "error",
-          showConfirmButton = FALSE,
-          showCancelButton = TRUE,
-          cancelButtonText = "Cancel",
-          timer = 10000,
-          imageUrl = "",
-          animation = TRUE
-        )
-        
-      }
-      
-      # remove button activation and reactivate button
-      runjs('document.getElementById("submitchanges_cloud").textContent="Submit";')
-      shinyjs::enable("submitchanges_cloud")
-      
-    })
-    
+    # # Writing validated data to pin---- From Edits
+    # observeEvent(input$save_edits_btn, {
+    #   
+    #   # Update button text
+    #   runjs('document.getElementById("save_edits_btn").textContent="Saving...";')
+    #   
+    #   # disable button while working
+    #   shinyjs::disable("save_edits_btn")
+    #   
+    #   # update lev2 with l_qry
+    #   # overwrite existing data with changes in query
+    #   l_lev2$df    <<- power_full_join(l_lev2$df,    l_qry$df, by = "DATECT", conflict = coalesce_yx)
+    #   l_lev2$df_qc <<- power_full_join(l_lev2$df_qc, l_qry$df_qc,  by = "DATECT", conflict = coalesce_yx)
+    #   
+    #   # write to pin on Connect server
+    #   pin_write(board,
+    #             l_lev2,
+    #             name = "level2_data", type = "rds")
+    #   
+    #   time_diff <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created), units = 'mins')
+    #   
+    #   if(time_diff < 2){
+    #     shinyalert(
+    #       title = "Data successfully saved to cloud",
+    #       #text = "This is a modal",
+    #       size = "m",
+    #       closeOnEsc = TRUE,
+    #       closeOnClickOutside = TRUE,
+    #       html = FALSE,
+    #       type = "success",
+    #       showConfirmButton = TRUE,
+    #       showCancelButton = FALSE,
+    #       confirmButtonText = "OK",
+    #       confirmButtonCol = "#AEDEF4",
+    #       timer = 10000,
+    #       imageUrl = "",
+    #       animation = TRUE
+    #     )
+    #     
+    #   } else{
+    #     shinyalert(
+    #       title = "Error saving data",
+    #       text = "Data took over 2 minuets to write. Data may not have saved correctly to the cloud.",
+    #       size = "m",
+    #       closeOnEsc = FALSE,
+    #       closeOnClickOutside = FALSE,
+    #       html = FALSE,
+    #       type = "error",
+    #       showConfirmButton = FALSE,
+    #       showCancelButton = TRUE,
+    #       cancelButtonText = "Cancel",
+    #       timer = 10000,
+    #       imageUrl = "",
+    #       animation = TRUE
+    #     )
+    #     
+    #   }
+    #   
+    #   # remove button activation and reactivate button
+    #   runjs('document.getElementById("submitchanges_cloud").textContent="Submit";')
+    #   shinyjs::enable("submitchanges_cloud")
+    #   
+    # })
+    # 
 
     # Writing validated data to pin---- From main Dashboard
     observeEvent(input$submitchanges_cloud, {
