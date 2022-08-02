@@ -525,9 +525,9 @@ metqcApp <- function(...) {
       # write lev_2 to pin
       pin_write(board,
                 l_lev2,
-                name = "test_level2_data", type = "rds")
+                name = "level2_data", type = "rds")
       
-      time_diff_lev2 <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'wilfinc/test_level2_data')$created), units = 'mins')
+      time_diff_lev2 <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'leav/level2_data')$created), units = 'mins')
       
         if(time_diff_flags < 2 & time_diff_lev2 < 2){
         shinyalert(
