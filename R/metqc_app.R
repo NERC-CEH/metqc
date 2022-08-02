@@ -330,10 +330,10 @@ metqcApp <- function(...) {
 
     output$flag_date_range_input <- renderUI({
       dateRangeInput("flag_date_range",
-                start = as.Date(date_of_first_new_record, tz = "UTC"),
-                end = as.Date(date_of_first_new_record, tz = "UTC"),
+                start = as.Date(date_of_last_new_record, tz = "UTC"),
+                end = as.Date(date_of_last_new_record, tz = "UTC"),
                 min = first_start_date(),
-                max = last_end_date(),
+                max = date_of_last_new_record,
                 label = "Start date"
       )
     })
