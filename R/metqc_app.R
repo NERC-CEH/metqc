@@ -44,10 +44,17 @@ metqcApp <- function(...) {
     dashboardHeader(title = "Met Data Validation",
                     tags$li(class = "dropdown", actionLink("change_user", textOutput('user_name_text'), style="font-weight: bold;color:white;"))),
     dashboardSidebar(
+<<<<<<< HEAD
       sidebarMenu(id = 'tabs',
         menuItem("Dashboard", tabName = "dashboard"),
         menuItem("Flags", tabName = "flags"),
         menuItem("Information", tabName = "information")
+=======
+      sidebarMenu(
+        menuItem("Dashboard", tabName = "dashboard", icon = icon('database')),
+        menuItem("Download", tabName = "download", icon = icon('download')),
+        menuItem("Information", tabName = "information", icon = icon('info'))
+>>>>>>> 2aedc3d171690af51633b675d1fcc03759ec1301
       )
     ),
     dashboardBody(
@@ -145,6 +152,7 @@ metqcApp <- function(...) {
           ),
         ),
         tabItem(
+<<<<<<< HEAD
           tabName = "flags",
           fluidRow(
 #          column(6, 
@@ -182,6 +190,10 @@ metqcApp <- function(...) {
           actionButton('save_flags_btn', 'Save'),
           actionButton('reset_flags_btn', 'Reset')
         ),
+=======
+          tabName = 'download'
+          ),
+>>>>>>> 2aedc3d171690af51633b675d1fcc03759ec1301
         tabItem(
           tabName = "information",
           h2("Information placeholder"),
