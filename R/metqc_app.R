@@ -148,14 +148,16 @@ metqcApp <- function(...) {
           tabName = "flags",
           fluidRow(
 #          column(6, 
-          box(
+          box(id = 'flag_details_box',
             title = 'Add data flag',
             status = "success", solidHeader = TRUE,
             helpText("Select the start and end times for the data flag."),
             width = 6,
-            column(6, 
-                   dateRangeInput('flag_date_range', 'Date Range', start = as.Date(Sys.time(), tz = "UTC"), end = as.Date(Sys.time(), tz = "UTC"))
-                   ),
+            column(6,
+                   uiOutput('flag_date_range_input')
+            ),      
+             #      dateRangeInput('flag_date_range', 'Date Range', start = as.Date(Sys.time(), tz = "UTC"), end = as.Date(Sys.time(), tz = "UTC"))
+              #     ),
             column(6, 
                    selectInput('flag_var', label = 'Variable', choices = v_names[!v_names %in% "DATECT"])
             ),
@@ -326,6 +328,16 @@ metqcApp <- function(...) {
       )
       })
 
+    output$flag_date_range_input <- renderUI({
+      dateRangeInput("flag_date_range",
+                start = as.Date(date_of_first_new_record, tz = "UTC"),
+                end = as.Date(date_of_first_new_record, tz = "UTC"),
+                min = first_start_date(),
+                max = last_end_date(),
+                label = "Start date"
+      )
+    })
+  
     # Create a dataframe with the start and end dates,
     df_daterange <- eventReactive(input$retrieve_data, {
       start_date_ch <- paste(sprintf("%02d", day(input$sdate)), "/",
@@ -474,13 +486,96 @@ metqcApp <- function(...) {
     # add flag
     observeEvent(input$add_flag, {
 
-      new_df <- expand.grid(date = v_flag_date_seq(), variable = input$flag_var, qc = 8, comment = input$flag_comm)
+      new_df <- expand.grid(date = v_flag_date_seq(), variable = input$flag_var, qc = 8, comment = input$flag_comm, validator  = username)
       
       updated_flags <- rbind(new_df, df_data_flags())
       df_data_flags(updated_flags)
     })
     
-    # reset edit table
+    # save flags
+    
+    # write new data to pin - with modal to confirm etc. 
+    # update qc codes of flagged variables (+ dates)
+
+    observeEvent(input$save_flags_btn, {
+      
+      # do a check to see if the data has changed? could be time intensive if data gets big? Is it worth it?
+      # if(identical(df_data_flags, data_flags))
+      
+      # Update button text
+      runjs('document.getElementById("save_flags_btn").textContent="Saving changes...";')
+      # disable button while working
+      shinyjs::disable("save_flags_btn")
+
+      # change the qc codes in df_qc
+      for(i in 1:nrow(df_data_flags())){
+        
+        l_lev2$df_qc[as.Date(l_lev2$df_qc$DATECT) == as.Date(df_data_flags()$date[i]), eval(df_data_flags()$flag_var[i])] <- 100
+        l_lev2$df_qc$validator[as.Date(l_lev2$df_qc$DATECT) == as.Date(df_data_flags()$date[i])] <- df_data_flags()$validator[i]
+        
+      }
+      
+      # write to pin on Connect server
+      pin_write(board,
+                df_data_flags(),
+                name = "data_flags", type = "rds")
+      
+      time_diff_flags <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'wilfinc/data_flags')$created), units = 'mins')
+      
+      # write lev_2 to pin
+      pin_write(board,
+                l_lev2,
+                name = "test_level2_data", type = "rds")
+      
+      time_diff_lev2 <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'wilfinc/test_level2_data')$created), units = 'mins')
+      
+        if(time_diff_flags < 2 & time_diff_lev2 < 2){
+        shinyalert(
+          title = "Data successfully saved to cloud",
+          size = "m",
+          closeOnEsc = TRUE,
+          closeOnClickOutside = TRUE,
+          html = FALSE,
+          type = "success",
+          showConfirmButton = TRUE,
+          showCancelButton = FALSE,
+          confirmButtonText = "OK",
+          confirmButtonCol = "#AEDEF4",
+          timer = 10000,
+          imageUrl = "",
+          animation = TRUE
+        )
+        
+      } else{
+        shinyalert(
+          title = "Error saving data",
+          text = "Data took over 2 minuets to write. Data may not have saved correctly to the cloud.",
+          size = "m",
+          closeOnEsc = FALSE,
+          closeOnClickOutside = FALSE,
+          html = FALSE,
+          type = "error",
+          showConfirmButton = FALSE,
+          showCancelButton = TRUE,
+          cancelButtonText = "Cancel",
+          timer = 10000,
+          imageUrl = "",
+          animation = TRUE
+        )
+        
+      }
+      
+      # reload and update the df_flags file
+      data_flags <<- pin_read(board, "wilfinc/data_flags")
+      df_data_flags(data_flags)
+      
+      # remove button activation and reactivate button
+      runjs('document.getElementById("save_flags_btn").textContent="Save";')
+      shinyjs::enable("save_flags_btn")
+      
+    })
+    
+    # reset flag table
     observeEvent(input$reset_flags_btn, {
       
       showModal(modalDialog(
@@ -494,6 +589,7 @@ metqcApp <- function(...) {
         
         observeEvent(input$confirm_flag_reset, {
           df_data_flags(data_flags)
+          shinyjs::reset("flag_details_box")
           removeModal()
         })
     })
