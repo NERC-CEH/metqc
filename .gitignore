@@ -3,6 +3,5 @@
 .RData
 .Ruserdata
 *.dcf
-rsconnect/
 /doc/
 /Meta/
