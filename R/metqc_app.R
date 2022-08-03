@@ -44,17 +44,11 @@ metqcApp <- function(...) {
     dashboardHeader(title = "Met Data Validation",
                     tags$li(class = "dropdown", actionLink("change_user", textOutput('user_name_text'), style="font-weight: bold;color:white;"))),
     dashboardSidebar(
-<<<<<<< HEAD
       sidebarMenu(id = 'tabs',
-        menuItem("Dashboard", tabName = "dashboard"),
-        menuItem("Flags", tabName = "flags"),
-        menuItem("Information", tabName = "information")
-=======
-      sidebarMenu(
-        menuItem("Dashboard", tabName = "dashboard", icon = icon('database')),
-        menuItem("Download", tabName = "download", icon = icon('download')),
-        menuItem("Information", tabName = "information", icon = icon('info'))
->>>>>>> 2aedc3d171690af51633b675d1fcc03759ec1301
+                  menuItem("Dashboard", tabName = "dashboard", icon = icon('database')),
+                  menuItem("Flags", tabName = "flags", icon = icon('flag')),
+                  menuItem("Download", tabName = "download", icon = icon('download')),
+                  menuItem("Information", tabName = "information", icon = icon('info'))
       )
     ),
     dashboardBody(
@@ -105,7 +99,6 @@ metqcApp <- function(...) {
                 )
               ),
               actionButton("retrieve_data", "Retrieve from database"),
-              #actionButton("edit_data_btn", "Manually edit data"),
               actionButton("compare_vars", "Compare variables"),
             ),
             hidden(
@@ -152,10 +145,8 @@ metqcApp <- function(...) {
           ),
         ),
         tabItem(
-<<<<<<< HEAD
           tabName = "flags",
           fluidRow(
-#          column(6, 
           box(id = 'flag_details_box',
             title = 'Add data flag',
             status = "success", solidHeader = TRUE,
@@ -164,8 +155,6 @@ metqcApp <- function(...) {
             column(6,
                    uiOutput('flag_date_range_input')
             ),      
-             #      dateRangeInput('flag_date_range', 'Date Range', start = as.Date(Sys.time(), tz = "UTC"), end = as.Date(Sys.time(), tz = "UTC"))
-              #     ),
             column(6, 
                    selectInput('flag_var', label = 'Variable', choices = v_names[!v_names %in% "DATECT"])
             ),
@@ -176,11 +165,6 @@ metqcApp <- function(...) {
                    actionButton("add_flag", "Add Flag")
             )
             ),
-#           column(6, 
-#                  box(title = 'Data flag:',
-# #                     width = 6, 
-#                      dataTableOutput('tmp'))
-#           )),
 ),
           shinycssloaders::withSpinner(
             DT::dataTableOutput('flag_table',
@@ -190,10 +174,18 @@ metqcApp <- function(...) {
           actionButton('save_flags_btn', 'Save'),
           actionButton('reset_flags_btn', 'Reset')
         ),
-=======
-          tabName = 'download'
-          ),
->>>>>>> 2aedc3d171690af51633b675d1fcc03759ec1301
+        tabItem(
+          tabName = 'download',
+          fluidRow(
+            box(
+              id = 'download_box',
+              title = 'Data download',
+              status = "success", solidHeader = TRUE,
+              selectInput('download_file', 'Data to download:', choices = c('Level 1' = 'lev1', 'Level 2' = 'lev2', 'Data flags' = 'flags')),
+              downloadButton('download_data', label = 'Download')
+            )
+          )
+        ),
         tabItem(
           tabName = "information",
           h2("Information placeholder"),
@@ -243,8 +235,6 @@ metqcApp <- function(...) {
     # Read in data flags df
     data_flags <- pin_read(board, "wilfinc/data_flags")
     df_data_flags <- reactiveVal(data_flags)
-    
-    #df_data_flags <- pin_read(board, "wilfinc/data_flags")
 
     # Read in ERA5 data----
     # read from JASMIN
@@ -458,25 +448,6 @@ metqcApp <- function(...) {
       
     })
 
-    # # manually edit data button actions
-    # observeEvent(input$edit_data_btn, {
-    #   updateTabItems(session, "tabs", "edit_data")
-    # })
-    # 
-    # edit_table_data <- reactive({
-    #   df <- cbind(data.frame(DATECT = l_qry$df$DATECT), l_qry$df[,input$edit_table_cols], l_qry$df_qc[,input$edit_table_cols])
-    # df$DATECT <- as.character(as.POSIXct(df$DATECT))
-    # colnames(df) <- c('Timestamp', input$edit_table_cols, 'QC')
-    # df
-    # })
-
-  #  updateSelectizeInput(session, 'edit_table_cols', choices = v_names_for_box, server = TRUE, options = list(placeholder = 'Select variables...'))#
-    # 
-    # df_tmp <- reactive({
-    #   expand.grid(date = v_flag_date_seq(), variable = input$flag_var, qc = 8, comment = input$flag_comm)
-    #   #expand.grid(date = as.POSIXct(Sys.time()), variable = rep('HELLO', 10), qc = 8, comment = NA)
-    # })
-
     output$flag_table <- DT::renderDataTable({
      
         DT::datatable(df_data_flags(),
@@ -505,10 +476,6 @@ metqcApp <- function(...) {
     })
     
     # save flags
-    
-    # write new data to pin - with modal to confirm etc. 
-    # update qc codes of flagged variables (+ dates)
-
     observeEvent(input$save_flags_btn, {
       
       # do a check to see if the data has changed? could be time intensive if data gets big? Is it worth it?
@@ -728,71 +695,44 @@ metqcApp <- function(...) {
       shinyjs::enable("submitchanges")
     })
     
-    # # Writing validated data to pin---- From Edits
-    # observeEvent(input$save_edits_btn, {
-    #   
-    #   # Update button text
-    #   runjs('document.getElementById("save_edits_btn").textContent="Saving...";')
-    #   
-    #   # disable button while working
-    #   shinyjs::disable("save_edits_btn")
-    #   
-    #   # update lev2 with l_qry
-    #   # overwrite existing data with changes in query
-    #   l_lev2$df    <<- power_full_join(l_lev2$df,    l_qry$df, by = "DATECT", conflict = coalesce_yx)
-    #   l_lev2$df_qc <<- power_full_join(l_lev2$df_qc, l_qry$df_qc,  by = "DATECT", conflict = coalesce_yx)
-    #   
-    #   # write to pin on Connect server
-    #   pin_write(board,
-    #             l_lev2,
-    #             name = "level2_data", type = "rds")
-    #   
-    #   time_diff <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created), units = 'mins')
-    #   
-    #   if(time_diff < 2){
-    #     shinyalert(
-    #       title = "Data successfully saved to cloud",
-    #       #text = "This is a modal",
-    #       size = "m",
-    #       closeOnEsc = TRUE,
-    #       closeOnClickOutside = TRUE,
-    #       html = FALSE,
-    #       type = "success",
-    #       showConfirmButton = TRUE,
-    #       showCancelButton = FALSE,
-    #       confirmButtonText = "OK",
-    #       confirmButtonCol = "#AEDEF4",
-    #       timer = 10000,
-    #       imageUrl = "",
-    #       animation = TRUE
-    #     )
-    #     
-    #   } else{
-    #     shinyalert(
-    #       title = "Error saving data",
-    #       text = "Data took over 2 minuets to write. Data may not have saved correctly to the cloud.",
-    #       size = "m",
-    #       closeOnEsc = FALSE,
-    #       closeOnClickOutside = FALSE,
-    #       html = FALSE,
-    #       type = "error",
-    #       showConfirmButton = FALSE,
-    #       showCancelButton = TRUE,
-    #       cancelButtonText = "Cancel",
-    #       timer = 10000,
-    #       imageUrl = "",
-    #       animation = TRUE
-    #     )
-    #     
-    #   }
-    #   
-    #   # remove button activation and reactivate button
-    #   runjs('document.getElementById("submitchanges_cloud").textContent="Submit";')
-    #   shinyjs::enable("submitchanges_cloud")
-    #   
-    # })
-    # 
-
+    output$download_data <- downloadHandler(
+      filename = function() if (input$download_file == 'lev1') 
+        paste("level_1-", Sys.Date(), ".zip", sep="") 
+      else if (input$download_file == 'lev2') 
+        paste("level_2-", Sys.Date(), ".zip", sep="")
+      else if (input$download_file == 'flags') 
+        paste("data_flags-", Sys.Date(), ".csv", sep=""),
+      content = function(file) if (input$download_file == 'lev1') {
+        runjs('document.getElementById("download_data").textContent="Preparing download...";')
+        shinyjs::disable("download_data")
+        tmpdir <- tempdir()
+        setwd(tempdir())
+        fs <- c('level_1-data.csv', 'level_1-qc.csv')
+        data.table::fwrite(l_lev1$df, 'level_1-data.csv')
+        data.table::fwrite(l_lev1$df_qc, 'level_1-qc.csv')
+        zip(zipfile = file, files = fs)
+        runjs('document.getElementById("download_data").textContent="Download";')
+        shinyjs::enable("download_data")
+        } else if (input$download_file == 'lev2') {
+          runjs('document.getElementById("download_data").textContent="Preparing download...";')
+          shinyjs::disable("download_data")
+          tmpdir <- tempdir()
+          setwd(tempdir())
+          fs <- c('level_2-data.csv', 'level_2-qc.csv')
+          data.table::fwrite(l_lev2$df, 'level_2-data.csv')
+          data.table::fwrite(l_lev2$df_qc, 'level_2-qc.csv')
+          zip(zipfile = file, files = fs)
+          runjs('document.getElementById("download_data").textContent="Download";')
+          shinyjs::enable("download_data")
+      } else if (input$download_file == 'flags') {
+        runjs('document.getElementById("download_data").textContent="Preparing download...";')
+        shinyjs::disable("download_data")
+        data.table::fwrite(data_flags, file)
+        runjs('document.getElementById("download_data").textContent="Download";')
+        shinyjs::enable("download_data")
+      }
+    )
+    
     # Writing validated data to pin---- From main Dashboard
     observeEvent(input$submitchanges_cloud, {
 
