@@ -48,7 +48,11 @@ metqcApp <- function(...) {
                   menuItem("Dashboard", tabName = "dashboard", icon = icon('database')),
                   menuItem("Flags", tabName = "flags", icon = icon('flag')),
                   menuItem("Download", tabName = "download", icon = icon('download')),
-                  menuItem("Information", tabName = "information", icon = icon('info'))
+                  menuItem("Information", tabName = "information", icon = icon('info'),
+                           menuSubItem('Gap-fill methods', tabName = 'gapfill_guide'),
+                           menuSubItem('App guide', tabName = 'app_guide'),
+                           menuSubItem('Data process guide', tabName = 'data_guide')
+                           )
       )
     ),
     dashboardBody(
@@ -188,8 +192,24 @@ metqcApp <- function(...) {
         ),
         tabItem(
           tabName = "information",
-          h2("Information placeholder"),
-          p("This app provides an interface to the field sites database and allows a user to plot data, remove dubious data and fill gaps with predictions.")
+        ),
+        tabItem(
+          tabName = "gapfill_guide",
+          includeMarkdown("./vignettes/gap_fill_methods.md")
+        ),
+        tabItem(
+          tabName = "app_guide",
+          includeMarkdown("./vignettes/app_user_guide.md")
+        ),
+        tabItem(
+          tabName = "data_guide",
+          includeHTML(
+            './vignettes/metdb_shiny_version.html'
+            # rmarkdown::render(
+            #   input="./vignettes/metdb.rmd", 
+            #   #params = list(selection = input$state, data=librarians_filtered)
+            # )
+          )       
         )
       )
     )
@@ -227,9 +247,7 @@ metqcApp <- function(...) {
     })
 
     disable('compare_vars')
-    #disable('edit_data_btn')
-    disable('edit_data_btn')
-    
+
     board <- board_rsconnect()
     
     # Read in data flags df
@@ -444,7 +462,6 @@ metqcApp <- function(...) {
       output$heatmap_plot <- renderPlot(heatmap_plot_selected())
       
       enable('compare_vars')
-      #enable('edit_data_btn')
       
     })
 
