@@ -251,8 +251,8 @@ metqcApp <- function(...) {
     board <- board_rsconnect()
     
     # Read in data flags df
-    data_flags <- pin_read(board, "wilfinc/data_flags")
-    df_data_flags <- reactiveVal(data_flags)
+    flagged_data <- pin_read(board, "wilfinc/flagged_data")
+    df_flagged_data <- reactiveVal(flagged_data)
 
     # Read in ERA5 data----
     # read from JASMIN
@@ -467,7 +467,7 @@ metqcApp <- function(...) {
 
     output$flag_table <- DT::renderDataTable({
      
-        DT::datatable(df_data_flags(),
+        DT::datatable(df_flagged_data(),
                      selection = 'none',
                      rownames = FALSE,
                      options = list(dom = 'rtilp',
@@ -488,15 +488,15 @@ metqcApp <- function(...) {
 
       new_df <- expand.grid(date = v_flag_date_seq(), variable = input$flag_var, qc = 8, comment = input$flag_comm, validator  = username)
       
-      updated_flags <- rbind(new_df, df_data_flags())
-      df_data_flags(updated_flags)
+      updated_flagged_data <- rbind(new_df, df_flagged_data())
+      df_flagged_data(updated_flagged_data)
     })
     
     # save flags
     observeEvent(input$save_flags_btn, {
       
       # do a check to see if the data has changed? could be time intensive if data gets big? Is it worth it?
-      # if(identical(df_data_flags, data_flags))
+      # if(identical(df_flagged_data, flagged_data))
       
       # Update button text
       runjs('document.getElementById("save_flags_btn").textContent="Saving changes...";')
@@ -504,19 +504,19 @@ metqcApp <- function(...) {
       shinyjs::disable("save_flags_btn")
 
       # change the qc codes in df_qc
-      for(i in 1:nrow(df_data_flags())){
+      for(i in 1:nrow(df_flagged_data())){
         
-        l_lev2$df_qc[as.Date(l_lev2$df_qc$DATECT) == as.Date(df_data_flags()$date[i]), eval(df_data_flags()$flag_var[i])] <- 100
-        l_lev2$df_qc$validator[as.Date(l_lev2$df_qc$DATECT) == as.Date(df_data_flags()$date[i])] <- df_data_flags()$validator[i]
+        l_lev2$df_qc[as.Date(l_lev2$df_qc$DATECT) == as.Date(df_flagged_data()$date[i]), eval(df_flagged_data()$flag_var[i])] <- 100
+        l_lev2$df_qc$validator[as.Date(l_lev2$df_qc$DATECT) == as.Date(df_flagged_data()$date[i])] <- df_flagged_data()$validator[i]
         
       }
       
       # write to pin on Connect server
       pin_write(board,
-                df_data_flags(),
-                name = "data_flags", type = "rds")
+                df_flagged_data(),
+                name = "flagged_data", type = "rds")
       
-      time_diff_flags <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'wilfinc/data_flags')$created), units = 'mins')
+      time_diff_flags <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'wilfinc/flagged_data')$created), units = 'mins')
       
       # write lev_2 to pin
       pin_write(board,
@@ -562,8 +562,8 @@ metqcApp <- function(...) {
       }
       
       # reload and update the df_flags file
-      data_flags <<- pin_read(board, "wilfinc/data_flags")
-      df_data_flags(data_flags)
+      flagged_data <<- pin_read(board, "wilfinc/flagged_data")
+      df_flagged_data(flagged_data)
       
       # remove button activation and reactivate button
       runjs('document.getElementById("save_flags_btn").textContent="Save";')
@@ -584,7 +584,7 @@ metqcApp <- function(...) {
         ))
         
         observeEvent(input$confirm_flag_reset, {
-          df_data_flags(data_flags)
+          df_flagged_data(flagged_data)
           shinyjs::reset("flag_details_box")
           removeModal()
         })
@@ -718,7 +718,7 @@ metqcApp <- function(...) {
       else if (input$download_file == 'lev2') 
         paste("level_2-", Sys.Date(), ".zip", sep="")
       else if (input$download_file == 'flags') 
-        paste("data_flags-", Sys.Date(), ".csv", sep=""),
+        paste("flagged_data-", Sys.Date(), ".csv", sep=""),
       content = function(file) if (input$download_file == 'lev1') {
         runjs('document.getElementById("download_data").textContent="Preparing download...";')
         shinyjs::disable("download_data")
@@ -744,7 +744,7 @@ metqcApp <- function(...) {
       } else if (input$download_file == 'flags') {
         runjs('document.getElementById("download_data").textContent="Preparing download...";')
         shinyjs::disable("download_data")
-        data.table::fwrite(data_flags, file)
+        data.table::fwrite(flagged_data, file)
         runjs('document.getElementById("download_data").textContent="Download";')
         shinyjs::enable("download_data")
       }
