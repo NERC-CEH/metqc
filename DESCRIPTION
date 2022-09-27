@@ -38,7 +38,9 @@ LazyData: true
 Imports: 
     pkgload,
     shinydashboard,
+    shinycssloaders,
     shiny,
+    shinyalert,
     lubridate,
     ggplot2,
     dplyr,
@@ -53,7 +55,8 @@ Imports:
     here, 
     openair,
     powerjoin,
-    pins
+    pins,
+    markdown
 Suggests: 
     testthat,
     knitr, rmarkdown,
