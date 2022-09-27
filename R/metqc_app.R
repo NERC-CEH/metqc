@@ -523,7 +523,7 @@ metqcApp <- function(...) {
                 l_lev2,
                 name = "level2_data", type = "rds")
       
-      time_diff_lev2 <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'leav/level2_data')$created), units = 'mins')
+      time_diff_lev2 <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created), units = 'mins')
       
         if(time_diff_flags < 2 & time_diff_lev2 < 2){
         shinyalert(
