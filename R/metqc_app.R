@@ -486,7 +486,7 @@ metqcApp <- function(...) {
     # add flag
     observeEvent(input$add_flag, {
 
-      new_df <- expand.grid(date = v_flag_date_seq(), variable = input$flag_var, qc = 8, comment = input$flag_comm, validator  = username)
+      new_df <- expand.grid(date = v_flag_date_seq(), variable = input$flag_var, qc = 8, comment = input$flag_comm, validator  = username, date_flagged = Sys.Date())
       
       updated_flagged_data <- rbind(new_df, df_flagged_data())
       df_flagged_data(updated_flagged_data)
@@ -502,16 +502,21 @@ metqcApp <- function(...) {
       runjs('document.getElementById("save_flags_btn").textContent="Saving changes...";')
       # disable button while working
       shinyjs::disable("save_flags_btn")
+      
+      cat(which(df_flagged_data()$date_flagged == Sys.Date()))
 
       # change the qc codes in df_qc
-      for(i in 1:nrow(df_flagged_data())){
+      for(i in which(df_flagged_data()$date_flagged == Sys.Date())){
         
-        l_lev2$df_qc[as.Date(l_lev2$df_qc$DATECT) == as.Date(df_flagged_data()$date[i]), eval(df_flagged_data()$flag_var[i])] <- 100
-        l_lev2$df_qc$validator[as.Date(l_lev2$df_qc$DATECT) == as.Date(df_flagged_data()$date[i])] <- df_flagged_data()$validator[i]
+#        l_lev2$df_qc[as.Date(l_lev2$df_qc$DATECT) == as.Date(df_flagged_data()$date[i]), eval(df_flagged_data()$flag_var[i])] <- 100
+        l_lev2$df_qc[as.Date(l_lev2$df_qc$DATECT) == as.Date(df_flagged_data()$date[i]), which(colnames(l_lev2$df_qc) == df_flagged_data()$variable[i])] <- 8
+        l_lev2$df_qc$validator[as.Date(l_lev2$df_qc$DATECT) == as.Date(df_flagged_data()$date[i])] <- 'data flagged' #df_flagged_data()$validator[i]
         
       }
       
-      # write to pin on Connect server
+      readr::write_csv(l_lev2$df_qc, './lev2_qc_CHECK.csv')
+    
+      #write to pin on Connect server
       pin_write(board,
                 df_flagged_data(),
                 name = "flagged_data", type = "rds")
@@ -522,26 +527,57 @@ metqcApp <- function(...) {
       pin_write(board,
                 l_lev2,
                 name = "level2_data", type = "rds")
-      
+
       time_diff_lev2 <- difftime(as.POSIXct(Sys.time()), as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created), units = 'mins')
       
         if(time_diff_flags < 2 & time_diff_lev2 < 2){
-        shinyalert(
-          title = "Data successfully saved to cloud",
-          size = "m",
-          closeOnEsc = TRUE,
-          closeOnClickOutside = TRUE,
-          html = FALSE,
-          type = "success",
-          showConfirmButton = TRUE,
-          showCancelButton = FALSE,
-          confirmButtonText = "OK",
-          confirmButtonCol = "#AEDEF4",
-          timer = 10000,
-          imageUrl = "",
-          animation = TRUE
-        )
-        
+          
+          shinyalert(
+            title = "Data successfully saved to cloud",
+            size = "m",
+            closeOnEsc = FALSE,
+            closeOnClickOutside = FALSE,
+            html = FALSE,
+            type = "success",
+            showConfirmButton = TRUE,
+            showCancelButton = FALSE,
+            confirmButtonText = "OK",
+            confirmButtonCol = "#AEDEF4",
+            imageUrl = "",
+            animation = TRUE,
+            callbackR = function(value) { shinyalert(title = 'Would you like to apply the new data flags now? This will reset the app.', 
+                                                     size = "m",
+                                                     closeOnEsc = FALSE,
+                                                     closeOnClickOutside = FALSE,
+                                                     html = FALSE,
+                                                     type = "info",
+                                                     showConfirmButton = TRUE,
+                                                     showCancelButton = TRUE,
+                                                     confirmButtonText = "Yes",
+                                                     cancelButtonText = "No",
+                                                     confirmButtonCol = "#329664",
+                                                     imageUrl = "",
+                                                     animation = TRUE,
+                                                     callbackR = function(value) {
+                                                       if(value == TRUE){ # re-load the data from the server 
+                                                         
+                                                         l_lev2 <<- pin_read(board, "plevy/level2_data")
+                                                         
+                                                         l_lev2$df <<- power_full_join(l_lev2$df, l_lev1$df, by = "DATECT", conflict = coalesce_xy)
+                                                         l_lev2$df_qc <<- power_full_join(l_lev2$df_qc, l_lev1$df_qc, by = "DATECT", conflict = coalesce_xy)
+                                                         # print('lev2 updated')
+                                                         # shinyjs::reset('dashboard')
+                                                         # updateTabsetPanel(session, "tabs",
+                                                         #                   selected = "dashboard")
+                                                         session$reload()
+                                                         
+                                                         
+                                                       }
+                                                     }
+                                                     
+            ) }
+          )
+          
       } else{
         shinyalert(
           title = "Error saving data",
@@ -554,7 +590,7 @@ metqcApp <- function(...) {
           showConfirmButton = FALSE,
           showCancelButton = TRUE,
           cancelButtonText = "Cancel",
-          timer = 10000,
+          #timer = 10000,
           imageUrl = "",
           animation = TRUE
         )

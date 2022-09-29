@@ -16,7 +16,7 @@ plotting_function <- function(input_variable) {
   
   df <- left_join(df, df_method, by = "qc")
   
-  col_pal <- c('#5b5b5b', '#377EB8', '#4DAF4A', '#984EA3', '#FF7F00', '#FFFF33', '#A65628', '#F781BF')
+  col_pal <- c('#5b5b5b', '#377EB8', '#4DAF4A', '#984EA3', '#00ff7f', '#FFFF33', '#A65628', '#F781BF', '#FF7F00')
   names(col_pal) <- levels(df_method$method_longname)
 
   p1_ggplot <- ggplot(df, 
