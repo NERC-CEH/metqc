@@ -53,22 +53,27 @@ plotting_function <- function(input_variable) {
 plot_heatmap_calendar <- function(df) {
   # Transforming query dataframe with lubridate to fit the format needed for a heatmap calendar
   df <- df %>%
-	  mutate(year = lubridate::year(DATECT),
+    mutate(year = lubridate::year(DATECT),
            day_of_the_week = lubridate::wday(DATECT, label = TRUE, week_start = 1),
            month = lubridate::month(DATECT, label = TRUE, abbr = FALSE),
-           week = lubridate::isoweek(DATECT),
+           week = as.double(lubridate::isoweek(DATECT)),
            day = lubridate::day(DATECT)) %>%
     dplyr::select(year, month, day, week,
-           day_of_the_week, validator)
-  df$week <- as.double(df$week)
-  df <- dplyr::mutate(df,
-                                    week = case_when(month == "December" & week == 1 ~ 53,
-                                                     month == "January" & week %in% 52:53 ~ 0,
-                                                     TRUE ~ week))
+                  day_of_the_week, validator) %>% 
+    mutate(week = case_when(month == "December" & week == 1 ~ 53,
+                            month == "January" & week %in% 52:53 ~ 0,
+                            TRUE ~ week)) %>% 
+    distinct()
+  
+  if(levels(as.factor(df$validator)) %in% 'data flagged'){
+    df$f_validator <- forcats::fct_relevel(forcats::fct_relevel(as.factor(df$validator), 'auto', after = Inf), 'data flagged', after = 0)
+  } else{
+    df$f_validator <- forcats::fct_relevel(as.factor(df$validator), 'auto', after = Inf)
+  }
 
   heatmap_plot <- ggplot(df,
                          aes(day_of_the_week, week,
-                             fill = validator)) +
+                             fill = f_validator)) +
     geom_tile(color = "white", size = 0.1) +
     labs(x = 'Day of week', y = 'Week', fill = 'Validator') +
     facet_wrap(year~month, nrow = 4, ncol = 3, scales = "free") +
@@ -85,4 +90,5 @@ plot_heatmap_calendar <- function(df) {
     theme(legend.text = element_text(size = 6)) +
     ggExtra::removeGrid()
   heatmap_plot
+  
 }
