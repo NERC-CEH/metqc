@@ -142,8 +142,8 @@ metqcApp <- function(...) {
                 actionButton("reset",
                   label = "Restart app"
                 ),
-                actionButton("submitchanges", "Submit changes to file"),
-                actionButton("submitchanges_cloud", "Submit changes to cloud")
+                #actionButton("submitchanges", "Submit changes to file"),
+                actionButton("submitchanges_cloud", "Submit changes")
               ),
             )
           ),
@@ -724,29 +724,29 @@ metqcApp <- function(...) {
 
     })
 
-    # Writing validated data to file----
-    observeEvent(input$submitchanges, {
-      
-      # disable button and show working
-      runjs('document.getElementById("submitchanges").textContent="Submitting changes...";')
-      shinyjs::disable("submitchanges")
-      
-      #l_qry$df_qc$validator <- as.character(Sys.info()["user"])
-      l_qry$df_qc$validator <- username
-      # create a backup copy without the changes
-      fname <- here("data", "UK-AMo_mainmet_val_backup.rds")
-      saveRDS(l_lev2, file = fname)
-
-      # overwrite existing data with changes in query
-      l_lev2$df    <<- power_full_join(l_lev2$df,    l_qry$df, by = "DATECT", conflict = coalesce_yx)
-      l_lev2$df_qc <<- power_full_join(l_lev2$df_qc, l_qry$df_qc,  by = "DATECT", conflict = coalesce_yx)
-      # save to local file
-      fname <- here("data", "UK-AMo_mainmet_val.rds")
-      saveRDS(l_lev2, file = fname)
-      
-      runjs('document.getElementById("submitchanges").textContent="Submit changes to file";')
-      shinyjs::enable("submitchanges")
-    })
+    # # Writing validated data to file----
+    # observeEvent(input$submitchanges, {
+    #   
+    #   # disable button and show working
+    #   runjs('document.getElementById("submitchanges").textContent="Submitting changes...";')
+    #   shinyjs::disable("submitchanges")
+    #   
+    #   #l_qry$df_qc$validator <- as.character(Sys.info()["user"])
+    #   l_qry$df_qc$validator <- username
+    #   # create a backup copy without the changes
+    #   fname <- here("data", "UK-AMo_mainmet_val_backup.rds")
+    #   saveRDS(l_lev2, file = fname)
+    # 
+    #   # overwrite existing data with changes in query
+    #   l_lev2$df    <<- power_full_join(l_lev2$df,    l_qry$df, by = "DATECT", conflict = coalesce_yx)
+    #   l_lev2$df_qc <<- power_full_join(l_lev2$df_qc, l_qry$df_qc,  by = "DATECT", conflict = coalesce_yx)
+    #   # save to local file
+    #   fname <- here("data", "UK-AMo_mainmet_val.rds")
+    #   saveRDS(l_lev2, file = fname)
+    #   
+    #   runjs('document.getElementById("submitchanges").textContent="Submit changes to file";')
+    #   shinyjs::enable("submitchanges")
+    # })
     
     output$download_data <- downloadHandler(
       filename = function() if (input$download_file == 'lev1') 
