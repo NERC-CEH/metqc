@@ -65,7 +65,8 @@ plot_heatmap_calendar <- function(df) {
                             TRUE ~ week)) %>% 
     distinct()
   
-  if(levels(as.factor(df$validator)) %in% 'data flagged'){
+   if('data flagged' %in% levels(as.factor(df$validator))){
+
     df$f_validator <- forcats::fct_relevel(forcats::fct_relevel(as.factor(df$validator), 'auto', after = Inf), 'data flagged', after = 0)
   } else{
     df$f_validator <- forcats::fct_relevel(as.factor(df$validator), 'auto', after = Inf)
