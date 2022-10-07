@@ -56,7 +56,8 @@ Imports:
     openair,
     powerjoin,
     pins,
-    markdown
+    markdown,
+    forcats
 Suggests: 
     testthat,
     knitr, rmarkdown,
