@@ -49,7 +49,7 @@ Imports:
     DT,
     shinyWidgets,
     shinyjs,
-    ROracle,
+    rsconnect,
     ggExtra,
     mgcv,
     here, 
@@ -57,7 +57,14 @@ Imports:
     powerjoin,
     pins,
     markdown,
-    forcats
+    forcats,
+    devtools,
+    ecmwfr,
+    errorlocate,
+    humidity,
+    keyring,
+    ncdf4,
+    usethis
 Suggests: 
     testthat,
     knitr, rmarkdown,

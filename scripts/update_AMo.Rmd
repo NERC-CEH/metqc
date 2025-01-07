@@ -13,7 +13,7 @@ library(pins)
 library(dplyr)
 library(ggplot2)
 library(data.table)
-board <- pins::board_rsconnect()
+board <- pins::board_connect()
 ```
 
 ```{r update, eval=TRUE, echo=FALSE}
@@ -31,11 +31,11 @@ paste("Level 1 data from", min(l_lev1$df$DATECT), "to",  max(l_lev1$df$DATECT))
 
 pins::pin_write(board,
   df_era5,
-  name = "era5_data", type = "rds") # use qs instead? qs is actually slower somehow
+  name = "plevy/era5_data", type = "rds") # use qs instead? qs is actually slower somehow
   
 pins::pin_write(board,
   l_lev1,
-  name = "level1_data", type = "rds")
+  name = "plevy/level1_data", type = "rds")
 ```
   
 ```{r readLevel2, eval=TRUE, echo=FALSE}
@@ -48,8 +48,8 @@ df    <- subset(l_lev2$df,    DATECT >= "2022-01-01")
 df_qc <- subset(l_lev2$df_qc, DATECT >= "2022-01-01")
 
 # write to pins
-pins::pin_write(board, df,    name = "UK-AMo_met_level2_data",    type = "csv")
-pins::pin_write(board, df_qc, name = "UK-AMo_met_level2_data_qc", type = "csv")
+pins::pin_write(board, df,    name = "plevy/UK-AMo_met_level2_data",    type = "csv")
+pins::pin_write(board, df_qc, name = "plevy/UK-AMo_met_level2_data_qc", type = "csv")
 # write csv version for current year
 # https://connect-apps.ceh.ac.uk/AMo_met_level2_data/
 # https://connect-apps.ceh.ac.uk/UK-AMo_met_level2_data_qc/

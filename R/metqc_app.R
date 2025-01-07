@@ -7,7 +7,7 @@ library(shinydashboard)
 library(dplyr)
 library(ggplot2)
 library(ggiraph)
-library(ROracle)
+# library(ROracle)
 library(mgcv)
 library(DT)
 library(data.table)
@@ -284,7 +284,7 @@ metqcApp <- function(...) {
 
     disable('compare_vars')
 
-    board <- board_rsconnect()
+    board <- board_connect()
     
     # Read in data flags df
     flagged_data <- pin_read(board, "wilfinc/flagged_data")
@@ -341,7 +341,7 @@ metqcApp <- function(...) {
     # Format the dates for R----
     df_proc <- data.frame(
       start_date = "1995/01/01 00:00",
-      end_date = "2022/12/31 00:00"
+      end_date = "2024/12/31 00:00"
     )
     df_proc$start_date <- as.POSIXct(
       df_proc$start_date,
