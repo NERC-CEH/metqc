@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>app_user_guide</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1 id="metqc-app-user-guide">MetQC app User Guide</h1>
+<p>This document aims to explain how to use the MetQC app. We will go
+through common tasks and outline how they can be undertaken within the
+app and touch on what is going on ‘behind the scenes’.</p>
+<p>All users are required select their username upon entering the app
+(Figure 1). This is important as any changes made to the data (e.g. QC
+checks or data flags can then be associated with you). Simply select
+your username from the drop down list and click ‘OK’.</p>
+<h3 id="app-start-up">App start-up</h3>
+<p><img src="select_user.png" width="600"/></p>
+<p><em>Figure 1: Users will need to select a user from the drop down
+list on app launch.</em></p>
+<h3 id="app-dashboard">App dashboard</h3>
+<p>Once the user has been selected, the app’s dashboard (or home screen)
+(Figure 2) will load. Data validation is undertaken on the dashboard tab
+while other tasks (e.g. data download and adding data flags) are
+accessible on the left menu.</p>
+<!---![](dashboard_home.png)--->
+<p><img src="dashboard_home.png" width="600"/></p>
+<p><em>Figure 2: The MetQC app dashboard</em></p>
+<!---![](dashboard_loaded.png)--->
+<p><img src="dashboard_loaded.png" width="600"/></p>
+<p><em>Figure 3: The MetQC app dashboard after data has been
+retrieved.</em></p>
+<!---![](lasso_buttons.png)--->
+<p><img src="lasso_buttons.png" width="600"/></p>
+<p><em>Figure 4: The plot buttons made visible (red box on right) by
+moving the mouse over the plot window.</em></p>
+<h3 id="flagging-data">Flagging data</h3>
+<!---![](flags_v2a.png)--->
+<p><img src="flags_v2a.png" width="600"/></p>
+<p><em>Figure 5: Data can be flagged on the ‘Data flags’ tab. By default
+whole days are flagged.</em></p>
+<!---![](flags.png)--->
+<p><img src="flags_v2b.png" width="600"/></p>
+<p><em>Figure 6: The data flags tab. By setting ‘Flag the entire day?’
+to ‘No’ allows for start and end hours to be added.</em></p>
+<h3 id="downloading-data">Downloading data</h3>
+<p><img src="download.png" width="600"/></p>
+<p><em>Figure 6: All data (level 1, 2 and the data flags) can be
+downloaded on the ‘Download’ tab. Level 1 and 2 data is downloaded as a
+.zip file which contains two .csv files of the data and the data qc
+codes. Data flag data is downloaded as a single .csv file.</em></p>
+<h3 id="finding-more-information">Finding more information</h3>
+<p><img src="info.png" width="600"/></p>
+<p><em>Figure 6: Further information, including the app’s user guide,
+details of the gap-filling methods and the underlying data process, can
+be found on the ‘Information’ tab.</em></p>
+<p><br/><br/> #### Q: How do I validate data? A: 1. Select your start
+and end validation dates from the ‘Data selection’ box on the Dashboard.
+2. Click ‘Retrieve from database’. The dashboard should now update as
+data is retrieved. 3. At any time, after importing data, you can compare
+variables by clicking on the ‘Compare variables’ (also in the ‘Data
+selection’ box). 4. The ‘Validation Calendar’ (top right Figure 3) shows
+the validation history for the data you have imported. The colours of
+the calendar correspond to the user who validated the data. If any data
+has been flagged on a given day the user is set to ‘data flagged’.
+‘auto’ is also listed as a user in this case. 5. The ‘Extracted Data’
+box (Figure 3) is the interface where data are checked. Each variable
+has it’s own tab, which can be accessed by clicking on the variable name
+at the top of the box.<br />
+- The plot shows the data extracted (for the selected variable). point
+colours show the current qc label. Hovering the mouse over points
+displays the data point timestamp and measurement value. 6. If the data
+for the selected variable looks correct, clicking the ‘Finished checking
+variable for date range’ button will flag this tab as complete. The tab
+(top of the ‘Extracted Data’) box will become grey and a different
+variable can then be validated. 7. If data looks unreliable, data can be
+imputed to correct this. - When the mouse is over the plot window the
+plot buttons will appear in the top right of the plot window (Figure 4).
+The left most button of these (‘lasso selection’) allows for point in
+the graph to be selected. Upon selection these will change colour (go
+red) to indicate their selection. Use this feature to select the
+unreliable looking data points. - Select the ‘Gap-Filling Method’ from
+the drop down menu below the graph. Additional details of these methods
+can be found in the ‘Information’ tab. - Data can be excluded form
+imputation by using the tick boxes lower down. - Click ‘Impute
+selection’ box to impute the data selected (minus data highlighted by
+ticking the tick boxes at the bottom of the page) using the gap-filling
+method selected. - The graph will update to show the edited data. - This
+process can be repeated as required and the ‘Finished checking variable
+for date range’ button can be pressed when complete. 8. When you have
+finished data validation the ‘Submit changes’ button can be pressed to
+save your changes. <strong>Any unsaved changes will be lost when a new
+date range is selected</strong>. All changes are now submitted to the
+cloud. At any point the app can be restarted by using the ‘Restart app’
+button at the bottom of the page.</p>
+<h4
+id="q-how-do-i-flag-a-period-of-time-when-i-know-data-could-be-unreliable-e.g.-broken-sensor">Q:
+How do I flag a period of time when I know data could be unreliable?
+(e.g. broken sensor)</h4>
+<p>A: 1. Once you’ve selected your username on app start-up, click on
+the ‘Flags’ tab on the left of the app. 2. New data flags can be added
+by setting the start and end date of the period of concern, the variable
+and a brief description of why the time period is being flagged
+(e.g. damaged sensor). Then click ‘Add Flag’. By default, whole days are
+flagged but by setting ‘Flag the entire day?’ to ‘No’ enables further
+inputs which can record the start and end times (Hours). Hours are all
+in 24 hours format (i.e. 2pm = 14) and can be recorded in local time
+(GMT/BST). 3. Your new flag will then appear in the data flags table
+below. Check this looks correct. Times are converted to UTC/GMT so,
+depending on the time of year, the hours may change from those input by
+the user. A new qc code (to highlight the flag) and your username will
+be added automatically. 4. If the data flag looks correct, click ‘Save’
+to save the table. This also updates the qc codes in the data - allowing
+others to see the that the data has been flagged. You will then be asked
+if you’d like to apply these changes to the data. This process resets
+the app and only needs to be done if you would like to view or edit data
+in the ‘Dashboard’ tab after adding your flags. 5. If the data flag does
+not look correct click ‘Reset’ to undo your changes. If you have saved
+changes which you later realise are incorrect, we can revert the data to
+a previous version. Only a small number of versions are stored, so let
+us know before more changes are saved.</p>
+<ul>
+<li>Currently, data flags cannot be added for future dates. This is
+something that will may change, based on demand.</li>
+<li>When flagging an entire day the validation calendar will show the
+flagged day and the following data as being flagged. This is because the
+period midnight to midnight is flagged. This can be changed in the
+future, if this is causing a problem.</li>
+</ul>
+<h4 id="q-i-want-to-download-the-data">Q: I want to download the
+data</h4>
+<p>A: 1. Once you’ve selected your username on app start-up, click on
+the ‘Download’ tab on the left of the app. 2. Select the data you would
+like to download form the drop down menu. 3. Click download to download
+the data. - Level 1 and 2 data are downloaded as .zip files which
+contain both the data itself and the qc data in two .csv files. - Data
+flags data is downloaded as a single .csv file.</p>
+<h4 id="q-i-selected-the-wrong-user-when-the-app-started">Q: I selected
+the wrong user when the app started</h4>
+<p>A: You can change the current user by clicking on ‘Current user: …’
+in the top right corner of the app. This will not update the user for
+any previously added data flags.</p>
+<h4
+id="q-my-question-isnt-listed-here-ive-noticed-a-mistake-or-can-the-app-do-x-y-z-in-the-future">Q:
+My question isn’t listed here, I’ve noticed a mistake or Can the app do
+X, Y, Z in the future?</h4>
+<p>A: Either post in the Teams channel, log a GitHub issue or email Pete
+(pleav@ceh.ac.uk) or Will (wilfinc@ceh.ac.uk).</p>
+</body>
+</html>

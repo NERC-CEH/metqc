@@ -18,13 +18,18 @@ board <- pins::board_connect()
 
 ```{r update, eval=TRUE, echo=FALSE}
 # Read in ERA5 data----
-url_era5 <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/df_era5.rds")
+#url_era5 <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/df_era5.rds")
+url_era5 <- paste0("https://gws-access.jasmin.ac.uk/public/ukem/UK-AMo/df_era5.rds")
+
 df_era5 <- readRDS(url(url_era5, "rb"))
+
 paste("ERA5 data from", min(df_era5$DATECT), "to",  max(df_era5$DATECT))
 
 # Reading in the logger data----
 this_year <- as.POSIXlt(Sys.Date())$year + 1900
-url_mainmet <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/UK-AMo_mainmet_", this_year, "_agf.rds")
+# url_mainmet <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/UK-AMo_mainmet_", this_year, "_agf.rds")
+url_mainmet <- paste0("https://gws-access.jasmin.ac.uk/public/ukem/UK-AMo/UK-AMo_mainmet_", this_year, "_agf.rds")
+
 l_lev1 <- readRDS(url(url_mainmet, "rb"))
 
 paste("Level 1 data from", min(l_lev1$df$DATECT), "to",  max(l_lev1$df$DATECT))

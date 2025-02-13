@@ -1,26 +1,27 @@
 ---
-title: "metdb: A Workflow for Meteorological Data: Validation, Quality Control, Gap-filling and Database storage"
+title: "metqc: A Workflow for Meteorological Data: Validation, Quality Control, Gap-filling and Database storage"
 author: "Peter Levy"
-output: rmarkdown::html_vignette
-# output:
-  # html_document:
-    # keep_md: yes
+output:
+  word_document:
+    keep_md: yes
+# output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{metdb}
+  %\VignetteIndexEntry{metqc}
   %\VignetteEngine{knitr::rmarkdown}
   %\usepackage[utf8]{inputenc}    
 ---
 
 ```{r rendering, eval=FALSE}
 library(rmarkdown)
-system.time(render("metdb.Rmd", output_file = "metdb.html"))
+system.time(render("metqc.Rmd", output_file = "metqc.html"))
+system.time(render("metqc.Rmd", output_file = "metqc.docx"))
 ```
 
 # Introduction
 This document describes a workflow for processing meteorological data from field sites.
 CEH operate a number of field sites where meteorological measurements are made, including air temperature, soil temperature, wind speed and direction, humidity and solar radiation. The data are recorded in the field, generally on Campbell data loggers, which download to a server PC at the field site, and then on to JASMIN.
 The processing steps include: merging of files from multiple loggers, renaming of variables, conversion of units, automatic quality control by simple range-checking,  manual validation by visual inspection, imputation of missing data (gap-filling) and storage in a relational database. 
-These steps are carried out be a number of R programs on JASMIN, and a Shiny app metqc on the CEH RStudio Connect server. The R programs are under version control in a [GitHub repository](https://github.com/NERC-CEH/metdb).
+These steps are carried out be a number of R programs on JASMIN, and a Shiny app metqc on the CEH RStudio Connect server. The R programs are under version control in a [GitHub repository](https://github.com/NERC-CEH/metqc).
 Currently, only data from a single field site (Auchencorth Moss) is included in this workflow, but this could be expanded more widely.
 
 # Outline
@@ -33,18 +34,18 @@ A scheduled R Markdown script on the CEH RStudio Connect server reads the data f
 A Shiny app `metqc` on the CEH RStudio Connect server allows users to manually check the data and to impute any missing data. The output from this is written to a pin, so as to be accessible to other programs and apps, and to an Oracle database. The Level 2 data are then available to users via this pin, via the Oracle database, and will be submitted annually to CEDA where the long-term data are [archived](https://catalogue.ceda.ac.uk/uuid/8e6cbb111cfd41a19c92aadcb2d040fd).
 
 # Terminology and Notation
-We denote three levels of processing which the data  move through in the workflow.
+Variable names follows those defined by [ICOS](http://www.icos-etc.eu/icos/documents/instructions/bmform).  We denote three levels of processing which the data  move through in the workflow.
 
 * Level 0 - raw data as recorded on the data loggers.
 * Level 1 - data which has been programatically checked for quality and had missing data imputed automatically.
 * Level 2 - data which has been manually checked for quality and had missing data imputed under manual control by a user.
 
-```{r, echo = FALSE, fig.cap = "metdb workflow"}
-knitr::include_graphics("metdb_workflow1.png")
+```{r, echo = FALSE, fig.cap = "metqc workflow"}
+knitr::include_graphics("metqc_workflow1.png")
 ```
 
-```{r, echo = FALSE, fig.cap = "Levels of data processing defined in metdb workflow."}
-knitr::include_graphics("metdb_data_levels.png")
+```{r, echo = FALSE, fig.cap = "Levels of data processing defined in metqc workflow."}
+knitr::include_graphics("metqc_data_levels.png")
 ```
 
 The data are stored in R as a list of two parallel data frames (with the same set of variable names, and for the same range of dates, so of the same length). These two data frames contain the data themselves (`df`) and the corresponding quality control codes (`df_qc`). The quality control codes denote whether the data are either unchanged raw data or missing / of dubious quality and not to be used.
@@ -64,7 +65,7 @@ The raw data are collected by several data loggers running at the field site. Th
 
 ## R scripts on JASMIN
 ### One-off R scripts
-`\metdb\scripts\ceda_era5_to_db.R`
+`\metqc\scripts\ceda_era5_to_db.R`
 
 This script reads the data extracted from BADC/CEDA for 1995 to 2020 and wrangles it into the same format, naming convention and units as the current data. It also reads the ERA5 data for Auchencorth for the same period.  
 Raw, Level 0 data are written to file at this point.
@@ -72,20 +73,65 @@ It then applies some automatic checks for quality (simply testing that each vari
 These automatically checked Level 1 data are written to file and to the Oracle database.
 
 ### Daily scheduled R scripts
-`\metdb\scripts\era5-update.R`
+`\metqc\scripts\era5-update.R`
 
 This script downloads the latest ERA5 data from Copernicus CDS.
 It checks the existing data to find the date of the last successful download, and makes a request in CDS API format to get the intervening data up to the current date.  ERA5 is around a week behind real time. Requests are submitted and queued, can be monitorred [here](https://cds.climate.copernicus.eu/cdsapp#!/yourrequests) and can take hours or days. 
 
-`\metdb\scripts\plot_UK-AMo_met.Rmd`
+`\metqc\scripts\plot_UK-AMo_met.Rmd`
 
-# Variable names
-Variable names follows those defined by [ICOS](http://www.icos-etc.eu/icos/documents/instructions/bmform).
+This script reads the logger data, performs 30-min averaging where necessary, and also reads the eddy covariance summary files.  It produces web pages containing plots of most variables for the past [week](https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/plot_UK-AMo_week.html), [month](https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/plot_UK-AMo_month.html) and [year](https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/plot_UK-AMo_year.html).
 
+## metqc app
+The metqc app allows the user to manually check the variables in a chosen data range, flag any dubious values, and provide replacement values by several methods.
+TBC
 
-```{r readpins, eval=FALSE}
+The date ranges that have been checked, and by whom, are displayed in the form of a calendar plot, like the one below.
+
+```{r readLevel2, eval=TRUE, echo=FALSE}
 # and to read the data back
-system.time(dft <- pin_read(
+library(pins)
+library(dplyr)
+library(ggplot2)
+board <- pins::board_connect()
+system.time(l_lev2 <- pin_read(
   board, 
-  "plevy/era5_data"))
+  "plevy/level2_data"))
+paste("Level 2 (checked by user) data exists from", min(l_lev2$df$DATECT), "to",  max(l_lev2$df$DATECT))
+df    <- subset(l_lev2$df,    DATECT >= "2023-01-01")
+df_qc <- subset(l_lev2$df_qc, DATECT >= "2023-01-01")
+
+# plot calendar heatmap
+df <- df_qc %>%
+  mutate(year = lubridate::year(DATECT),
+         day_of_the_week = lubridate::wday(DATECT, label = TRUE, week_start = 1),
+         month = lubridate::month(DATECT, label = TRUE, abbr = FALSE),
+         week = lubridate::isoweek(DATECT),
+         day = lubridate::day(DATECT)) %>%
+  dplyr::select(year, month, day, week,
+         day_of_the_week, validator)
+df$week <- as.double(df$week)
+df <- dplyr::mutate(df,
+  week = case_when(month == "December" & week == 1 ~ 53,
+  month == "January" & week %in% 52:53 ~ 0,
+  TRUE ~ week)
+  )
+
+heatmap_plot <- ggplot(df,
+                       aes(day_of_the_week, -week,
+                           fill = validator)) +
+  geom_tile(color = "white", size = 0.1) +
+  facet_wrap(year~month, scales = "free") +
+  theme_minimal(base_size = 8) +
+  theme(legend.position = "bottom") +
+  theme(plot.title = element_text(size = 14)) +
+  theme(axis.text.y = element_text(size = 6)) +
+  theme(strip.background = element_rect(colour = "white")) +
+  theme(plot.title = element_text(hjust = 0)) +
+  theme(axis.ticks = element_blank()) +
+  theme(axis.text = element_text(size = 7)) +
+  theme(legend.title = element_text(size = 8)) +
+  theme(legend.text = element_text(size = 6)) +
+  ggExtra::removeGrid()
+heatmap_plot
 ```

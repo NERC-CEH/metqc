@@ -1,12 +1,11 @@
-name: metqc
-title: metqc
+name: update_amo
+title: update_AMo
 username: plevy
 account: plevy
 server: connect-apps.ceh.ac.uk
 hostUrl: https://connect-apps.ceh.ac.uk/__api__
-appId: 147
-bundleId: 17855
-url: https://connect-apps.ceh.ac.uk/metqc/
+appId: 153
+bundleId: 17847
+url: https://connect-apps.ceh.ac.uk/update_AMo/
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: docs/met_data_workflow_UK-AMo.pptx

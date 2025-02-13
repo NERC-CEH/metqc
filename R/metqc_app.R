@@ -254,8 +254,8 @@ metqcApp <- function(...) {
   server <- function(input, output, session) {
 
     # list of possible users - hard-coded for now
-    v_usernames <- c("leav", "dunhar", "karung", "plevy", "matj", "MauGre", "mcoy", "neimul",
-      "sarle", "wilfinc")
+    v_usernames <- c("plevy", "dunhar", "karung", "leav", "matj", "MauGre", "mcoy", "neimul",
+      "sarle", "wilfinc", "jamcas")
 
     # a modal dialog where the user can enter their user name.
     username_modal <- modalDialog(
@@ -299,7 +299,7 @@ metqcApp <- function(...) {
     # df_era5 <- readRDS(fname)
     # OR read from pin on Connect server
     df_era5 <- pin_read(board, "plevy/era5_data")
-    #names(df_era5); dim(df_era5)
+    # names(df_era5); dim(df_era5)
 
     # Reading in this year's Level 1 data----
     # read from JASMIN
@@ -347,10 +347,10 @@ metqcApp <- function(...) {
       df_proc$start_date,
       format = "%Y/%m/%d %H:%M", tz = "UTC"
     )
-    df_proc$end_date <- as.POSIXct(
-      df_proc$end_date,
-      format = "%Y/%m/%d %H:%M", tz = "UTC"
-    )
+    df_proc$end_date <- as.POSIXct(Sys.Date() - 2, tz = "UTC")
+    #   df_proc$end_date,
+    #   format = "%Y/%m/%d %H:%M", tz = "UTC"
+    # )
 
     # Create a reactive element with the earliest start date
     first_start_date <- reactive({
