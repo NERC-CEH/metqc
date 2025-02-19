@@ -5,7 +5,7 @@ account: plevy
 server: connect-apps.ceh.ac.uk
 hostUrl: https://connect-apps.ceh.ac.uk/__api__
 appId: 153
-bundleId: 17847
+bundleId: 18103
 url: https://connect-apps.ceh.ac.uk/update_AMo/
 asMultiple: FALSE
 asStatic: FALSE
