@@ -505,7 +505,8 @@ metqcApp <- function(...) {
       observe(
         lapply(paste(v_names_for_box), function(i) {
           output[[paste0(i, "_interactive_plot")]] <-
-            renderggiraph(plotting_function(i))
+            
+            renderGirafe(plotting_function(i))
         })
       )
 
@@ -760,7 +761,7 @@ metqcApp <- function(...) {
           plotting_function(input$plotTabs)
         })
         # Re-render
-        output[[paste0(input$plotTabs, "_interactive_plot")]] <- renderggiraph(plot_selected())
+        output[[paste0(input$plotTabs, "_interactive_plot")]] <- renderGirafe(plot_selected())
       }
     })
 

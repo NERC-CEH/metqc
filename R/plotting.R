@@ -11,6 +11,7 @@
 #'
 #' @examples
 plotting_function <- function(input_variable) {
+
   df <- data.frame(DATECT = l_qry$df$DATECT, y = l_qry$df[, input_variable], 
     qc = l_qry$df_qc[, input_variable], checked = l_qry$df$checked)
   
