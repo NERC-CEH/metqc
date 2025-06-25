@@ -21,6 +21,7 @@ library(shinycssloaders)
 library(shinyalert)
 library(stringr)
 library(forcats)
+library(shinyvalidate)
 # source(here("R", "imputation.R"))
 # source(here("R", "plotting.R"))
 # source(here("R", "metqc_app.R"))
@@ -252,7 +253,23 @@ metqcApp <- function(...) {
   )
 
   server <- function(input, output, session) {
-
+    
+    ##########################
+    #shinyvalidate statements#
+    #########################
+    iv <- InputValidator$new()
+    
+    # Add rule to ensure end date is not before start date
+    iv$add_rule("end_date", function(value) {
+      if (is.null(value) || is.null(input$start_date)) return(NULL)
+      if (value < input$start_date) {
+        "End date must not be earlier than start date."
+      } else {
+        NULL
+      }
+    })
+    
+    iv$enable()
     # list of possible users - hard-coded for now
     v_usernames <- c("plevy", "dunhar", "karung", "leav", "matj", "MauGre", "mcoy", "neimul",
       "sarle", "wilfinc", "jamcas")
@@ -274,6 +291,16 @@ metqcApp <- function(...) {
     observeEvent(input$change_user, {
       showModal(username_modal)
     })
+    
+    ###
+    ##Observe event for shinyvalidate dates
+    ##
+    observeEvent(input$retrieve_data, label = "validator for dates",{
+      if (iv$is_valid()) {
+        showModal(modalDialog("Start Date must be before End Date", easyClose = TRUE))
+      }
+    })
+    
 
     observeEvent(input$ok, {
       removeModal()
@@ -383,6 +410,8 @@ metqcApp <- function(...) {
         label = "End date"
       )
       })
+    
+   
 
     # output$flag_date_range_input <- renderUI({
     #   dateRangeInput("flag_date_range",
