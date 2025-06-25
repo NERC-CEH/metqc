@@ -70,7 +70,8 @@ metqcApp <- function(...) {
               helpText("Select your required processing start and end times below."),
               column(
                 width = 6,
-                uiOutput("start_date")
+                uiOutput("start_date")#,
+                #textOutput("date_warning")
               ),
               column(
                 width = 3,
@@ -259,15 +260,34 @@ metqcApp <- function(...) {
     #########################
     iv <- InputValidator$new()
     
+    
+    iv$add_rule("sdate", sv_required())
+    iv$add_rule("edate", sv_required())
+    
     # Add rule to ensure end date is not before start date
-    iv$add_rule("end_date", function(value) {
-      if (is.null(value) || is.null(input$start_date)) return(NULL)
-      if (value < input$start_date) {
-        "End date must not be earlier than start date."
-      } else {
-        NULL
-      }
-    })
+    # iv$add_rule("end_date", function(value) {
+    #   if (is.null(value) || is.null(input$start_date)) return(NULL)
+    #   if (value < input$start_date) {
+    #     "End date must not be earlier than start date."
+    #   } else {
+    #     NULL
+    #   }
+    # })
+    
+    # iv$add_rule("end_date", function(value) {
+    #   start <- input$start_date
+    #   end <- value
+    #   
+    #   # Only validate if both dates are selected
+    #   if (is.null(start) || is.null(end)) return(NULL)
+    #   
+    #   if (end < start) {
+    #     "End date must not be earlier than start date."
+    #   } else {
+    #     NULL
+    #   }
+    # })
+    
     
     iv$enable()
     # list of possible users - hard-coded for now
@@ -296,10 +316,32 @@ metqcApp <- function(...) {
     ##Observe event for shinyvalidate dates
     ##
     observeEvent(input$retrieve_data, label = "validator for dates",{
-      if (iv$is_valid()) {
-        showModal(modalDialog("Start Date must be before End Date", easyClose = TRUE))
+     browser()
+      if (!iv$is_valid()) {
+        
+        showModal(modalDialog("Please fill in both dates.", easyClose = TRUE))
+        return()
       }
+        
+        if (input$edate < input$sdate) {
+          showModal(modalDialog(
+            title = "Invalid Dates",
+            "⚠️ End date must not be earlier than start date.",
+            easyClose = TRUE
+          ))
+        } 
     })
+    
+    # output$date_warning <- renderText({
+    #   browser()
+    #   req(input$start_date, input$end_date, input$retrieve_data)
+    #   if (input$end_date < input$start_date) {
+    #     "Warning: End date must not be earlier than start date."
+    #   } else {
+    #     "" # No warning
+    #   }
+    # })
+    
     
 
     observeEvent(input$ok, {
