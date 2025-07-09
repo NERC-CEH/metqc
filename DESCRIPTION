@@ -1,8 +1,19 @@
 Package: metqc
-Title: Metqc app
+Title: Quality Control Of Field Site Meteorological Data
 Version: 0.0.0.9000
-Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
+Authors@R: c(
+    person("First", "Last", , "first.last@example.com", role = c("aut", "cre")),
+    person("Peter", "Levy", , "plevy@ceh.ac.uk", role = "aut",
+           comment = c(ORCID = "0000-0002-8505-1901")),
+    person("Thomas", "Zwagerman", , "thowag@ceh.ac.uk", role = c("aut", "cre")),
+    person("David", "Leaver", , "leav@ceh.ac.uk", role = "aut"),
+    person("Juan Pablo", "Lobo Guerrero", , "jualob@ceh.ac.uk", role = "ctb"),
+    person("Will", "Fincham", role = "aut"),
+    person("Karen", "Yeung", , "karung@ceh.ac.uk", role = "ctb"),
+    person("Cristina", "Martin Hernandez", role = "aut",
+           comment = c(ORCID = "0009-0003-9594-0299")),
+    person("Claudia", "Caporusso", role = "aut")
+  )
 Description: This app aims to be an standarisation to the UKCEH metadata
     quality control and processing, such as gap filling. It is a R Shiny
     app that allows users to retrieve met data from a database, and
@@ -10,5 +21,6 @@ Description: This app aims to be an standarisation to the UKCEH metadata
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
 Encoding: UTF-8
+licence: CC BY 4.0
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2

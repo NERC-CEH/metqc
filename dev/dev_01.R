@@ -24,15 +24,55 @@
 ## either re-run this function, call golem::set_golem_name(), or don't forget
 ## to change the name in the app_sys() function in app_config.R /!\
 ##
+usethis::use_description(fields = list(
+  Title = "Quality Control Of Field Site Meteorological Data",
+  Description = "This app aims to be an standarisation to the UKCEH metadata quality control and processing, such as gap filling. It is a R Shiny app that allows users to retrieve met data from a database, and process them in an standard way.",
+  licence = "CC BY 4.0"
+))
+
+usethis::use_author(
+  given = "Peter",
+  family = "Levy",
+  email = "plevy@ceh.ac.uk",
+  role = c("aut"),
+  comment = c(ORCID = "0000-0002-8505-1901")
+)
+usethis::use_author(
+  given = "Thomas", 
+  family = "Zwagerman",
+  email = "thowag@ceh.ac.uk",
+  role = c("aut", "cre")
+  )
+usethis::use_author(
+  given = "David",
+  family = "Leaver",
+  email = "leav@ceh.ac.uk",
+  role = c("aut")
+)
+usethis::use_author(
+  given = "Juan Pablo",
+  family = "Lobo Guerrero",
+  email = "jualob@ceh.ac.uk",
+  role = c("ctb")
+)
+
 usethis::use_author(
   given = "Will",
   family = "Fincham",
   role = c("aut")
 )
 usethis::use_author(
+  given = "Karen",
+  family = "Yeung",
+  email = "karung@ceh.ac.uk",
+  role = c("ctb")
+)
+
+usethis::use_author(
   given = "Cristina",
   family = "Martin Hernandez",
-  role = c("aut")
+  role = c("aut"),
+  comment = c(ORCID = "0009-0003-9594-0299")
 )
 usethis::use_author(
   given = "Claudia",
@@ -40,12 +80,9 @@ usethis::use_author(
   role = c("aut")
 )
 
-usethis::use_description(fields = list(
-  Title = "Metqc app",
-  Description = "This app aims to be an standarisation to the UKCEH metadata quality control and processing, such as gap filling. It is a R Shiny app that allows users to retrieve met data from a database, and process them in an standard way."
-))
 
-2######################################
+
+######################################
 # adding a Citation File Format (CFF)#
 ######################################
 
@@ -59,6 +96,6 @@ cffr::cff_write(
   dependencies = TRUE,
   validate = TRUE,
   verbose = TRUE,
-  authors_roles =  c("aut"),
+  authors_roles =  c("aut", "ctb", "cre"),
   encoding = "UTF-8"
 )

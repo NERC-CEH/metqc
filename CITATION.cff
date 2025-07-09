@@ -6,7 +6,7 @@
 cff-version: 1.2.0
 message: 'To cite package "metqc" in publications use:'
 type: software
-title: 'metqc: Metqc app'
+title: 'metqc: Quality Control Of Field Site Meteorological Data'
 version: 0.0.0.9000
 abstract: This app aims to be an standarisation to the UKCEH metadata quality control
   and processing, such as gap filling. It is a R Shiny app that allows users to retrieve
@@ -15,8 +15,34 @@ authors:
 - family-names: Last
   given-names: First
   email: first.last@example.com
+- family-names: Levy
+  given-names: Peter
+  email: plevy@ceh.ac.uk
+  orcid: https://orcid.org/0000-0002-8505-1901
+- family-names: Zwagerman
+  given-names: Thomas
+  email: thowag@ceh.ac.uk
+- family-names: Leaver
+  given-names: David
+  email: leav@ceh.ac.uk
+- family-names: Lobo Guerrero
+  given-names: Juan Pablo
+  email: jualob@ceh.ac.uk
+- family-names: Fincham
+  given-names: Will
+- family-names: Yeung
+  given-names: Karen
+  email: karung@ceh.ac.uk
+- family-names: Martin Hernandez
+  given-names: Cristina
+  orcid: https://orcid.org/0009-0003-9594-0299
+- family-names: Caporusso
+  given-names: Claudia
 contact:
 - family-names: Last
   given-names: First
   email: first.last@example.com
+- family-names: Zwagerman
+  given-names: Thomas
+  email: thowag@ceh.ac.uk
 
