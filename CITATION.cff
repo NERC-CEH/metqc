@@ -1,0 +1,22 @@
+# --------------------------------------------
+# CITATION file created with {cffr} R package
+# See also: https://docs.ropensci.org/cffr/
+# --------------------------------------------
+ 
+cff-version: 1.2.0
+message: 'To cite package "metqc" in publications use:'
+type: software
+title: 'metqc: Metqc app'
+version: 0.0.0.9000
+abstract: This app aims to be an standarisation to the UKCEH metadata quality control
+  and processing, such as gap filling. It is a R Shiny app that allows users to retrieve
+  met data from a database, and process them in an standard way.
+authors:
+- family-names: Last
+  given-names: First
+  email: first.last@example.com
+contact:
+- family-names: Last
+  given-names: First
+  email: first.last@example.com
+

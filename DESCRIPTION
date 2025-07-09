@@ -1,72 +1,14 @@
 Package: metqc
-Title: Quality Control Of Field Site Meteorological Data 
-Version: 0.0.1
+Title: Metqc app
+Version: 0.0.0.9000
 Authors@R: 
-    c(
-    person(
-    given = "Peter",
-    family = "Levy",
-    email = "plevy@ceh.ac.uk",
-    role = c("aut"),
-    comment = c(ORCID = "0000-0002-8505-1901")),
-    person(
-    given = "Thomas", 
-    family = "Zwagerman",
-    email = "thowag@ceh.ac.uk",
-    role = c("aut", "cre")),
-    person(given = "David",
-    family = "Leaver",
-    email = "leav@ceh.ac.uk",
-    role = c("aut")),
-    person(given = "Juan Pablo",
-    family = "Lobo Guerrero",
-    email = "jualob@ceh.ac.uk",
-    role = c("ctb")),
-    person(given = "Karen",
-    family = "Yeung",
-    email = "karung@ceh.ac.uk",
-    role = c("ctb"))
-    )
-Description: Quality control of field site meteorological data. 
-License: CC BY 4.0
+    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
+Description: This app aims to be an standarisation to the UKCEH metadata
+    quality control and processing, such as gap filling. It is a R Shiny
+    app that allows users to retrieve met data from a database, and
+    process them in an standard way.
+License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
+    license
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.2
-Depends: 
-    R (>= 3.5.0)
-LazyData: true
-Imports: 
-    pkgload,
-    shinydashboard,
-    shinycssloaders,
-    shiny,
-    shinyalert,
-    lubridate,
-    ggplot2,
-    dplyr,
-    ggiraph,
-    data.table,
-    DT,
-    shinyWidgets,
-    shinyjs,
-    rsconnect,
-    ggExtra,
-    mgcv,
-    here, 
-    openair,
-    powerjoin,
-    pins,
-    markdown,
-    forcats,
-    devtools,
-    ecmwfr,
-    errorlocate,
-    humidity,
-    keyring,
-    ncdf4,
-    usethis
-Suggests: 
-    testthat,
-    knitr, rmarkdown,
-    covr    
-VignetteBuilder: knitr, rmarkdown
+RoxygenNote: 7.3.2
