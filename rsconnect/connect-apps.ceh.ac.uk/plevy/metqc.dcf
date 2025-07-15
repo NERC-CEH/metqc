@@ -5,7 +5,7 @@ account: plevy
 server: connect-apps.ceh.ac.uk
 hostUrl: https://connect-apps.ceh.ac.uk/__api__
 appId: 147
-bundleId: 17855
+bundleId: 19555
 url: https://connect-apps.ceh.ac.uk/metqc/
 asMultiple: FALSE
 asStatic: FALSE

@@ -5,7 +5,7 @@ Authors@R: c(
     person("First", "Last", , "first.last@example.com", role = c("aut", "cre")),
     person("Peter", "Levy", , "plevy@ceh.ac.uk", role = "aut",
            comment = c(ORCID = "0000-0002-8505-1901")),
-    person("Thomas", "Zwagerman", , "thowag@ceh.ac.uk", role = c("aut", "cre")),
+    person("Thomas", "Zwagerman", , "thowag@ceh.ac.uk", role = c("ctb")),
     person("David", "Leaver", , "leav@ceh.ac.uk", role = "aut"),
     person("Juan Pablo", "Lobo Guerrero", , "jualob@ceh.ac.uk", role = "ctb"),
     person("Will", "Fincham", role = "aut"),
@@ -24,3 +24,6 @@ Encoding: UTF-8
 licence: CC BY 4.0
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
+Depends: 
+    R (>= 3.5)
+LazyData: true
