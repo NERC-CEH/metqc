@@ -13,6 +13,7 @@ library(pins)
 library(dplyr)
 library(ggplot2)
 library(data.table)
+options(timeout=240)
 board <- pins::board_connect()
 ```
 
@@ -27,7 +28,7 @@ system.time(df_era5 <- readRDS(url(url_era5, "rb")))
 paste("ERA5 data from", min(df_era5$DATECT), "to",  max(df_era5$DATECT))
 
 # Reading in the logger data----
-this_year <- as.POSIXlt(Sys.Date())$year + 1900
+# this_year <- as.POSIXlt(Sys.Date())$year + 1900
 # url_mainmet <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/UK-AMo_mainmet_", this_year, "_agf.rds")
 # url_mainmet <- paste0("https://gws-access.jasmin.ac.uk/public/ukem/UK-AMo/UK-AMo_mainmet_", this_year, "_agf.rds")
 url_mainmet <- paste0("https://gws-access.jasmin.ac.uk/public/eddystore/UK-AMO/lev1/UK-AMO_BM.rds")
@@ -39,9 +40,14 @@ l_lev1$df    <- l_lev1$dt
 l_lev1$df_qc <- l_lev1$dt_qc
 paste("Level 1 data from", min(l_lev1$df$DATECT), "to",  max(l_lev1$df$DATECT))
 
-# subset level 1 data to end of era5 data
-l_lev1$df    <- l_lev1$df[DATECT <= max(df_era5$DATECT)]
-l_lev1$df_qc <- l_lev1$df_qc[DATECT <= max(df_era5$DATECT)]
+# level 1 data will be more up-to date so longer, non-congruent time series
+# subset level 1 data to range of era5 data
+l_lev1$df    <- l_lev1$df[   DATECT >= min(df_era5$DATECT) & DATECT <= max(df_era5$DATECT)]
+l_lev1$df_qc <- l_lev1$df_qc[DATECT >= min(df_era5$DATECT) & DATECT <= max(df_era5$DATECT)]
+
+# reciprocally subset era5 data to range of level 1 data
+# era5 data contains one extra value at 1995-01-01 00:00 (not 00:30) so longer, non-congruent time series
+df_era5    <- df_era5[DATECT >= min(l_lev1$df$DATECT) & DATECT <= max(l_lev1$df$DATECT)]
 
 pins::pin_write(board,
   df_era5,
