@@ -5,8 +5,8 @@ account: plevy
 server: connect-apps.ceh.ac.uk
 hostUrl: https://connect-apps.ceh.ac.uk/__api__
 appId: 147
-bundleId: 17855
+bundleId: 19573
 url: https://connect-apps.ceh.ac.uk/metqc/
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: docs/met_data_workflow_UK-AMo.pptx
+ignoredFiles: .github/workflows/R-CMD-check.yaml|docs/met_data_workflow_UK-AMo.pptx|scripts

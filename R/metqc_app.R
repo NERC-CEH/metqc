@@ -21,6 +21,8 @@ library(shinycssloaders)
 library(shinyalert)
 library(stringr)
 library(forcats)
+library(shinyvalidate)
+library(markdown)
 # source(here("R", "imputation.R"))
 # source(here("R", "plotting.R"))
 # source(here("R", "metqc_app.R"))
@@ -69,7 +71,8 @@ metqcApp <- function(...) {
               helpText("Select your required processing start and end times below."),
               column(
                 width = 6,
-                uiOutput("start_date")
+                uiOutput("start_date")#,
+                #textOutput("date_warning")
               ),
               column(
                 width = 3,
@@ -252,7 +255,18 @@ metqcApp <- function(...) {
   )
 
   server <- function(input, output, session) {
-
+    
+    ##########################
+    #shinyvalidate statements#
+    #########################
+    iv <- InputValidator$new()
+    
+    
+    iv$add_rule("sdate", sv_required())
+    iv$add_rule("edate", sv_required())
+    iv$enable()
+    
+    
     # list of possible users - hard-coded for now
     v_usernames <- c("plevy", "dunhar", "karung", "leav", "matj", "MauGre", "mcoy", "neimul",
       "sarle", "wilfinc", "jamcas")
@@ -274,6 +288,37 @@ metqcApp <- function(...) {
     observeEvent(input$change_user, {
       showModal(username_modal)
     })
+    
+    ###
+    ##Observe event for shinyvalidate dates
+    ##
+    observeEvent(input$retrieve_data, label = "validator for dates",{
+      if (!iv$is_valid()) {
+        
+        showModal(modalDialog("Please fill in both dates.", easyClose = TRUE))
+        return()
+      }
+        
+        if (input$edate < input$sdate) {
+          showModal(modalDialog(
+            title = "Invalid Dates",
+            "⚠️ End date must not be earlier than start date.",
+            easyClose = TRUE
+          ))
+        } 
+    })
+    
+    # output$date_warning <- renderText({
+    #   browser()
+    #   req(input$start_date, input$end_date, input$retrieve_data)
+    #   if (input$end_date < input$start_date) {
+    #     "Warning: End date must not be earlier than start date."
+    #   } else {
+    #     "" # No warning
+    #   }
+    # })
+    
+    
 
     observeEvent(input$ok, {
       removeModal()
@@ -298,7 +343,7 @@ metqcApp <- function(...) {
     # fname <- here("data", "df_era5.rds")
     # df_era5 <- readRDS(fname)
     # OR read from pin on Connect server
-    df_era5 <- pin_read(board, "plevy/era5_data")
+    df_era5 <- as.data.frame(pin_read(board, "plevy/era5_data"))
     # names(df_era5); dim(df_era5)
 
     # Reading in this year's Level 1 data----
@@ -329,7 +374,7 @@ metqcApp <- function(...) {
       by = "DATECT", conflict = coalesce_xy
     )
 
-    date_of_first_new_record <- min(l_lev1$df$DATECT, na.rm = TRUE)
+    date_of_first_new_record <- as.POSIXct(Sys.Date() - 225, tz = "UTC")
     date_of_last_new_record  <- max(l_lev1$df$DATECT, na.rm = TRUE)
 
     # v_names <<- dbListFields(con, table_name)
@@ -383,6 +428,8 @@ metqcApp <- function(...) {
         label = "End date"
       )
       })
+    
+   
 
     # output$flag_date_range_input <- renderUI({
     #   dateRangeInput("flag_date_range",
@@ -505,7 +552,8 @@ metqcApp <- function(...) {
       observe(
         lapply(paste(v_names_for_box), function(i) {
           output[[paste0(i, "_interactive_plot")]] <-
-            renderggiraph(plotting_function(i))
+            
+            renderGirafe(plotting_function(i))
         })
       )
 
@@ -760,7 +808,7 @@ metqcApp <- function(...) {
           plotting_function(input$plotTabs)
         })
         # Re-render
-        output[[paste0(input$plotTabs, "_interactive_plot")]] <- renderggiraph(plot_selected())
+        output[[paste0(input$plotTabs, "_interactive_plot")]] <- renderGirafe(plot_selected())
       }
     })
 
