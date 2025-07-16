@@ -19,12 +19,25 @@ names(l_lev$df_qc)
 #'   \code{df_qc}.
 #'
 #' @export
-format_for_ceda <- function(l_lev,
-  v_names = c( "TA_4_1_1", "RH_4_1_1", "PA_4_1_1", "RG_4_1_0", "PPFD_IN_4_1_1",
-    "RN_5_1_1", "P_12_1_1", "TS", "G", "SWC", "WS_6_1_1", "WD_6_1_1", "D_SNOW",
-    "WTD")
+format_for_ceda <- function(
+  l_lev,
+  v_names = c(
+    "TA_4_1_1",
+    "RH_4_1_1",
+    "PA_4_1_1",
+    "RG_4_1_0",
+    "PPFD_IN_4_1_1",
+    "RN_5_1_1",
+    "P_12_1_1",
+    "TS",
+    "G",
+    "SWC",
+    "WS_6_1_1",
+    "WD_6_1_1",
+    "D_SNOW",
+    "WTD"
+  )
 ) {
-
   # Get the qc names by adding "_qc" to the v_names
   v_names_qc <- paste0(v_names, "_qc")
 

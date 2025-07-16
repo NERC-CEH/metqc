@@ -6,9 +6,9 @@
 ##
 ## -----------------------------------------
 ##
-## Author: Cristina Martin Hernandez
+## Author: Cristina Martin Hernandez and Peter Levy
 ## Date created:  Wed Jul  9 12:51:01 2025
-## Institution: UKCEH Edinburgh 
+## Institution: UKCEH Edinburgh
 ## Contact: crimar@ceh.ac.uk
 ##
 ## -----------------------------------------
@@ -17,6 +17,14 @@
 ##
 ## -----------------------------------------
 
+## Set the formatting to air and add a github action to enforce it----
+usethis::use_air()
+usethis::use_github_action(
+  url = "https://github.com/posit-dev/setup-air/blob/main/examples/format-suggest.yaml"
+)
+# In VS code, use Ctrl+Shift+P: Air: Format Workspace Folder
+# For Rstudio, see https://posit-dev.github.io/air/editor-rstudio.html
+
 ## Fill the DESCRIPTION ----
 ## Add meta data about your application
 ##
@@ -24,11 +32,13 @@
 ## either re-run this function, call golem::set_golem_name(), or don't forget
 ## to change the name in the app_sys() function in app_config.R /!\
 ##
-usethis::use_description(fields = list(
-  Title = "Quality Control Of Field Site Meteorological Data",
-  Description = "This app aims to be an standarisation to the UKCEH metadata quality control and processing, such as gap filling. It is a R Shiny app that allows users to retrieve met data from a database, and process them in an standard way.",
-  licence = "CC BY 4.0"
-))
+usethis::use_description(
+  fields = list(
+    Title = "Quality Control Of Field Site Meteorological Data",
+    Description = "This app aims to be an standarisation to the UKCEH metadata quality control and processing, such as gap filling. It is a R Shiny app that allows users to retrieve met data from a database, and process them in an standard way.",
+    licence = "CC BY 4.0"
+  )
+)
 
 usethis::use_author(
   given = "Peter",
@@ -38,11 +48,11 @@ usethis::use_author(
   comment = c(ORCID = "0000-0002-8505-1901")
 )
 usethis::use_author(
-  given = "Thomas", 
+  given = "Thomas",
   family = "Zwagerman",
   email = "thowag@ceh.ac.uk",
   role = c("aut", "cre")
-  )
+)
 usethis::use_author(
   given = "David",
   family = "Leaver",
@@ -81,7 +91,6 @@ usethis::use_author(
 )
 
 
-
 ######################################
 # adding a Citation File Format (CFF)#
 ######################################
@@ -96,6 +105,6 @@ cffr::cff_write(
   dependencies = TRUE,
   validate = TRUE,
   verbose = TRUE,
-  authors_roles =  c("aut", "ctb", "cre"),
+  authors_roles = c("aut", "ctb", "cre"),
   encoding = "UTF-8"
 )
