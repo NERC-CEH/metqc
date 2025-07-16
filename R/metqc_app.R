@@ -22,6 +22,7 @@ library(shinyalert)
 library(stringr)
 library(forcats)
 library(shinyvalidate)
+library(markdown)
 # source(here("R", "imputation.R"))
 # source(here("R", "plotting.R"))
 # source(here("R", "metqc_app.R"))
@@ -342,7 +343,7 @@ metqcApp <- function(...) {
     # fname <- here("data", "df_era5.rds")
     # df_era5 <- readRDS(fname)
     # OR read from pin on Connect server
-    df_era5 <- pin_read(board, "plevy/era5_data")
+    df_era5 <- as.data.frame(pin_read(board, "plevy/era5_data"))
     # names(df_era5); dim(df_era5)
 
     # Reading in this year's Level 1 data----
@@ -373,7 +374,7 @@ metqcApp <- function(...) {
       by = "DATECT", conflict = coalesce_xy
     )
 
-    date_of_first_new_record <- min(l_lev1$df$DATECT, na.rm = TRUE)
+    date_of_first_new_record <- as.POSIXct(Sys.Date() - 225, tz = "UTC")
     date_of_last_new_record  <- max(l_lev1$df$DATECT, na.rm = TRUE)
 
     # v_names <<- dbListFields(con, table_name)
