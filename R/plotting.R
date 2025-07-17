@@ -2,7 +2,7 @@
 #'
 
 #' @title plotting_function
-#' @description Creates an interactive girafe plot, whereby the user can select 
+#' @description Creates an interactive girafe plot, whereby the user can select
 #'   points for flagging as poor quality and imputing new values.
 #' @param input_variable The name of the variable within the query data frame to plot.
 #' @return OUTPUT_DESCRIPTION
@@ -11,33 +11,56 @@
 #'
 #' @examples
 plotting_function <- function(input_variable) {
+  df <- data.frame(
+    DATECT = l_qry$df$DATECT,
+    y = l_qry$df[, input_variable],
+    qc = l_qry$df_qc[, input_variable],
+    checked = l_qry$df$checked
+  )
 
-  df <- data.frame(DATECT = l_qry$df$DATECT, y = l_qry$df[, input_variable], 
-    qc = l_qry$df_qc[, input_variable], checked = l_qry$df$checked)
-  
   df <- left_join(df, df_method, by = "qc")
-  
-  col_pal <- c('#5b5b5b', '#377EB8', '#4DAF4A', '#984EA3', '#00ff7f', '#FFFF33', '#A65628', '#F781BF', '#FF7F00')
+
+  col_pal <- c(
+    '#5b5b5b',
+    '#377EB8',
+    '#4DAF4A',
+    '#984EA3',
+    '#00ff7f',
+    '#FFFF33',
+    '#A65628',
+    '#F781BF',
+    '#FF7F00'
+  )
   names(col_pal) <- levels(df_method$method_longname)
 
-  p1_ggplot <- ggplot(df, 
-                      aes(DATECT, y)) +
-    geom_point_interactive(aes(data_id = checked, tooltip = glue("Timestamp: {DATECT}\nMeasure: {y}"),
-                               colour = factor(method_longname)), size = 3) +
+  p1_ggplot <- ggplot(df, aes(DATECT, y)) +
+    geom_point_interactive(
+      aes(
+        data_id = checked,
+        tooltip = glue("Timestamp: {DATECT}\nMeasure: {y}"),
+        colour = factor(method_longname)
+      ),
+      size = 3
+    ) +
     scale_color_manual(values = col_pal, limits = force) +
     xlab("Date") +
     ylab(paste("Your variable:", input_variable)) +
     ggtitle(paste(input_variable, "time series")) +
-    theme(plot.title = element_text(hjust = 0.5),
-          legend.title = element_blank())
-  p1_girafe <- girafe(code = print(p1_ggplot),
-                      width_svg = 10, height_svg = 5)
-  p1_girafe <- girafe_options(p1_girafe, opts_selection(
-    type = "multiple",
-    css = "fill:#FF3333;stroke:black;"),
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      legend.title = element_blank()
+    )
+  p1_girafe <- girafe(code = print(p1_ggplot), width_svg = 10, height_svg = 5)
+  p1_girafe <- girafe_options(
+    p1_girafe,
+    opts_selection(
+      type = "multiple",
+      css = "fill:#FF3333;stroke:black;"
+    ),
     opts_tooltip(zindex = 9999),
     opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"),
-    opts_zoom(max = 5))
+    opts_zoom(max = 5)
+  )
 }
 
 #' Custom plotting function to construct a heatmap calendar
@@ -54,32 +77,42 @@ plotting_function <- function(input_variable) {
 plot_heatmap_calendar <- function(df) {
   # Transforming query dataframe with lubridate to fit the format needed for a heatmap calendar
   df <- df %>%
-    mutate(year = lubridate::year(DATECT),
-           day_of_the_week = lubridate::wday(DATECT, label = TRUE, week_start = 1),
-           month = lubridate::month(DATECT, label = TRUE, abbr = FALSE),
-           week = as.double(lubridate::isoweek(DATECT)),
-           day = lubridate::day(DATECT)) %>%
-    dplyr::select(year, month, day, week,
-                  day_of_the_week, validator) %>% 
-    mutate(week = case_when(month == "December" & week == 1 ~ 53,
-                            month == "January" & week %in% 52:53 ~ 0,
-                            TRUE ~ week)) %>% 
+    mutate(
+      year = lubridate::year(DATECT),
+      day_of_the_week = lubridate::wday(DATECT, label = TRUE, week_start = 1),
+      month = lubridate::month(DATECT, label = TRUE, abbr = FALSE),
+      week = as.double(lubridate::isoweek(DATECT)),
+      day = lubridate::day(DATECT)
+    ) %>%
+    dplyr::select(year, month, day, week, day_of_the_week, validator) %>%
+    mutate(
+      week = case_when(
+        month == "December" & week == 1 ~ 53,
+        month == "January" & week %in% 52:53 ~ 0,
+        TRUE ~ week
+      )
+    ) %>%
     distinct()
-  
-   if('data flagged' %in% levels(as.factor(df$validator))){
 
-    df$f_validator <- forcats::fct_relevel(forcats::fct_relevel(as.factor(df$validator), 'auto', after = Inf), 'data flagged', after = 0)
-  } else{
-    df$f_validator <- forcats::fct_relevel(as.factor(df$validator), 'auto', after = Inf)
+  if ('data flagged' %in% levels(as.factor(df$validator))) {
+    df$f_validator <- forcats::fct_relevel(
+      forcats::fct_relevel(as.factor(df$validator), 'auto', after = Inf),
+      'data flagged',
+      after = 0
+    )
+  } else {
+    df$f_validator <- forcats::fct_relevel(
+      as.factor(df$validator),
+      'auto',
+      after = Inf
+    )
   }
 
-  heatmap_plot <- ggplot(df,
-                         aes(day_of_the_week, week,
-                             fill = f_validator)) +
+  heatmap_plot <- ggplot(df, aes(day_of_the_week, week, fill = f_validator)) +
     geom_tile(color = "white", size = 0.1) +
     labs(x = 'Day of week', y = 'Week', fill = 'Validator') +
-    facet_wrap(year~month, nrow = 4, ncol = 3, scales = "free") +
-    scale_y_reverse() + 
+    facet_wrap(year ~ month, nrow = 4, ncol = 3, scales = "free") +
+    scale_y_reverse() +
     theme_minimal(base_size = 8) +
     theme(legend.position = "bottom") +
     theme(plot.title = element_text(size = 14)) +
@@ -92,5 +125,4 @@ plot_heatmap_calendar <- function(df) {
     theme(legend.text = element_text(size = 6)) +
     ggExtra::removeGrid()
   heatmap_plot
-  
 }
