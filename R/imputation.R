@@ -10,7 +10,7 @@
 #' @param v_dates A vector of POSIX date/times, potentially from another df, to match with it. Default: 'df$DATECT'
 #' @return OUTPUT_DESCRIPTION
 #' @details DETAILS
-#' @examples 
+#' @examples
 #' \dontrun{
 #' if(interactive()){
 #'  #EXAMPLE1
@@ -18,29 +18,29 @@
 #'  }
 #' }
 #' @rdname pad_data
-#' @export 
-pad_data <- function(df, by = "30 min", date_field = "DATECT", v_dates = NULL){
+#' @export
+pad_data <- function(df, by = "30 min", date_field = "DATECT", v_dates = NULL) {
   df <- as.data.frame(df)
   df$DATECT <- df[, date_field]
   first <- min(v_dates, na.rm = TRUE)
-  last  <- max(v_dates, na.rm = TRUE)
+  last <- max(v_dates, na.rm = TRUE)
   # make a dt with complete time series with interval "by"
   dt_date <- data.table(DATECT = seq.POSIXt(first, last, by = by))
   dt <- as.data.table(df)
-  dt <- dt[dt_date, on = .(DATECT = DATECT)] 
+  dt <- dt[dt_date, on = .(DATECT = DATECT)]
   df <- as.data.frame(dt)
   return(df)
 }
 
 #' @title detect_gaps
-#' @description Detects any gaps in a data frame representing a time series, 
+#' @description Detects any gaps in a data frame representing a time series,
 #'   ie. find any intervals greater than the expected interval.
 #' @param df A data frame of met data
 #' @param expected_interval Expected time interval of series, Default: '30 min'
 #' @param date_field Column name for POSIX date/time variable in df, Default: 'DATECT'
 #' @return OUTPUT_DESCRIPTION
 #' @details DETAILS
-#' @examples 
+#' @examples
 #' \dontrun{
 #' if(interactive()){
 #'  #EXAMPLE1
@@ -48,21 +48,21 @@ pad_data <- function(df, by = "30 min", date_field = "DATECT", v_dates = NULL){
 #'  }
 #' }
 #' @rdname detect_gaps
-#' @export 
-detect_gaps <- function(df, expected_interval = 30, date_field = "DATECT"){
-# df = l_raw$df
+#' @export
+detect_gaps <- function(df, expected_interval = 30, date_field = "DATECT") {
+  # df = l_raw$df
   dt <- as.data.table(df)
   v_dates <- df[, date_field]
   dt[, date_curr := v_dates]
   dt[, date_prev := shift(date_curr, 1)]
-  dt[, date_int := difftime(date_curr, date_prev, units="mins")]
+  dt[, date_int := difftime(date_curr, date_prev, units = "mins")]
   dt$date_int[1] <- expected_interval
-  v_longer  <- sum( dt$date_int > expected_interval )
-  v_shorter <- sum( dt$date_int < expected_interval )
-  v_gaps <- which( dt$date_int != 30 )
+  v_longer <- sum(dt$date_int > expected_interval)
+  v_shorter <- sum(dt$date_int < expected_interval)
+  v_gaps <- which(dt$date_int != 30)
   return(list(
-    v_longer = v_longer, 
-    v_shorter = v_shorter, 
+    v_longer = v_longer,
+    v_shorter = v_shorter,
     v_gaps = v_gaps
   ))
 }
@@ -98,20 +98,29 @@ detect_gaps <- function(df, expected_interval = 30, date_field = "DATECT"){
 #' }
 #' @rdname impute
 #' @export
-impute <- function(y, l_met = l_met, method = "era5", qc_tokeep = 0,
-  selection = TRUE, date_field = "DATECT", k = 40,
-  fit = TRUE, x = NULL, df_era5 = NULL,
-  lat = 55.792, lon = -3.243, plot_graph = TRUE
-  ) {
-  
+impute <- function(
+  y,
+  l_met = l_met,
+  method = "era5",
+  qc_tokeep = 0,
+  selection = TRUE,
+  date_field = "DATECT",
+  k = 40,
+  fit = TRUE,
+  x = NULL,
+  df_era5 = NULL,
+  lat = 55.792,
+  lon = -3.243,
+  plot_graph = TRUE
+) {
   method <- match.arg(method, df_method$method)
-  
+
   # get the qc code for the selected method
   qc <- df_method$qc[match(method, df_method$method)]
 
-  df    <- l_met$df
+  df <- l_met$df
   df_qc <- l_met$df_qc
-  
+
   # df_qc[, y][which(i_sel)]
   # table(i_sel)
   # table(df[, y] < 0)
@@ -123,7 +132,9 @@ impute <- function(y, l_met = l_met, method = "era5", qc_tokeep = 0,
   # isel = TRUE  = missing, imputed (AND selected)
   # isel = FALSE = raw
   i_sel <- df_qc[, y] %!in% qc_tokeep & selection
-  if (method == "noneg") i_sel <- i_sel & df[, y] < 0
+  if (method == "noneg") {
+    i_sel <- i_sel & df[, y] < 0
+  }
   if (method == "nightzero") {
     df$date <- df[, date_field] # needs to be called "date" for openair functions
     df <- cutData(df, type = "daylight", latitude = lat, longitude = lon)
@@ -132,22 +143,24 @@ impute <- function(y, l_met = l_met, method = "era5", qc_tokeep = 0,
     # if date is not the original variable name, delete it - we don't want an extra column
     if (date_field != "date") df$date <- NULL
   }
- 
+
   # calculate replacement values depending on the method
   # if a constant zero
   if (method == "nightzero" | method == "noneg" | method == "zero") {
-    df[, y]   [i_sel] <- 0
+    df[, y][i_sel] <- 0
   } else if (method == "time") {
-    v_date  <- df[, date_field]
-    datect_num <- as.numeric(v_date)  ## !df_qry$
-    hour       <- as.POSIXlt(v_date)$hour
-    yday       <- as.POSIXlt(v_date)$yday
-    n_yday     <- length(unique(yday))
-    k_yday     <- as.integer(n_yday / 2)
+    v_date <- df[, date_field]
+    datect_num <- as.numeric(v_date) ## !df_qry$
+    hour <- as.POSIXlt(v_date)$hour
+    yday <- as.POSIXlt(v_date)$yday
+    n_yday <- length(unique(yday))
+    k_yday <- as.integer(n_yday / 2)
 
-    m <- gam(df[, y] ~ s(datect_num, k = k, bs = "cr") +
-                   s(yday, k = k_yday, bs = "cr") +
-                   s(hour, k = -1, bs = "cc"),
+    m <- gam(
+      df[, y] ~
+        s(datect_num, k = k, bs = "cr") +
+          s(yday, k = k_yday, bs = "cr") +
+          s(hour, k = -1, bs = "cc"),
       na.action = na.exclude #, data = df
     )
     v_pred <- predict(m, newdata = data.frame(datect_num, hour, yday))
@@ -156,7 +169,7 @@ impute <- function(y, l_met = l_met, method = "era5", qc_tokeep = 0,
     if (method == "era5") {
       v_x <- df_era5[, y] # use ERA5 data
     } else {
-      v_x <- df[, x]  # use x variable in the CEDA data
+      v_x <- df[, x] # use x variable in the CEDA data
     }
     if (fit) {
       dft <- data.frame(y = df[, y], x = v_x)
@@ -164,23 +177,29 @@ impute <- function(y, l_met = l_met, method = "era5", qc_tokeep = 0,
       dft$y[i_sel] <- NA
       m <- lm(y ~ x, data = dft, na.action = na.exclude)
       v_pred <- predict(m, newdata = dft)
-    } else {  # or just replace y with x
+    } else {
+      # or just replace y with x
       v_pred <- v_x
     }
     df[, y][i_sel] <- v_pred[i_sel]
   }
-  
+
   # add code for each replaced value in the qc df
   df_qc[, y][i_sel] <- qc
-  
-  if (plot_graph) {                  
+
+  if (plot_graph) {
     dft <- data.frame(date = df[, date_field], y = df[, y], qc = df_qc[, y])
     p <- ggplot(dft, aes(date, y))
     #p <- p + geom_line()
-    if (method == "era5") { # include era5 data in plot
-      p <- p + geom_point(data = df_era5, 
-        aes(x = df_era5[, date_field], y = df_era5[, y]), 
-        colour = "black", size = 1)
+    if (method == "era5") {
+      # include era5 data in plot
+      p <- p +
+        geom_point(
+          data = df_era5,
+          aes(x = df_era5[, date_field], y = df_era5[, y]),
+          colour = "black",
+          size = 1
+        )
     }
     p <- p + geom_point(aes(y = y, colour = factor(qc)), size = 1) + ylab(y)
     print(p)
@@ -189,22 +208,22 @@ impute <- function(y, l_met = l_met, method = "era5", qc_tokeep = 0,
 }
 
 plot_with_qc <- function(y, l_met = l_met, date_field = "DATECT") {
-  df    <- l_met$df
-  df_qc <- l_met$df_qc  
+  df <- l_met$df
+  df_qc <- l_met$df_qc
   dft <- data.frame(date = df[, date_field], y = df[, y], qc = df_qc[, y])
   p <- ggplot(dft, aes(date, y))
   p <- p + geom_point(aes(y = y, colour = factor(qc)), size = 1) + ylab(y)
   return(p)
 }
-  
+
 #' library(lintr)
 #' lint(here("R/imputation.R"), linters = with_defaults(line_length_linter = line_length_linter(120)))
 
 # p <- ggplot(dft, aes(x, y))
 # if (method == "era5") { # include era5 data in plot
-  # p <- p + geom_point(data = df_era5, 
-    # aes(x = df_era5[, date_field], y = df_era5[, y]), 
-    # colour = "black", size = 1)
+# p <- p + geom_point(data = df_era5,
+# aes(x = df_era5[, date_field], y = df_era5[, y]),
+# colour = "black", size = 1)
 # }
 # p <- p + geom_point(aes(colour = factor(!i_sel)), size = 1)
 # p
