@@ -1,0 +1,66 @@
+---
+title: "rainfallQC_integration"
+output: html_document
+---
+
+# GitHub package
+Public repository for the rainfallQC is here: https://github.com/NERC-CEH/RainfallQC
+There is a notebook demo of how the package works here: https://github.com/Thomasjkeel/RainfallQC-notebooks/blob/main/notebooks/demo/rainfallQC_demo.ipynb
+
+# Dependencies 
+
+Each machine will have to have a series of requirements: 
+* phyton 3.8 or later
+* Dependencies for the rainfallQC package ()
+* R with shiny and dependencies for metqc app.
+
+# How it will work with a shiny app: 
+
+- Use the R reticulate package
+- Create a function to automatically set up the Python environment
+```{r}
+#' Setup Python Environment
+#' 
+#' This function sets up the Python environment and installs dependencies
+setup_python <- function() {
+  library(reticulate)
+
+  env_path <- file.path(tempdir(), "rainfallqc-env")
+
+  if (!virtualenv_exists(env_path)) {
+    virtualenv_create(env_path)
+    virtualenv_install(env_path, packages = c("git+https://github.com/Thomasjkeel/RainfallQC.git"))
+  }
+
+  use_virtualenv(env_path, required = TRUE)
+}
+
+
+# inside the server of the app: 
+
+server <- function(input, output, session) {
+  setup_python()
+
+  # Example: import RainfallQC and use it
+  rainfallqc <- import("RainfallQC")
+  
+  output$result <- renderPrint({
+    qc <- rainfallqc$RainfallQC("path_to_your_input.csv")
+    qc$run_all()
+    qc$write_output("output.csv")
+    "Quality control complete."
+  })
+}
+
+# add setup pytho to the launch of the app 
+
+run_app <- function() {
+  setup_python()
+  shiny::shinyApp(ui = app_ui, server = app_server)
+}
+
+```
+
+
+
+
