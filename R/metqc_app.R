@@ -23,6 +23,7 @@ library(stringr)
 library(forcats)
 library(shinyvalidate)
 library(markdown)
+library(reticulate) # for python integration - rainfallQC package.
 # source(here("R", "imputation.R"))
 # source(here("R", "plotting.R"))
 # source(here("R", "metqc_app.R"))
@@ -324,6 +325,11 @@ metqcApp <- function(...) {
   )
 
   server <- function(input, output, session) {
+    ##########################
+    #calling python env setup#
+    #########################
+    setup_python()
+
     ##########################
     #shinyvalidate statements#
     #########################

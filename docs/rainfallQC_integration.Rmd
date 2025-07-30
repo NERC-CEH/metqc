@@ -18,46 +18,17 @@ Each machine will have to have a series of requirements:
 
 - Use the R reticulate package
 - Create a function to automatically set up the Python environment
+- when ready to use: 
 ```{r}
-#' Setup Python Environment
-#' 
-#' This function sets up the Python environment and installs dependencies
-setup_python <- function() {
-  library(reticulate)
-
-  env_path <- file.path(tempdir(), "rainfallqc-env")
-
-  if (!virtualenv_exists(env_path)) {
-    virtualenv_create(env_path)
-    virtualenv_install(env_path, packages = c("git+https://github.com/Thomasjkeel/RainfallQC.git"))
-  }
-
-  use_virtualenv(env_path, required = TRUE)
-}
 
 
-# inside the server of the app: 
+library(reticulate)
 
-server <- function(input, output, session) {
-  setup_python()
+# Import the Python module
+rainfallqc <- import("rainfallqc")
 
-  # Example: import RainfallQC and use it
-  rainfallqc <- import("RainfallQC")
-  
-  output$result <- renderPrint({
-    qc <- rainfallqc$RainfallQC("path_to_your_input.csv")
-    qc$run_all()
-    qc$write_output("output.csv")
-    "Quality control complete."
-  })
-}
-
-# add setup pytho to the launch of the app 
-
-run_app <- function() {
-  setup_python()
-  shiny::shinyApp(ui = app_ui, server = app_server)
-}
+# Call a specific function, say `your_function_name`
+result <- rainfallqc$your_function_name(arg1, arg2)
 
 ```
 
