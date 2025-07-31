@@ -13,7 +13,7 @@ check_python_installed <- function() {
     recursive = TRUE,
     full.names = TRUE
   )
-  p <- p_paths[grep("C:/Program Files/Python312/", p_paths, ignore.case = TRUE)]
+  p <- p_paths[grep("C:/Program Files/Python3", p_paths, ignore.case = TRUE)]
 
   if (length(p) > 0) {
     cat("Python is installed\n")
