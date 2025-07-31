@@ -58,7 +58,7 @@ py_help(rainfallqc$gauge_checks$check_years_where_annual_mean_k_top_rows_are_zer
 #prepare data for python
 #####################
 # the dataset needs to be a polars dataframe 
-py_install("polars")
+#py_install("polars")
 pl <- import("polars")
 # 2. Convert R data.frame to Python dict
 df_dict <- dict(
@@ -107,7 +107,86 @@ rainfallqc$gauge_checks$check_temporal_bias(grouped_df, "P_12_1_1_sum", time_gra
 #Comparison checks
 #####################
 
+# all the data in teh app so far is from the same site: 
+# as example lets say lat 54.686534 , lng -2.1862793
+#add lat lng to the existing data.frame
+grouped_df$lat <- 54.686534
+grouped_df$lng <- -2.1862793
 
+rainfallqc$comparison_checks$check_annual_exceedance_etccdi_prcptot(
+  grouped_df,
+  "P_12_1_1_sum",
+  gauge_lat = 54.686534,
+  gauge_lon = -2.1862793
+)
+
+rainfallqc$comparison_checks$check_annual_exceedance_etccdi_r99p(
+   grouped_df,
+  "P_12_1_1_sum",
+  gauge_lat = 54.686534,
+  gauge_lon = -2.1862793
+)
+
+wr_check = rainfallqc$comparison_checks$check_exceedance_of_rainfall_world_record(
+     grouped_df,
+     "P_12_1_1_sum", 
+     time_res="hourly"
+)
+wr_check["world_record_check"]$value_counts()
+join <-  grouped_df$join(wr_check, on='time')
+join$filter(pl$col("world_record_check") == 1)
+join$filter(pl$col("world_record_check") == 4)
+#############
+# below doesn't work because it expect 1h or 15mins data not 30mins data like in our data
+##########
+rx1day_check = rainfallqc$comparison_checks$check_hourly_exceedance_etccdi_rx1day(
+    grouped_df,
+     "P_12_1_1_sum", 
+    gauge_lat = 54.686534,
+    gauge_lon = -2.1862793
+)
+
+rx1day_check["rx1day_check"]$value_counts()
+
+#####################
+#Time-series checks
+#####################
+py$cdd_check <- rainfallqc$timeseries_checks$check_dry_period_cdd(
+  data = grouped_df,
+  target_gauge_col = "P_12_1_1_sum",
+  time_res = "hourly",
+  gauge_lat = 54.686534,
+  gauge_lon = -2.1862793
+)
+
+cdd_check <- py$cdd_check # R reticulate has a weird error and it should be done like this
+cdd_check['dry_spell_flag']$value_counts()
+cdd_check = grouped_df$join(cdd_check, on='time')
+cdd_check$filter(pl$col("dry_spell_flag") == 4)
+
+# get the plot
+
+# get the dates 
+# trying to automatise max and min dates but failing,....
+# reticulate::py_install("pyarrow")
+# pa <- import("pyarrow")
+# start_date <- min_df$to_pandas()$iloc[0, 0]
+# end_date   <- max_df$to_pandas()$iloc[0, 0]
+start_date <- pl$date(2025L, 5L, 1L)
+end_date <- pl$date(2025L, 6L, 30L)
+
+filtered <- cdd_check$filter(
+  (pl$col("time") > start_date) & 
+  (pl$col("time") < end_date)
+)
+
+filtered_pd <- filtered$to_pandas()
+plot(filtered_pd$time, filtered_pd$dry_spell_flag)
+
+# left in QC13 - Daily accumulations from https://github.com/Thomasjkeel/RainfallQC-notebooks/blob/main/notebooks/demo/rainfallQC_demo.ipynb
+#####################
+#Comparison checks
+#####################
 
 ```
 
