@@ -51,7 +51,10 @@ setup_python <- function() {
       cat("Installing RainfallQC package and dependencies...\n")
       virtualenv_install(
         env_path,
-        packages = c("git+https://github.com/Thomasjkeel/RainfallQC.git")
+        packages = c(
+          "git+https://github.com/Thomasjkeel/RainfallQC.git",
+          "polars"
+        )
       )
     } else {
       cat("Virtual environment already exists at:", env_path, "\n")

@@ -19,7 +19,7 @@ Each machine will have to have a series of requirements:
 - Use the R reticulate package
 - Create a function to automatically set up the Python environment
 - when ready to use: 
-```{r}
+```{gneral_example r}
 
 
 library(reticulate)
@@ -29,6 +29,85 @@ rainfallqc <- import("rainfallqc")
 
 # Call a specific function, say `your_function_name`
 result <- rainfallqc$your_function_name(arg1, arg2)
+
+```
+
+# Working example with the app 
+
+The rainfall variables is named as `P_12_1_1`. 
+The python package needs datect to be separated as dates and hours. 
+
+```{app_example r}
+# The app reads in df_era5_qry that is the ate range met data, we want to filter P_12_1_1
+
+df_prec <- df_era5_qry %>%
+  dplyr::select(P_12_1_1, DATECT)
+
+# rainfall needs to be in mm and date/time in the same column
+# it seems to do a nearest neighbour comparison but not sure where to get that data? we only have from one location
+
+
+library(reticulate)
+# Import the Python module
+rainfallqc <- import("rainfallqc")
+py_help(rainfallqc$gauge_checks) # a module with several functions
+
+py_help(rainfallqc$gauge_checks$check_years_where_annual_mean_k_top_rows_are_zero)
+
+#####################
+#prepare data for python
+#####################
+# the dataset needs to be a polars dataframe 
+py_install("polars")
+pl <- import("polars")
+# 2. Convert R data.frame to Python dict
+df_dict <- dict(
+  DATECT = as.character(df_prec$DATECT),
+  P_12_1_1 = df_prec$P_12_1_1
+)
+
+# 3. Create a Polars DataFrame
+pl_df <- pl$DataFrame(df_dict)
+
+# 4. Convert DATECT to datetime format in Polars
+pl_df <- pl_df$with_columns(
+  pl$col("DATECT")$str$to_datetime()
+)
+
+# 5. Use group_by_dynamic to group by 30m intervals otherwise the rainfallqc package fails
+grouped_df <- pl_df$group_by_dynamic("DATECT", every="30m")$agg(
+  list(
+   pl$col("P_12_1_1")$sum()$alias("P_12_1_1_sum")
+  )
+)
+# rename DATECT to time so the rainfallqc package works
+grouped_df <- grouped_df$rename(dict(DATECT = "time"))
+
+#####################
+#Gauge checks
+#####################
+
+rainfallqc$gauge_checks$check_years_where_annual_mean_k_top_rows_are_zero(
+    grouped_df,
+    "P_12_1_1_sum",
+    k = 1800
+)
+
+rainfallqc$gauge_checks$check_years_where_nth_percentile_is_zero(grouped_df, "P_12_1_1_sum", quantile=0.8) # if return list() No years or groups matched the condition where the 80th percentile of P_12_1_1_sum was zero.
+
+rainfallqc$gauge_checks$check_breakpoints(grouped_df, "P_12_1_1_sum")
+
+rainfallqc$gauge_checks$check_intermittency(grouped_df, "P_12_1_1_sum")
+
+rainfallqc$gauge_checks$check_min_val_change(grouped_df, "P_12_1_1_sum", expected_min_val=0.1)
+
+rainfallqc$gauge_checks$check_temporal_bias(grouped_df, "P_12_1_1_sum", time_granularity="weekday")
+
+#####################
+#Comparison checks
+#####################
+
+
 
 ```
 
