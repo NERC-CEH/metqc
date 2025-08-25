@@ -110,21 +110,21 @@ rainfallqc$gauge_checks$check_temporal_bias(grouped_df, "P_12_1_1_sum", time_gra
 # all the data in teh app so far is from the same site: 
 # as example lets say lat 54.686534 , lng -2.1862793
 #add lat lng to the existing data.frame
-grouped_df$lat <- 54.686534
-grouped_df$lng <- -2.1862793
+grouped_df$lat <- 55.79259
+grouped_df$lng <- -3.243
 
 rainfallqc$comparison_checks$check_annual_exceedance_etccdi_prcptot(
   grouped_df,
   "P_12_1_1_sum",
-  gauge_lat = 54.686534,
-  gauge_lon = -2.1862793
+  gauge_lat = 55.79259,
+  gauge_lon = -3.243
 )
 
 rainfallqc$comparison_checks$check_annual_exceedance_etccdi_r99p(
    grouped_df,
   "P_12_1_1_sum",
-  gauge_lat = 54.686534,
-  gauge_lon = -2.1862793
+  gauge_lat = 55.79259,
+  gauge_lon = -3.243
 )
 
 wr_check = rainfallqc$comparison_checks$check_exceedance_of_rainfall_world_record(
@@ -183,10 +183,88 @@ filtered <- cdd_check$filter(
 filtered_pd <- filtered$to_pandas()
 plot(filtered_pd$time, filtered_pd$dry_spell_flag)
 
-# left in QC13 - Daily accumulations from https://github.com/Thomasjkeel/RainfallQC-notebooks/blob/main/notebooks/demo/rainfallQC_demo.ipynb
+#############
+# QC13 - below doesn't work because it expect 1h or 15mins data not 30mins data like in our data
+##########
+daily_accumulation <- rainfallqc$timeseries_checks$check_daily_accumulations(
+  grouped_df,
+  target_gauge_col = "P_12_1_1_sum",
+  gauge_lat = 54.686534,
+  gauge_lon = -2.1862793,
+  wet_day_threshold = 1.0,
+  accumulation_multiplying_factor = 2.0
+)
+daily_accumulation[["daily_accumulation"]]$value_counts()
+joined <- grouped_df$join(daily_accumulation, on="time")
+daily_accumulation$filter(
+  pl$col("daily_accumulation") == 1.0
+)
+
+#then it plots it but because it doesn't work,...
+# Run monthly accumulations
+#############
+# QC14 - below doesn't work because it expect 1h, 15m or 1d data not 30mins data like in our data
+##########
+monthly_accumulations <- rainfallqc$timeseries_checks$check_monthly_accumulations(
+  grouped_df,
+  "P_12_1_1_sum", # I am not sure this is the same as the gauge column? 
+  gauge_lat = 54.686534,
+  gauge_lon = -2.1862793
+)
+
+# Join monthly_accumulations back to gdsr_data on "time"
+monthly_accumulations <- grouped_df$join(
+  monthly_accumulations,
+  on = "time"
+)
+
+# Filter where monthly_accumulation == 2
+filtered <- monthly_accumulations$filter(
+  pl$col("monthly_accumulation") == 2
+)
+
+# QC15 - below doesn't work because it expect 1h, 15m or 1d data not 30mins data like in our data
+#Flag 1: 2 or more repeated above extreme rain
+#Flag 3: streaks of 12 or more greater than data resolution
+#Flag 4: streaks of 24 or more greater than 0
+#Flag 5: Periods of 0 as multiples of 24
+
+# unsure the TARGET_GAUGE_COL is the same as the rain column?
+streaks <- rainfallqc$timeseries_checks$check_streaks(
+  grouped_df,
+  target_gauge_col = "P_12_1_1_sum",
+  gauge_lat = 54.686534,   # or gdsr_metadata[["latitude"]]
+  gauge_lon = -2.1862793,  # or gdsr_metadata[["longitude"]]
+  data_resolution = "hourly"  # or gdsr_metadata[["resolution"]]
+)
+
+# Count values of streak_flag1
+vc <- streaks[["streak_flag1"]]$value_counts()
+print(vc)
+
 #####################
-#Comparison checks
+#Neighborhood checks
 #####################
+#QC16 Daily neighbours (wet) _ question it says there is Q16 to 25 but I only can see 16. 
+
+# neighbour data - we don't have this data in the app ??? is it package automatic? dont' get it 
+neighbour_cols <- gdsr_network_data$columns$to_list()
+neighbour_cols <- neighbour_cols[neighbour_cols != target_col]
+
+
+wet_daily_check <- rainfallqc$neighbourhood_checks$check_wet_neighbours(
+  grouped_df,
+  target_gauge_col      = "P_12_1_1_sum",
+  neighbouring_gauge_cols = neighbour_cols,
+  time_res              = "1h",
+  wet_threshold         = 1.0,
+  min_n_neighbours      = 5,
+  n_neighbours_ignored  = 0
+)
+
+# Value counts
+vc <- wet_daily_check[["wet_spell_flag_hourly"]]$value_counts()
+print(vc)
 
 ```
 
