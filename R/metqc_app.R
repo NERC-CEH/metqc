@@ -1,4 +1,3 @@
-# here::i_am("R/metqc_app.R")
 library(here)
 library(shiny)
 library(shinyWidgets)
@@ -35,12 +34,16 @@ Sys.setenv(DBNAME = "budbase.nerc-bush.ac.uk/BUA")
 Sys.setenv(DBUID = "BU_FIELD_SITES")
 Sys.setenv(DBPWD = "0ig2mtYUL9")
 Sys.getenv("DBUID")
+source(here::here("R", "mod_upload.R"))
+source(here::here("R", "mod_colmap.R"))
+source(here::here("R", "mod_campbell_logger_import.R"))
+dict_list <- readRDS(here("data", "col_vocabulary.rds"))
 
 metqcApp <- function(...) {
   # Reading in the gap-filling methods and codes----
   v_names <- readRDS(file = here("data", "v_mainmet_name.rds"))
 
-  gf_choices <- setNames(df_method$method, df_method$method_longname)
+  #gf_choices <- setNames(df_method$method, df_method$method_longname)
 
   # Define UI for the app
   ui <- dashboardPage(
@@ -61,6 +64,7 @@ metqcApp <- function(...) {
         id = 'tabs',
         menuItem("Dashboard", tabName = "dashboard", icon = icon('database')),
         menuItem("Flags", tabName = "flags", icon = icon('flag')),
+        menuItem("Upload", tabName = "upload", icon = icon("upload")),
         menuItem("Download", tabName = "download", icon = icon('download')),
         menuItem(
           "Information",
@@ -164,22 +168,22 @@ metqcApp <- function(...) {
                 solidHeader = TRUE,
                 width = 12,
                 shinycssloaders::withSpinner(uiOutput("mytabs")),
-                selectInput(
-                  "select_imputation",
-                  label = h5("Gap-Filling Method"),
-                  choices = gf_choices
-                ),
+                #selectInput(
+                #  "select_imputation",
+                #  label = h5("Gap-Filling Method"),
+                #  choices = gf_choices
+                #),
                 actionButton("impute", label = "Impute selection"),
                 actionButton(
                   "finished_check",
                   label = "Finished checking variable for date range."
                 ),
-                checkboxGroupInput(
-                  "qc_tokeep",
-                  "Do not alter data estimated by",
-                  choiceNames = df_method$method_longname,
-                  choiceValues = df_method$qc
-                ),
+                #checkboxGroupInput(
+                #  "qc_tokeep",
+                #  "Do not alter data estimated by",
+                #  choiceNames = df_method$method_longname,
+                #  choiceValues = df_method$qc
+                #),
                 uiOutput("impute_extra_info"),
                 actionButton("reset", label = "Restart app"),
                 #actionButton("submitchanges", "Submit changes to file"),
@@ -276,6 +280,16 @@ metqcApp <- function(...) {
           actionButton('save_flags_btn', 'Save'),
           actionButton('reset_flags_btn', 'Reset')
         ),
+        
+        tabItem(
+          tabName = "upload",
+          fluidPage(
+            mod_upload_ui("upload_module"),
+            # the colmap module should appear AFTER the file is uploaded
+            mod_colmap_ui("colmap_module")
+          )
+        ),
+        
         tabItem(
           tabName = 'download',
           fluidRow(
@@ -324,6 +338,16 @@ metqcApp <- function(...) {
   )
 
   server <- function(input, output, session) {
+    
+    # upload modules
+    uploaded <- mod_upload_server("upload_module")
+    mapped_data <- mod_colmap_server("colmap_module", uploaded, dict_list)
+    
+    # Ensure mapping is applied before going ahead
+    observeEvent(mapped_data(), {
+      showNotification("✅ Mapping confirmed! Ready to process data.")
+    })
+
     ##########################
     #shinyvalidate statements#
     #########################
@@ -1206,6 +1230,12 @@ metqcApp <- function(...) {
       shinyjs::enable("submitchanges_cloud")
     })
   }
-
+  
+  # set a max size for dealinw with file upload
+  options(shiny.maxRequestSize = 200*1024^2)
+  
   shinyApp(ui, server, ...)
 }
+
+# run the app
+metqcApp()
