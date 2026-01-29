@@ -73,10 +73,18 @@ detect_gaps <- function(dt, expected_interval = 30, date_field = "DATECT") {
 #'   (variable name as a "quoted string")
 #' @param x Covariate to be used (name of a variable in the same data frame as
 #'   a "quoted string")
-#' @param l_met List of two data frames containing data and qc codes. Default: l_met
-#' @param qc qc code to denote values imputed by this function, Default: 3
+#' @param l_met List of three data tables containing data, qc codes and ERA5 data. Default: l_met
+#' @param method Method to use for imputing missing values, Default: "era5"
+#' @param qc_tokeep Which QC codes to leave unaltered when selecting values to impute, Default: 0 (raw data)
+#' @param selection Denotes the points selected interactivelt by user in app Default: TRUE (= all)
+#' @param date_field Name of the date field or variable in the data frame. Default: DATECT
+#' @param k Number of knots to use when imputing using a GAM in the "time" method. Higher values give more flexibility = more wiggliness. Default: 40
 #' @param fit Whether to fit a linear model or directly replace missing y with
-#'   x values, Default: TRUE
+#'   x values when using either "regn" or "era5" methods, Default: TRUE
+#' @param x The covariate with which to fit a linear model in the "regn" method. Default: NULL
+#' @param lat Latitude of the site for calculating day/night-time in "nightzero" method. Default: 55.792 (= Auchencorth)
+#' @param lon Longitude of the site for calculating day/night-time in "nightzero" method. Default: -3.243 (= Auchencorth)
+#' @param plot_graph Whether to produce a ggplot graphic - can be slow for large data sets. Default: TRUE
 #' @return List of two data frames containing data and qc codes with imputed values.
 #' @details DETAILS
 #' @examples
@@ -100,7 +108,6 @@ impute <- function(
   fit = TRUE,
   n_min = 10,
   x = NULL,
-  df_era5 = NULL,
   lat = 55.792,
   lon = -3.243,
   plot_graph = TRUE
