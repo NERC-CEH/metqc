@@ -105,20 +105,7 @@ impute <- function(
   lon = -3.243,
   plot_graph = TRUE
 ) {
-  print(paste("Standing by to impute", y))
-  df_method <- data.frame(
-    method = c(
-      "missing",
-      "time",
-      "regn",
-      "nightzero",
-      "noneg",
-      "zero",
-      "era5"
-    ),
-    qc = c(1, 2, 3, 4, 5, 6, 7) # 0 = raw, 1 = missing
-  )
-  # saveRDS(df_method, file = here("data", "df_method.rds"))
+  print(paste("Imputing", y))
   method <- match.arg(method, df_method$method)
   # get the qc code for the selected method
   qc <- df_method$qc[match(method, df_method$method)]

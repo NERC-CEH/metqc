@@ -799,7 +799,7 @@ metqcApp <- function(...) {
       )
 
       # write lev_2 to pin
-      pin_write(board, l_lev2, name = "level2_data", type = "rds")
+      pin_write(board, l_lev2, name = "plevy/level2_data", type = "rds")
 
       # write CEDA formatted data to pin
       df_ceda <- format_for_ceda(l_lev2)
@@ -1128,7 +1128,7 @@ metqcApp <- function(...) {
       )
 
       # write to pin on Connect server
-      pin_write(board, l_lev2, name = "level2_data", type = "rds")
+      pin_write(board, l_lev2, name = "plevy/level2_data", type = "rds")
 
       # write CEDA formatted data to pin
       df_ceda <- format_for_ceda(l_lev2)
