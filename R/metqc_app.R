@@ -83,7 +83,6 @@ metqcApp <- function(...) {
         )
       )
     ),
-    
     # ---------------------- BODY ----------------------
     dashboardBody(
       useShinyjs(),
