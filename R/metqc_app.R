@@ -108,7 +108,12 @@ metqcApp <- function(...) {
                 column(
                   width = 3,
                   numericInput(
-                    "shour", value = 0, label = "Hour (24 hour)", min = 0, max = 23, step = 1
+                    "shour",
+                    value = 0,
+                    label = "Hour (24 hour)",
+                    min = 0,
+                    max = 23,
+                    step = 1
                   )
                 ),
                 column(
