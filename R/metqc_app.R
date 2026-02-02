@@ -261,7 +261,8 @@ metqcApp <- function(...) {
                 status = "success",
                 solidHeader = TRUE,
                 selectInput(
-                  'download_file', 'Data to download:',
+                  'download_file',
+                  'Data to download:',
                   choices = c(
                     'Level 1' = 'lev1',
                     'Level 2' = 'lev2',
