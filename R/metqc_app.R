@@ -301,7 +301,6 @@ metqcApp <- function(...) {
     # ---- Load your upload + mapping modules (unchanged) ----
     uploaded <- mod_upload_server("upload_module")
     mapped_data <- mod_colmap_server("colmap_module", uploaded, dict_list)
-    
     observeEvent(mapped_data(), {
       showNotification("✅ Mapping confirmed! Ready to process data.")
     })
