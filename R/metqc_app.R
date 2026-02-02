@@ -88,7 +88,6 @@ metqcApp <- function(...) {
       useShinyjs(),
       # 1️⃣ Sodium-based authentication UI
       uiOutput("auth_ui"),
-      
       # 2️⃣ Main content appears *only after full authentication*
       conditionalPanel(
         condition = "output.fully_authenticated == true",
