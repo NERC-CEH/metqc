@@ -114,7 +114,12 @@ metqcApp <- function(...) {
                 column(
                   width = 3,
                   numericInput(
-                    "smin", value = 0, label = "Minute", min = 0, max = 59, step = 1
+                    "smin",
+                    value = 0,
+                    label = "Minute",
+                    min = 0,
+                    max = 59,
+                    step = 1
                   )
                 ),
                 
