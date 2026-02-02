@@ -273,9 +273,18 @@ metqcApp <- function(...) {
           ),
           # ----------- INFORMATION TABS -----------
           tabItem(tabName = "information"),
-          tabItem(tabName = "gapfill_guide", includeMarkdown("./vignettes/gap_fill_methods.md")),
-          tabItem(tabName = "app_guide", includeMarkdown("./vignettes/app_user_guide.md")),
-          tabItem(tabName = "data_guide", includeHTML('./vignettes/metdb_shiny_version.html'))
+          tabItem(
+            tabName = "gapfill_guide",
+            includeMarkdown("./vignettes/gap_fill_methods.md")
+          ),
+          tabItem(
+            tabName = "app_guide",
+            includeMarkdown("./vignettes/app_user_guide.md")
+          ),
+          tabItem(
+            tabName = "data_guide",
+            includeHTML('./vignettes/metdb_shiny_version.html')
+          )
         )
       )
     )
