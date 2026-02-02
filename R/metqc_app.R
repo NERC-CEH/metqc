@@ -65,7 +65,6 @@ metqcApp <- function(...) {
         )
       )
     ),
-    
     # ---------------------- SIDEBAR ----------------------
     dashboardSidebar(
       sidebarMenu(
