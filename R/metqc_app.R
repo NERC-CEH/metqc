@@ -250,7 +250,6 @@ metqcApp <- function(...) {
               mod_colmap_ui("colmap_module")
             )
           ),
-          
           # ----------- DOWNLOAD TAB -----------
           tabItem(
             tabName = 'download',
