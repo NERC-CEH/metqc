@@ -1,0 +1,186 @@
+Mainmet_variable_name,Variable_name_ICOS,Variable_name_era5,Variable_name_cf,Description_mainmet,Description_ICOS,Description_era5,Description_cf,Units_ICOS,Units_era5,Units_cf
+TS,TS,stl1,soil_temperature,Soil temperature ,Soil temperature,"This parameter is the temperature of the soil at level 1 (in the middle of layer 1).
+
+The ECMWF Integrated Forecasting System (IFS) has a four-layer representation of soil, where the surface is at 0cm:
+
+Layer 1: 0 - 7cm
+Layer 2: 7 - 28cm
+Layer 3: 28 - 100cm
+Layer 4: 100 - 289cm
+
+Soil temperature is set at the middle of each layer, and heat transfer is calculated at the interfaces between them. It is assumed that there is no heat transfer out of the bottom of the lowest layer.
+
+This parameter has units of Kelvin (K). Temperature measured in Kelvin can be converted to degrees Celsius (°C) by subtracting 273.15.","Soil temperature is the bulk temperature of the soil, not the surface (skin) temperature. ""Soil"" means the near-surface layer where plants sink their roots. For subsurface temperatures that extend beneath the soil layer or in areas where there is no surface soil layer, the standard name temperature_in_ground should be used. It is strongly recommended that a variable with this standard name should have a units_metadata attribute, with one of the values ""on-scale"" or ""difference"", whichever is appropriate for the data, because it is essential to know whether the temperature is on-scale (meaning relative to the origin of the scale indicated by the units) or refers to temperature differences (implying that the origin of the temperature scale is irrevelant), in order to convert the units correctly (cf. https://cfconventions.org/cf-conventions/cf-conventions.html#temperature-units).",degC,K,K
+SWC,SWC,swvl1,volume_fraction_of_condensed_water_in_soil,Soil water content,Soil water content,"This parameter is the volume of water in soil layer 1 (0 - 7cm, the surface is at 0cm).
+
+The ECMWF Integrated Forecasting System model has a four-layer representation of soil:
+Layer 1: 0 - 7cm
+Layer 2: 7 - 28cm
+Layer 3: 28 - 100cm
+Layer 4: 100 - 289cm
+
+The volumetric soil water is associated with the soil texture (or classification), soil depth, and the underlying groundwater level.","""Volume fraction"" is used in the construction ""volume_fraction_of_X_in_Y"", where X is a material constituent of Y. It is evaluated as the volume of X divided by the volume of Y (including X). It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. The phrase ""condensed_water"" means liquid and ice.",%,m3 m-3,dimensionless
+G,G,,downward_heat_flux_at_ground_level_in_soil,Soil heat flux,Soil heat flux,,"ground_level means the land surface (beneath the snow and surface water, if any). 'Downward' indicates a vector component which is positive when directed downward (negative upward). In accordance with common usage in geophysical disciplines, 'flux' implies per unit area, called 'flux density' in physics.",W m-2,,W m-2
+WTD,WTD,,water_table_depth,Water table depth,Water table depth,,Depth is the vertical distance below the surface. The water table is the surface below which the soil is saturated with water such that all pore spaces are filled.,m,,m
+WTD_4_1_1,WTD,,water_table_depth,Water table depth,Water table depth,,Depth is the vertical distance below the surface. The water table is the surface below which the soil is saturated with water such that all pore spaces are filled.,m,,m
+PA_4_1_1,PA,sp,,Atmospheric pressure,Atmospheric pressure,"This parameter is the pressure (force per unit area) of the atmosphere on the surface of land, sea and in-land water.
+
+It is a measure of the weight of all the air in a column vertically above the area of the Earth's surface represented at a fixed point.
+
+Surface pressure is often used in combination with temperature to calculate air density.
+
+The strong variation of pressure with altitude makes it difficult to see the low and high pressure systems over mountainous areas, so mean sea level pressure, rather than surface pressure, is normally used for this purpose.
+
+The units of this parameter are Pascals (Pa). Surface pressure is often measured in hPa and sometimes is presented in the old units of millibars, mb (1 hPa = 1 mb= 100 Pa).",,kPa,Pa,
+SW_IN,SW_IN,ssrd,surface_downwelling_shortwave_flux_in_air,ShortWave incoming radiation,Incoming Shortwave radiation (in the range from 0.3 to 4.5 micron),"This parameter is the amount of solar radiation (also known as shortwave radiation) that reaches a horizontal plane at the surface of the Earth. This parameter comprises both direct and diffuse solar radiation.
+
+Radiation from the Sun (solar, or shortwave, radiation) is partly reflected back to space by clouds and particles in the atmosphere (aerosols) and some of it is absorbed. The rest is incident on the Earth's surface (represented by this parameter). See further documentation.
+
+To a reasonably good approximation, this parameter is the model equivalent of what would be measured by a pyranometer (an instrument used for measuring solar radiation) at the surface. However, care should be taken when comparing model parameters with observations, because observations are often local to a particular point in space and time, rather than representing averages over a model grid box.
+
+This parameter is accumulated over a particular time period which depends on the data extracted. The units are joules per square metre (J m-2). To convert to watts per square metre (W m-2), the accumulated values should be divided by the accumulation period expressed in seconds. The ECMWF convention for vertical fluxes is positive downwards.","The surface called ""surface"" means the lower boundary of the atmosphere. Downwelling radiation is radiation from above. It does not mean ""net downward"". The sign convention is that ""upwelling"" is positive upwards and ""downwelling"" is positive downwards. The term ""shortwave"" means shortwave radiation. Surface downwelling shortwave is the sum of direct and diffuse solar radiation incident on the surface, and is sometimes called ""global radiation"". When thought of as being incident on a surface, a radiative flux is sometimes called ""irradiance"". In addition, it is identical with the quantity measured by a cosine-collector light-meter and sometimes called ""vector irradiance"". In accordance with common usage in geophysical disciplines, ""flux"" implies per unit area, called ""flux density"" in physics.",W m-2,J m-2,W m-2
+SW_OUT,SW_OUT,,surface_upwelling_shortwave_flux_in_air,ShortWave outgoing radiation,Outgoing Shortwave radiation (in the range from 0.3 to 4.5 micron),,"The surface called ""surface"" means the lower boundary of the atmosphere. The term ""shortwave"" means shortwave radiation. Upwelling radiation is radiation from below. It does not mean ""net upward"". The sign convention is that ""upwelling"" is positive upwards and ""downwelling"" is positive downwards. When thought of as being incident on a surface, a radiative flux is sometimes called ""irradiance"". In addition, it is identical with the quantity measured by a cosine-collector light-meter and sometimes called ""vector irradiance"". In accordance with common usage in geophysical disciplines, ""flux"" implies per unit area, called ""flux density"" in physics.",W m-2,,W m-2
+LW_IN,LW_IN,strd,surface_downwelling_longwave_flux_in_air,LongWave incoming radiation,Incoming Longwave radiation (in the range from 4 to 50 micron),"This parameter is the amount of thermal (also known as longwave or terrestrial) radiation emitted by the atmosphere and clouds that reaches a horizontal plane at the surface of the Earth.
+
+The surface of the Earth emits thermal radiation, some of which is absorbed by the atmosphere and clouds. The atmosphere and clouds likewise emit thermal radiation in all directions, some of which reaches the surface (represented by this parameter). See further documentation.
+
+This parameter is accumulated over a particular time period which depends on the data extracted. The units are joules per square metre (J m-2). To convert to watts per square metre (W m-2), the accumulated values should be divided by the accumulation period expressed in seconds. The ECMWF convention for vertical fluxes is positive downwards.","The surface called ""surface"" means the lower boundary of the atmosphere. Downwelling radiation is radiation from above. It does not mean ""net downward"". The sign convention is that ""upwelling"" is positive upwards and ""downwelling"" is positive downwards. The term ""longwave"" means longwave radiation. When thought of as being incident on a surface, a radiative flux is sometimes called ""irradiance"". In addition, it is identical with the quantity measured by a cosine-collector light-meter and sometimes called ""vector irradiance"". In accordance with common usage in geophysical disciplines, ""flux"" implies per unit area, called ""flux density"" in physics.",W m-2,J m-2,W m-2
+LW_OUT,LW_OUT,,surface_upwelling_longwave_flux_in_air,LongWave outgoing radiation,Outgoing Longwave radiation (in the range from 4 to 50 micron),,"The surface called ""surface"" means the lower boundary of the atmosphere. The term ""longwave"" means longwave radiation. Upwelling radiation is radiation from below. It does not mean ""net upward"". The sign convention is that ""upwelling"" is positive upwards and ""downwelling"" is positive downwards. When thought of as being incident on a surface, a radiative flux is sometimes called ""irradiance"". In addition, it is identical with the quantity measured by a cosine-collector light-meter and sometimes called ""vector irradiance"". In accordance with common usage in geophysical disciplines, ""flux"" implies per unit area, called ""flux density"" in physics.",W m-2,,W m-2
+PPFD_IN_4_1_1,PPFD_IN,,,Photosynthetic photon flux density incoming,Photosynthetic Photon Flux Density (400-700 nm),,,?mol m-2 s-1,,
+PPFD_OUT,PPFD_OUT,,surface_upwelling_photosynthetic_photon_flux_in_air,Photosynthetic photon flux density outgoing,Reflected PPFD (400-700 nm),,"The surface called ""surface"" means the lower boundary of the atmosphere. Upwelling radiation is radiation from below. It does not mean ""net upward"". The sign convention is that ""upwelling"" is positive upwards and ""downwelling"" is positive downwards. ""Photosynthetic"" radiation is the part of the spectrum which is used in photosynthesis e.g. 400-700 nm. The range of wavelengths could be specified precisely by the bounds of a coordinate of radiation_wavelength. A photon flux is specified in terms of numbers of photons expressed in moles. In accordance with common usage in geophysical disciplines, ""flux"" implies per unit area, called ""flux density"" in physics.",?mol m-2 s-1,,mol m-2 s-1
+PPFD_DIF,PPFD_DIF,,surface_diffuse_downwelling_photosynthetic_radiative_flux_in_air,Photosynthetic photon flux density diffuse,Diffuse incoming PPFD (400-700 nm),,"The surface called ""surface"" means the lower boundary of the atmosphere. Downwelling radiation is radiation from above. It does not mean ""net downward"". The sign convention is that ""upwelling"" is positive upwards and ""downwelling"" is positive downwards. ""Photosynthetic"" radiation is the part of the spectrum which is used in photosynthesis e.g. 400-700 nm. ""Diffuse"" radiation is radiation that has been scattered by gas molecules in the atmosphere and by particles such as cloud droplets and aerosols. The range of wavelengths could be specified precisely by the bounds of a coordinate of radiation_wavelength. When thought of as being incident on a surface, a radiative flux is sometimes called ""irradiance"". In addition, it is identical with the quantity measured by a cosine-collector light-meter and sometimes called ""vector irradiance"". In accordance with common usage in geophysical disciplines, ""flux"" implies per unit area, called ""flux density"" in physics.",?mol m-2 s-1,,W m-2
+P_12_1_1,P,tp,,Precipitation,Precipitation,"	
+This parameter is the accumulated liquid and frozen water, comprising rain and snow, that falls to the Earth's surface. It is the sum of large-scale precipitation and convective precipitation. Large-scale precipitation is generated by the cloud scheme in the ECMWF Integrated Forecasting System (IFS). The cloud scheme represents the formation and dissipation of clouds and large-scale precipitation due to changes in atmospheric quantities (such as pressure, temperature and moisture) predicted directly by the IFS at spatial scales of the grid box or larger. Convective precipitation is generated by the convection scheme in the IFS, which represents convection at spatial scales smaller than the grid box. See further information. This parameter does not include fog, dew or the precipitation that evaporates in the atmosphere before it lands at the surface of the Earth.
+
+This parameter is the total amount of water accumulated over a particular time period which depends on the data extracted. The units of this parameter are depth in metres of water equivalent. It is the depth the water would have if it were spread evenly over the grid box.
+
+Care should be taken when comparing model parameters with observations, because observations are often local to a particular point in space and time, rather than representing averages over a model grid box. [NOTE: See 228228 for the equivalent parameter in ""kg m-2""]",,mm/30 mins,m,
+WS_6_1_1,WS,10si,,Wind speed,Wind speed,"This parameter is the horizontal speed of the wind, or movement of air, at a height of ten metres above the surface of the Earth. The units of this parameter are metres per second.
+
+Care should be taken when comparing this parameter with observations, because wind observations vary on small space and time scales and are affected by the local terrain, vegetation and buildings that are represented only on average in the ECMWF Integrated Forecasting System.
+
+The eastward and northward components of the horizontal wind at 10m are also available as parameters.",,m s-1,m s-1,
+WD_6_1_1,WD,,,Wind direction,Wind direction,,,degrees,,
+D_SNOW,D_SNOW,sd,surface_snow_thickness,Snow depth,Snow depth,"	
+This parameter is the depth of snow from the snow-covered area of a grid box.
+
+Its units are metres of water equivalent, so it is the depth the water would have if the snow melted and was spread evenly over the whole grid box. The ECMWF Integrated Forecast System represents snow as a single additional layer over the uppermost soil level. The snow may cover all or part of the grid box.
+
+See further information. [NOTE: See 228141 for the equivalent parameter in ""kg m-2""]","Surface snow refers to the snow on the solid ground or on surface ice cover, but excludes, for example, falling snowflakes and snow on plants. ""Thickness"" means the vertical extent of a layer. Unless indicated in the cell_methods attribute, a quantity is assumed to apply to the whole area of each horizontal grid box. Previously, the qualifier where_type was used to specify that the quantity applies only to the part of the grid box of the named type. Names containing the where_type qualifier are deprecated and newly created data should use the cell_methods attribute to indicate the horizontal area to which the quantity applies.",cm,m of water equivalent,m
+RN_5_1_1,NETRAD,"	
+ssr",,Net radiation,Net radiation (including SW and LW components),"This parameter is the amount of solar radiation (also known as shortwave radiation) that reaches a horizontal plane at the surface of the Earth (both direct and diffuse) minus the amount reflected by the Earth's surface (which is governed by the albedo).
+
+Radiation from the Sun (solar, or shortwave, radiation) is partly reflected back to space by clouds and particles in the atmosphere (aerosols) and some of it is absorbed. The remainder is incident on the Earth's surface, where some of it is reflected. See further documentation.
+
+This parameter is accumulated over a particular time period which depends on the data extracted. The units are joules per square metre (J m-2). To convert to watts per square metre (W m-2), the accumulated values should be divided by the accumulation period expressed in seconds. The ECMWF convention for vertical fluxes is positive downwards.",,W m-2,J m-2,
+TS_4_1_1,TS,stl1,soil_temperature,Soil temperature ,Soil temperature,"This parameter is the temperature of the soil at level 1 (in the middle of layer 1).
+
+The ECMWF Integrated Forecasting System (IFS) has a four-layer representation of soil, where the surface is at 0cm:
+
+Layer 1: 0 - 7cm
+Layer 2: 7 - 28cm
+Layer 3: 28 - 100cm
+Layer 4: 100 - 289cm
+
+Soil temperature is set at the middle of each layer, and heat transfer is calculated at the interfaces between them. It is assumed that there is no heat transfer out of the bottom of the lowest layer.
+
+This parameter has units of Kelvin (K). Temperature measured in Kelvin can be converted to degrees Celsius (°C) by subtracting 273.15.","Soil temperature is the bulk temperature of the soil, not the surface (skin) temperature. ""Soil"" means the near-surface layer where plants sink their roots. For subsurface temperatures that extend beneath the soil layer or in areas where there is no surface soil layer, the standard name temperature_in_ground should be used. It is strongly recommended that a variable with this standard name should have a units_metadata attribute, with one of the values ""on-scale"" or ""difference"", whichever is appropriate for the data, because it is essential to know whether the temperature is on-scale (meaning relative to the origin of the scale indicated by the units) or refers to temperature differences (implying that the origin of the temperature scale is irrevelant), in order to convert the units correctly (cf. https://cfconventions.org/cf-conventions/cf-conventions.html#temperature-units).",degC,K,K
+TS_4_2_1,TS,stl1,soil_temperature,Soil temperature ,Soil temperature,"This parameter is the temperature of the soil at level 1 (in the middle of layer 1).
+
+The ECMWF Integrated Forecasting System (IFS) has a four-layer representation of soil, where the surface is at 0cm:
+
+Layer 1: 0 - 7cm
+Layer 2: 7 - 28cm
+Layer 3: 28 - 100cm
+Layer 4: 100 - 289cm
+
+Soil temperature is set at the middle of each layer, and heat transfer is calculated at the interfaces between them. It is assumed that there is no heat transfer out of the bottom of the lowest layer.
+
+This parameter has units of Kelvin (K). Temperature measured in Kelvin can be converted to degrees Celsius (°C) by subtracting 273.15.","Soil temperature is the bulk temperature of the soil, not the surface (skin) temperature. ""Soil"" means the near-surface layer where plants sink their roots. For subsurface temperatures that extend beneath the soil layer or in areas where there is no surface soil layer, the standard name temperature_in_ground should be used. It is strongly recommended that a variable with this standard name should have a units_metadata attribute, with one of the values ""on-scale"" or ""difference"", whichever is appropriate for the data, because it is essential to know whether the temperature is on-scale (meaning relative to the origin of the scale indicated by the units) or refers to temperature differences (implying that the origin of the temperature scale is irrevelant), in order to convert the units correctly (cf. https://cfconventions.org/cf-conventions/cf-conventions.html#temperature-units).",degC,K,K
+TS_4_3_1,TS,stl1,soil_temperature,Soil temperature ,Soil temperature,"This parameter is the temperature of the soil at level 1 (in the middle of layer 1).
+
+The ECMWF Integrated Forecasting System (IFS) has a four-layer representation of soil, where the surface is at 0cm:
+
+Layer 1: 0 - 7cm
+Layer 2: 7 - 28cm
+Layer 3: 28 - 100cm
+Layer 4: 100 - 289cm
+
+Soil temperature is set at the middle of each layer, and heat transfer is calculated at the interfaces between them. It is assumed that there is no heat transfer out of the bottom of the lowest layer.
+
+This parameter has units of Kelvin (K). Temperature measured in Kelvin can be converted to degrees Celsius (°C) by subtracting 273.15.","Soil temperature is the bulk temperature of the soil, not the surface (skin) temperature. ""Soil"" means the near-surface layer where plants sink their roots. For subsurface temperatures that extend beneath the soil layer or in areas where there is no surface soil layer, the standard name temperature_in_ground should be used. It is strongly recommended that a variable with this standard name should have a units_metadata attribute, with one of the values ""on-scale"" or ""difference"", whichever is appropriate for the data, because it is essential to know whether the temperature is on-scale (meaning relative to the origin of the scale indicated by the units) or refers to temperature differences (implying that the origin of the temperature scale is irrevelant), in order to convert the units correctly (cf. https://cfconventions.org/cf-conventions/cf-conventions.html#temperature-units).",degC,K,K
+TS_4_4_1,TS,stl1,soil_temperature,Soil temperature ,Soil temperature,"This parameter is the temperature of the soil at level 1 (in the middle of layer 1).
+
+The ECMWF Integrated Forecasting System (IFS) has a four-layer representation of soil, where the surface is at 0cm:
+
+Layer 1: 0 - 7cm
+Layer 2: 7 - 28cm
+Layer 3: 28 - 100cm
+Layer 4: 100 - 289cm
+
+Soil temperature is set at the middle of each layer, and heat transfer is calculated at the interfaces between them. It is assumed that there is no heat transfer out of the bottom of the lowest layer.
+
+This parameter has units of Kelvin (K). Temperature measured in Kelvin can be converted to degrees Celsius (°C) by subtracting 273.15.","Soil temperature is the bulk temperature of the soil, not the surface (skin) temperature. ""Soil"" means the near-surface layer where plants sink their roots. For subsurface temperatures that extend beneath the soil layer or in areas where there is no surface soil layer, the standard name temperature_in_ground should be used. It is strongly recommended that a variable with this standard name should have a units_metadata attribute, with one of the values ""on-scale"" or ""difference"", whichever is appropriate for the data, because it is essential to know whether the temperature is on-scale (meaning relative to the origin of the scale indicated by the units) or refers to temperature differences (implying that the origin of the temperature scale is irrevelant), in order to convert the units correctly (cf. https://cfconventions.org/cf-conventions/cf-conventions.html#temperature-units).",degC,K,K
+SWC_4_1_1,SWC,swvl1,volume_fraction_of_condensed_water_in_soil,Soil water content,Soil water content,"This parameter is the volume of water in soil layer 1 (0 - 7cm, the surface is at 0cm).
+
+The ECMWF Integrated Forecasting System model has a four-layer representation of soil:
+Layer 1: 0 - 7cm
+Layer 2: 7 - 28cm
+Layer 3: 28 - 100cm
+Layer 4: 100 - 289cm
+
+The volumetric soil water is associated with the soil texture (or classification), soil depth, and the underlying groundwater level.","""Volume fraction"" is used in the construction ""volume_fraction_of_X_in_Y"", where X is a material constituent of Y. It is evaluated as the volume of X divided by the volume of Y (including X). It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. The phrase ""condensed_water"" means liquid and ice.",%,m3 m-3,dimensionless
+SWC_4_2_1,SWC,swvl1,volume_fraction_of_condensed_water_in_soil,Soil water content,Soil water content,"This parameter is the volume of water in soil layer 1 (0 - 7cm, the surface is at 0cm).
+
+The ECMWF Integrated Forecasting System model has a four-layer representation of soil:
+Layer 1: 0 - 7cm
+Layer 2: 7 - 28cm
+Layer 3: 28 - 100cm
+Layer 4: 100 - 289cm
+
+The volumetric soil water is associated with the soil texture (or classification), soil depth, and the underlying groundwater level.","""Volume fraction"" is used in the construction ""volume_fraction_of_X_in_Y"", where X is a material constituent of Y. It is evaluated as the volume of X divided by the volume of Y (including X). It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. The phrase ""condensed_water"" means liquid and ice.",%,m3 m-3,dimensionless
+SWC_4_3_1,SWC,swvl1,volume_fraction_of_condensed_water_in_soil,Soil water content,Soil water content,"This parameter is the volume of water in soil layer 1 (0 - 7cm, the surface is at 0cm).
+
+The ECMWF Integrated Forecasting System model has a four-layer representation of soil:
+Layer 1: 0 - 7cm
+Layer 2: 7 - 28cm
+Layer 3: 28 - 100cm
+Layer 4: 100 - 289cm
+
+The volumetric soil water is associated with the soil texture (or classification), soil depth, and the underlying groundwater level.","""Volume fraction"" is used in the construction ""volume_fraction_of_X_in_Y"", where X is a material constituent of Y. It is evaluated as the volume of X divided by the volume of Y (including X). It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. The phrase ""condensed_water"" means liquid and ice.",%,m3 m-3,dimensionless
+SWC_4_4_1,SWC,swvl1,volume_fraction_of_condensed_water_in_soil,Soil water content,Soil water content,"This parameter is the volume of water in soil layer 1 (0 - 7cm, the surface is at 0cm).
+
+The ECMWF Integrated Forecasting System model has a four-layer representation of soil:
+Layer 1: 0 - 7cm
+Layer 2: 7 - 28cm
+Layer 3: 28 - 100cm
+Layer 4: 100 - 289cm
+
+The volumetric soil water is associated with the soil texture (or classification), soil depth, and the underlying groundwater level.","""Volume fraction"" is used in the construction ""volume_fraction_of_X_in_Y"", where X is a material constituent of Y. It is evaluated as the volume of X divided by the volume of Y (including X). It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. The phrase ""condensed_water"" means liquid and ice.",%,m3 m-3,dimensionless
+G_4_1_1,G,,downward_heat_flux_at_ground_level_in_soil,Soil heat flux,Soil heat flux,,"ground_level means the land surface (beneath the snow and surface water, if any). 'Downward' indicates a vector component which is positive when directed downward (negative upward). In accordance with common usage in geophysical disciplines, 'flux' implies per unit area, called 'flux density' in physics.",W m-2,,W m-2
+G_4_1_2,G,,downward_heat_flux_at_ground_level_in_soil,Soil heat flux,Soil heat flux,,"ground_level means the land surface (beneath the snow and surface water, if any). 'Downward' indicates a vector component which is positive when directed downward (negative upward). In accordance with common usage in geophysical disciplines, 'flux' implies per unit area, called 'flux density' in physics.",W m-2,,W m-2
+TA_4_1_1,TA,t2,,Air temperature,Air temperature,"	
+This parameter is the temperature of air at 2m above the surface of land, sea or in-land waters.
+
+2m temperature is calculated by interpolating between the lowest model level and the Earth's surface, taking account of the atmospheric conditions. See further information .
+
+This parameter has units of kelvin (K). Temperature measured in kelvin can be converted to degrees Celsius (°C) by subtracting 273.15.
+
+Please note that the encodings listed here for s2s & uerra (which includes encodings for carra/cerra) include entries for Mean 2 metre temperature. The specific encoding for Mean 2 metre temperature can be found in 228004.",,degC,K,
+RH_4_1_1,RH,rh,,Relative  humidity  ,Relative humidity,"	
+This parameter is the water vapour pressure as a percentage of the value at which the air becomes saturated (the point at which water vapour begins to condense into liquid water or deposition into ice).
+
+For temperatures over 0°C (273.15 K) it is calculated for saturation over water. At temperatures below -23°C it is calculated for saturation over ice. Between -23°C and 0°C this parameter is calculated by interpolating between the ice and water values using a quadratic function.",,%,%,
+RG_4_1_0,,ssrd,,Total global radiation,,"This parameter is the amount of solar radiation (also known as shortwave radiation) that reaches a horizontal plane at the surface of the Earth. This parameter comprises both direct and diffuse solar radiation.
+
+Radiation from the Sun (solar, or shortwave, radiation) is partly reflected back to space by clouds and particles in the atmosphere (aerosols) and some of it is absorbed. The rest is incident on the Earth's surface (represented by this parameter). See further documentation.
+
+To a reasonably good approximation, this parameter is the model equivalent of what would be measured by a pyranometer (an instrument used for measuring solar radiation) at the surface. However, care should be taken when comparing model parameters with observations, because observations are often local to a particular point in space and time, rather than representing averages over a model grid box.
+
+This parameter is accumulated over a particular time period which depends on the data extracted. The units are joules per square metre (J m-2). To convert to watts per square metre (W m-2), the accumulated values should be divided by the accumulation period expressed in seconds. The ECMWF convention for vertical fluxes is positive downwards.",,W m-2,J m-2,
+NDVI_649IN_5_1_1,NDVI,,,Photosynthetic photon flux density incoming @649 nm,Normalized Difference Vegetation Index,,,?mol m-2 s-1,,
+NDVI_649OUT_5_1_1,NDVI,,,Photosynthetic photon flux density reflected @649 nm,Normalized Difference Vegetation Index,,,?mol m-2 s-1,,
+NDVI_797IN_5_1_1,NDVI,,,Photosynthetic photon flux density incoming @797 nm,Normalized Difference Vegetation Index,,,?mol m-2 s-1,,
+NDVI_797OUT_5_1_1,NDVI,,,Photosynthetic photon flux density reflected @797 nm,Normalized Difference Vegetation Index,,,?mol m-2 s-1,,
+LWS_4_1_1,LEAF_WET,,,Leaf Wetness,Leaf wetness,,,dimensionless,,
+LWS_4_1_2,LEAF_WET,,,Leaf Wetness,Leaf wetness,,,dimensionless,,
