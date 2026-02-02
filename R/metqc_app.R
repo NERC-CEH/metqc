@@ -86,7 +86,6 @@ metqcApp <- function(...) {
     # ---------------------- BODY ----------------------
     dashboardBody(
       useShinyjs(),
-      
       # 1️⃣ Sodium-based authentication UI
       uiOutput("auth_ui"),
       
