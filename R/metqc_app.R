@@ -298,7 +298,6 @@ metqcApp <- function(...) {
   )
 
   server <- function(input, output, session) {
-    
     # ---- Load your upload + mapping modules (unchanged) ----
     uploaded <- mod_upload_server("upload_module")
     mapped_data <- mod_colmap_server("colmap_module", uploaded, dict_list)
