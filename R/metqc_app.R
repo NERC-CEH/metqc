@@ -135,20 +135,30 @@ metqcApp <- function(...) {
                 column(
                   width = 3,
                   numericInput(
-                    "ehour", value = 0, label = "Hour  (24 hour)", min = 0, max = 23, step = 1
+                    "ehour",
+                    value = 0,
+                    label = "Hour  (24 hour)",
+                    min = 0,
+                    max = 23,
+                    step = 1
                   )
                 ),
                 column(
                   width = 3,
                   numericInput(
-                    "emin", value = 0, label = "Minute", min = 0, max = 59, step = 1
+                    "emin",
+                    value = 0,
+                    label = "Minute",
+                    min = 0,
+                    max = 59,
+                    step = 1
                   )
                 ),
-                
+
                 actionButton("retrieve_data", "Retrieve from database"),
                 actionButton("compare_vars", "Compare variables")
               ),
-              
+
               hidden(
                 div(
                   id = "validation_calendar_outer",
@@ -162,7 +172,7 @@ metqcApp <- function(...) {
                 )
               )
             ),
-            
+
             hidden(
               fluidRow(
                 id = "extracted_data",
@@ -173,7 +183,10 @@ metqcApp <- function(...) {
                   width = 12,
                   shinycssloaders::withSpinner(uiOutput("mytabs")),
                   actionButton("impute", label = "Impute selection"),
-                  actionButton("finished_check", label = "Finished checking variable for date range."),
+                  actionButton(
+                    "finished_check",
+                    label = "Finished checking variable for date range."
+                  ),
                   uiOutput("impute_extra_info"),
                   actionButton("reset", label = "Restart app"),
                   actionButton("submitchanges_cloud", label = "Submit changes")
@@ -181,7 +194,7 @@ metqcApp <- function(...) {
               )
             )
           ),
-          
+
           # ----------- FLAGS TAB -----------
           tabItem(
             tabName = "flags",
@@ -193,12 +206,12 @@ metqcApp <- function(...) {
                 solidHeader = TRUE,
                 helpText("Select the start and end times for the data flag."),
                 width = 6,
-                
+
                 fluidRow(
                   column(6, uiOutput('flag_date_start_input')),
                   column(6, uiOutput('flag_date_end_input'))
                 ),
-                
+
                 fluidRow(
                   column(
                     6,
@@ -210,35 +223,51 @@ metqcApp <- function(...) {
                     )
                   )
                 ),
-                
+
                 fluidRow(
                   conditionalPanel(
                     "input.flag_all_day == 'No'",
                     column(
                       6,
                       numericInput(
-                        "flag_start_hour", value = 0, label = "Start hour (24 hour)",
-                        min = 0, max = 23, step = 1
+                        "flag_start_hour",
+                        value = 0,
+                        label = "Start hour (24 hour)",
+                        min = 0,
+                        max = 23,
+                        step = 1
                       )
                     ),
                     column(
                       6,
                       numericInput(
-                        "flag_end_hour", value = 0, label = "End hour (24 hour)",
-                        min = 0, max = 23, step = 1
+                        "flag_end_hour",
+                        value = 0,
+                        label = "End hour (24 hour)",
+                        min = 0,
+                        max = 23,
+                        step = 1
                       )
                     )
                   )
                 ),
-                
+
                 fluidRow(
                   column(
                     6,
-                    selectInput('flag_var', 'Variable', choices = v_names[!v_names %in% "DATECT"])
+                    selectInput(
+                      'flag_var',
+                      'Variable',
+                      choices = v_names[!v_names %in% "DATECT"]
+                    )
                   ),
                   column(
                     6,
-                    textInput('flag_comm', 'Comment', placeholder = 'Why is this data being flagged?')
+                    textInput(
+                      'flag_comm',
+                      'Comment',
+                      placeholder = 'Why is this data being flagged?'
+                    )
                   )
                 ),
                 column(6, actionButton("add_flag", "Add Flag"))
@@ -250,7 +279,7 @@ metqcApp <- function(...) {
             actionButton('save_flags_btn', 'Save'),
             actionButton('reset_flags_btn', 'Reset')
           ),
-          
+
           # ----------- UPLOAD TAB -----------
           tabItem(
             tabName = "upload",
@@ -308,7 +337,7 @@ metqcApp <- function(...) {
     observeEvent(mapped_data(), {
       showNotification("✅ Mapping confirmed! Ready to process data.")
     })
-    
+
     ##########################
     # shinyvalidate statements
     ##########################
@@ -316,17 +345,15 @@ metqcApp <- function(...) {
     iv$add_rule("sdate", sv_required())
     iv$add_rule("edate", sv_required())
     iv$enable()
-    
-    
+
     # ---- Authentication states ----
     credentials <- reactiveValues(
-      login_ok = FALSE,           # sodium-based login
-      username_selected = FALSE,  # secondary username selection
+      login_ok = FALSE, # sodium-based login
+      username_selected = FALSE, # secondary username selection
       user = NULL,
       selected_username = NULL
     )
-    
-    
+
     # ---- Sodium login UI ----
     output$auth_ui <- renderUI({
       if (!credentials$login_ok) {
@@ -340,57 +367,53 @@ metqcApp <- function(...) {
         NULL
       }
     })
-    
-    
+
     # ---- Sodium-based login check ----
     observeEvent(input$login_btn, {
       # Make sure both fields are filled
       req(input$login_user, input$login_pass)
-      
+
       # Look up the user
       user_row <- user_base[user_base$user == input$login_user, ]
-      
+
       # Check that the username exists
       if (nrow(user_row) == 0) {
         showNotification("❌ Invalid username or password", type = "error")
         return()
       }
-      
+
       # Extract the stored hash (raw vector) from the list column
       stored_hash <- user_row$password_hash[[1]]
-      
+
       # Verify password
       if (sodium::password_verify(stored_hash, input$login_pass)) {
         credentials$login_ok <- TRUE
         credentials$user <- input$login_user
         showNotification(paste("✅ Login successful for", input$login_user))
-        
+
         # Show your existing username modal after successful login
         showModal(username_modal)
       } else {
         showNotification("❌ Invalid username or password", type = "error")
       }
     })
-    
-    
+
     # ---- Secondary username modal (your existing code) ----
     v_usernames <- c("boduf", "wgt", "jarcgtas")
-    
+
     username_modal <- modalDialog(
       title = "Enter user name",
       selectInput('input_username', 'Select from:', v_usernames),
       easyClose = FALSE,
       footer = tagList(actionButton("ok", "OK"))
     )
-    
-    
+
     # Allow user to change username (after sodium login)
     observeEvent(input$change_user, {
       req(credentials$login_ok)
       showModal(username_modal)
     })
-    
-    
+
     # Handle username confirmation
     observeEvent(input$ok, {
       req(input$input_username)
@@ -399,15 +422,13 @@ metqcApp <- function(...) {
       removeModal()
       showNotification(paste("✅ Active username:", input$input_username))
     })
-    
-    
+
     # ---- Control full access ----
     output$fully_authenticated <- reactive({
       credentials$login_ok && credentials$username_selected
     })
     outputOptions(output, "fully_authenticated", suspendWhenHidden = FALSE)
-    
-    
+
     # ---- Header display ----
     output$user_name_text <- renderText({
       if (credentials$login_ok && credentials$username_selected) {
@@ -425,7 +446,7 @@ metqcApp <- function(...) {
         showModal(modalDialog("Please fill in both dates.", easyClose = TRUE))
         return()
       }
-      
+
       if (input$edate < input$sdate) {
         showModal(modalDialog(
           title = "Invalid Dates",
@@ -434,7 +455,7 @@ metqcApp <- function(...) {
         ))
       }
     })
-    
+
     # output$date_warning <- renderText({
     #   browser()
     #   req(input$start_date, input$end_date, input$retrieve_data)
@@ -444,7 +465,7 @@ metqcApp <- function(...) {
     #     "" # No warning
     #   }
     # })
-    
+
     observeEvent(input$ok, {
       removeModal()
       # save the username
@@ -453,15 +474,15 @@ metqcApp <- function(...) {
         paste0('Current user:  ', input$input_username)
       })
     })
-    
+
     disable('compare_vars')
-    
+
     board <- board_connect()
-    
+
     # Read in data flags
     flagged_data <- pin_read(board, "wilfinc/flagged_data")
     df_flagged_data <- reactiveVal(flagged_data)
-    
+
     # Reading in this year's Level 1 data----
     # read from JASMIN
     # this_year <- as.POSIXlt(Sys.Date())$year + 1900
@@ -472,14 +493,14 @@ metqcApp <- function(...) {
     # l_lev1 <- readRDS(fname_mainmet)
     # OR read from pin on Connect server
     l_lev1 <- pin_read(board, "plevy/level1_data")
-    
+
     # Read in the previously validated data from pin on Connect server
     l_lev2 <- pin_read(board, "plevy/level2_data")
-    
+
     # Here we join the existing Level 2 data with new Level 1 data.
     # Where records already exist in the Level 2 data, these are preserved
     # and only new Level 1 data is added to the resulting data frame.
-    
+
     l_lev2$dt <- power_full_join(
       l_lev2$dt,
       l_lev1$dt,
@@ -498,18 +519,18 @@ metqcApp <- function(...) {
       by = "DATECT",
       conflict = coalesce_xy
     )
-    
+
     date_of_first_new_record <- as.POSIXct(Sys.Date() - 225, tz = "UTC")
     date_of_last_new_record <- max(l_lev1$dt$DATECT, na.rm = TRUE)
-    
+
     # v_names <<- dbListFields(con, table_name)
     v_names_for_box <- v_names[
       !v_names %in%
         c("DATECT", "TIMESTAMP", "datect_num", "checked", "pred")
     ]
-    
+
     v_names_checklist <- reactiveValues()
-    
+
     # Format the dates for R----
     df_proc <- data.frame(
       start_date = "1995/01/01 00:00",
@@ -524,17 +545,17 @@ metqcApp <- function(...) {
     #   df_proc$end_date,
     #   format = "%Y/%m/%d %H:%M", tz = "UTC"
     # )
-    
+
     # Create a reactive element with the earliest start date
     first_start_date <- reactive({
       min(as.Date(df_proc$start_date))
     })
-    
+
     # Create a reactive element with the latest end date
     last_end_date <- reactive({
       max(as.Date(df_proc$end_date))
     })
-    
+
     # Create a date input for the user to select start date
     output$start_date <- renderUI({
       dateInput(
@@ -546,7 +567,7 @@ metqcApp <- function(...) {
         label = "Start date"
       )
     })
-    
+
     # Create a date input for the user to select end date
     output$end_date <- renderUI({
       dateInput(
@@ -558,7 +579,7 @@ metqcApp <- function(...) {
         label = "End date"
       )
     })
-    
+
     # output$flag_date_range_input <- renderUI({
     #   dateRangeInput("flag_date_range",
     #             start = as.Date(date_of_last_new_record, tz = "UTC"),
@@ -568,7 +589,7 @@ metqcApp <- function(...) {
     #             label = "Date range"
     #   )
     # })
-    
+
     output$flag_date_start_input <- renderUI({
       dateInput(
         "flag_date_start",
@@ -579,7 +600,7 @@ metqcApp <- function(...) {
         weekstart = 1
       )
     })
-    
+
     output$flag_date_end_input <- renderUI({
       dateInput(
         "flag_date_end",
@@ -590,7 +611,7 @@ metqcApp <- function(...) {
         weekstart = 1
       )
     })
-    
+
     # Create a dataframe with the start and end dates,
     df_daterange <- eventReactive(input$retrieve_data, {
       start_date_ch <- paste(
@@ -632,7 +653,7 @@ metqcApp <- function(...) {
         end_date_ch = end_date_ch
       )
     })
-    
+
     # The optional rendering of UI elements depending on which
     # imputation method has been selected
     output$impute_extra_info <- renderUI({
@@ -654,19 +675,19 @@ metqcApp <- function(...) {
         )
       }
     })
-    
+
     # Data retrieval functionality-----
     observeEvent(input$retrieve_data, {
       for (i in 1:length(v_names)) {
         v_names_checklist[[v_names[i]]] <- FALSE
       }
-      
+
       # enabling previously disabled buttons
       shinyjs::show("extracted_data")
       shinyjs::show("validation_calendar_outer")
-      
+
       l_qry <<- list()
-      
+
       # file / dataframe version
       l_qry$dt <<- subset(
         l_lev2$dt,
@@ -684,10 +705,10 @@ metqcApp <- function(...) {
         DATECT >= df_daterange()$start_date &
           DATECT <= df_daterange()$end_date
       )
-      
+
       l_qry$dt$checked <<- as.factor(rownames(l_qry$dt))
       l_qry$dt$datect_num <<- as.numeric(l_qry$dt$DATECT)
-      
+
       # Add a tab to the plotting panel for each variable that has been selected by the user.
       output$mytabs <- renderUI({
         my_tabs <- lapply(paste(v_names_for_box), function(i) {
@@ -706,25 +727,25 @@ metqcApp <- function(...) {
         })
         do.call(tabsetPanel, c(my_tabs, id = "plotTabs"))
       })
-      
+
       observe(
         lapply(paste(v_names_for_box), function(i) {
           output[[paste0(i, "_interactive_plot")]] <-
             renderGirafe(plotting_function(i))
         })
       )
-      
+
       # Creating a calendar heatmap plot that will be plotted depending on the tab selected in plotTabs
       heatmap_plot_selected <- reactive({
         req(input$plotTabs)
         plot_heatmap_calendar(l_qry$dt_qc)
       })
-      
+
       output$heatmap_plot <- renderPlot(heatmap_plot_selected())
-      
+
       enable('compare_vars')
     })
-    
+
     output$flag_table <- DT::renderDataTable({
       DT::datatable(
         df_flagged_data(),
@@ -754,11 +775,11 @@ metqcApp <- function(...) {
       ) %>%
         formatDate(3, method = 'toLocaleString')
     })
-    
+
     # add flag
     observeEvent(input$add_flag, {
       v_flag_date_seq <- NULL
-      
+
       if (input$flag_all_day == 'Yes') {
         v_flag_date_seq <- with_tz(
           seq(
@@ -772,7 +793,7 @@ metqcApp <- function(...) {
           tzone = 'UTC'
         )
       }
-      
+
       if (input$flag_all_day == 'No') {
         v_flag_date_seq <- with_tz(
           seq(
@@ -799,7 +820,7 @@ metqcApp <- function(...) {
           tzone = 'UTC'
         )
       }
-      
+
       new_df <- data.table(
         date = as.Date(v_flag_date_seq),
         time = format(v_flag_date_seq, "%H:%M:%S"),
@@ -810,25 +831,25 @@ metqcApp <- function(...) {
         validator = username,
         date_flagged = Sys.Date()
       )
-      
+
       updated_flagged_data <- rbind(new_df, df_flagged_data())
       df_flagged_data(updated_flagged_data)
     })
-    
+
     # save flags
     observeEvent(input$save_flags_btn, {
       # do a check to see if the data has changed? could be time intensive if data gets big? Is it worth it?
       # if(identical(df_flagged_data, flagged_data))
-      
+
       # Update button text
       runjs(
         'document.getElementById("save_flags_btn").textContent="Saving changes...";'
       )
       # disable button while working
       shinyjs::disable("save_flags_btn")
-      
+
       #cat(which(df_flagged_data()$date_flagged == Sys.Date()))
-      
+
       # change the qc codes in dt_qc
       for (i in which(df_flagged_data()$date_flagged == Sys.Date())) {
         l_lev2$dt_qc[
@@ -839,29 +860,29 @@ metqcApp <- function(...) {
           trunc(l_lev2$dt_qc$DATECT, 'hour') == df_flagged_data()$timestamp[i]
         ] <- 'data flagged'
       }
-      
+
       #write to pin on Connect server
       pin_write(board, df_flagged_data(), name = "flagged_data", type = "rds")
-      
+
       time_diff_flags <- difftime(
         as.POSIXct(Sys.time()),
         as.POSIXct(pins::pin_meta(board, 'wilfinc/flagged_data')$created),
         units = 'mins'
       )
-      
+
       # write lev_2 to pin
       pin_write(board, l_lev2, name = "plevy/level2_data", type = "rds")
-      
+
       # write CEDA formatted data to pin
       df_ceda <- format_for_ceda(l_lev2)
       pin_write(board, df_ceda, name = "ceda_data", type = "rds")
-      
+
       time_diff_lev2 <- difftime(
         as.POSIXct(Sys.time()),
         as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created),
         units = 'mins'
       )
-      
+
       if (time_diff_flags < 2 & time_diff_lev2 < 2) {
         shinyalert(
           title = "Data successfully saved to cloud",
@@ -894,9 +915,9 @@ metqcApp <- function(...) {
               callbackR = function(value) {
                 if (value == TRUE) {
                   # re-load the data from the server
-                  
+
                   l_lev2 <<- pin_read(board, "plevy/level2_data")
-                  
+
                   l_lev2$dt <<- power_full_join(
                     l_lev2$dt,
                     l_lev1$dt,
@@ -938,16 +959,16 @@ metqcApp <- function(...) {
           animation = TRUE
         )
       }
-      
+
       # reload and update the df_flags file
       flagged_data <<- pin_read(board, "wilfinc/flagged_data")
       df_flagged_data(flagged_data)
-      
+
       # remove button activation and reactivate button
       runjs('document.getElementById("save_flags_btn").textContent="Save";')
       shinyjs::enable("save_flags_btn")
     })
-    
+
     # reset flag table
     observeEvent(input$reset_flags_btn, {
       showModal(modalDialog(
@@ -958,27 +979,27 @@ metqcApp <- function(...) {
         ),
         easyClose = TRUE
       ))
-      
+
       observeEvent(input$confirm_flag_reset, {
         df_flagged_data(flagged_data)
         shinyjs::reset("flag_details_box")
         removeModal()
       })
     })
-    
+
     # compare variables modal
     observeEvent(input$compare_vars, {
       plot_data <- reactive({
         data.frame(x = l_qry$dt[, input$x_var], y = l_qry$dt[, input$y_var])
       })
-      
+
       output$compare_vars_plot <- renderPlot({
         ggplot(data = plot_data(), aes(x = x, y = y)) +
           geom_point() +
           labs(x = input$x_var, y = input$y_var) +
           theme_bw()
       })
-      
+
       showModal(
         modalDialog(
           fluidPage(
@@ -1007,12 +1028,12 @@ metqcApp <- function(...) {
         )
       )
     })
-    
+
     # Creating reactive variables-----
     selected_state <- reactive({
       input[[paste0(input$plotTabs, "_interactive_plot_selected")]]
     })
-    
+
     # Impute button functionality----
     observeEvent(input$impute, {
       if (is.null(selected_state())) {
@@ -1028,13 +1049,13 @@ metqcApp <- function(...) {
           plot_graph = FALSE,
           selection = l_qry$dt$checked %in% selected_state()
         )
-        
+
         # Re-plotting plot after imputation is confirmed to illustrate changes
         shinyjs::show("plotted_data")
         enable("reset")
         enable("impute")
         enable("finished_check")
-        
+
         # Creating a reactive plot that will be plotted depending on the tab selected in plotTabs
         plot_selected <- reactive({
           req(input$plotTabs)
@@ -1047,7 +1068,7 @@ metqcApp <- function(...) {
         )]] <- renderGirafe(plot_selected())
       }
     })
-    
+
     # Reset button functionality----
     observeEvent(input$reset, {
       showModal(modalDialog(
@@ -1058,20 +1079,20 @@ metqcApp <- function(...) {
         ),
         easyClose = TRUE
       ))
-      
+
       observeEvent(input$confirm_reset, {
         session$reload()
       })
     })
-    
+
     # Finished checking, close tab functionality----
     observeEvent(input$finished_check, {
       #removeTab("plotTabs", input$plotTabs)
-      
+
       # Insert validation flag for date range here
       v_names_checklist[[input$plotTabs]] <- TRUE
     })
-    
+
     output$download_data <- downloadHandler(
       filename = function() {
         if (input$download_file == 'lev1') {
@@ -1143,21 +1164,21 @@ metqcApp <- function(...) {
         }
       }
     )
-    
+
     # Writing validated data to pin---- From main Dashboard
     observeEvent(input$submitchanges_cloud, {
       # Update button text
       runjs(
         'document.getElementById("submitchanges_cloud").textContent="Submitting changes...";'
       )
-      
+
       # disable button while working
       shinyjs::disable("submitchanges_cloud")
       shinyjs::disable("edit_table_cols")
-      
+
       # update lev2 with l_qry
       l_qry$dt_qc$validator <- username
-      
+
       # overwrite existing data with changes in query
       l_lev2$dt <<- power_full_join(
         l_lev2$dt,
@@ -1177,20 +1198,20 @@ metqcApp <- function(...) {
         by = "DATECT",
         conflict = coalesce_yx
       )
-      
+
       # write to pin on Connect server
       pin_write(board, l_lev2, name = "plevy/level2_data", type = "rds")
-      
+
       # write CEDA formatted data to pin
       df_ceda <- format_for_ceda(l_lev2)
       pin_write(board, df_ceda, name = "ceda_data", type = "rds")
-      
+
       time_diff <- difftime(
         as.POSIXct(Sys.time()),
         as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created),
         units = 'mins'
       )
-      
+
       if (time_diff < 2) {
         shinyalert(
           title = "Data successfully saved to cloud",
@@ -1224,7 +1245,7 @@ metqcApp <- function(...) {
           animation = TRUE
         )
       }
-      
+
       # remove button activation and reactivate button
       runjs(
         'document.getElementById("submitchanges_cloud").textContent="Submit";'
@@ -1232,6 +1253,6 @@ metqcApp <- function(...) {
       shinyjs::enable("submitchanges_cloud")
     })
   }
-  
+
   shinyApp(ui, server, ...)
 }
