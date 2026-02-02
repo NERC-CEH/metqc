@@ -271,7 +271,6 @@ metqcApp <- function(...) {
               )
             )
           ),
-          
           # ----------- INFORMATION TABS -----------
           tabItem(tabName = "information"),
           tabItem(tabName = "gapfill_guide", includeMarkdown("./vignettes/gap_fill_methods.md")),
