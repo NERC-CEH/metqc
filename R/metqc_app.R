@@ -127,7 +127,6 @@ metqcApp <- function(...) {
                     step = 1
                   )
                 ),
-                
                 column(
                   width = 6,
                   uiOutput("end_date"),
