@@ -91,7 +91,6 @@ metqcApp <- function(...) {
       # 2️⃣ Main content appears *only after full authentication*
       conditionalPanel(
         condition = "output.fully_authenticated == true",
-        
         tabItems(
           # ----------- DASHBOARD TAB -----------
           tabItem(
