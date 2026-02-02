@@ -100,8 +100,10 @@ metqcApp <- function(...) {
                 title = "Data Selection",
                 status = "success",
                 solidHeader = TRUE,
-                helpText("Select your required processing start and end times below."),
-                
+                helpText(
+                  "Select your required processing start and end times below."
+                ),
+
                 column(width = 6, uiOutput("start_date")),
                 column(
                   width = 3,
