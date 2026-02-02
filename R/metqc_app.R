@@ -53,7 +53,6 @@ metqcApp <- function(...) {
   # Define UI for the app
   ui <- dashboardPage(
     skin = "green",
-    
     # ---------------------- HEADER ----------------------
     dashboardHeader(
       title = "Met Data Validation",
