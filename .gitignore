@@ -7,3 +7,4 @@
 .Renviron
 *.rds
 *.nc
+/ignore/

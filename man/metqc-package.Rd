@@ -6,19 +6,23 @@
 \alias{metqc-package}
 \title{metqc: Quality Control Of Field Site Meteorological Data}
 \description{
-Quality control of field site meteorological data.
+This app aims to be an standarisation to the UKCEH metadata quality control and processing, such as gap filling. It is a R Shiny app that allows users to retrieve met data from a database, and process them in an standard way.
 }
 \author{
-\strong{Maintainer}: Thomas Zwagerman \email{thowag@ceh.ac.uk}
+\strong{Maintainer}: First Last \email{first.last@example.com}
 
 Authors:
 \itemize{
   \item Peter Levy \email{plevy@ceh.ac.uk} (\href{https://orcid.org/0000-0002-8505-1901}{ORCID})
   \item David Leaver \email{leav@ceh.ac.uk}
+  \item Will Fincham
+  \item Cristina Martin Hernandez (\href{https://orcid.org/0009-0003-9594-0299}{ORCID})
+  \item Claudia Caporusso
 }
 
 Other contributors:
 \itemize{
+  \item Thomas Zwagerman \email{thowag@ceh.ac.uk} [contributor]
   \item Juan Pablo Lobo Guerrero \email{jualob@ceh.ac.uk} [contributor]
   \item Karen Yeung \email{karung@ceh.ac.uk} [contributor]
 }
