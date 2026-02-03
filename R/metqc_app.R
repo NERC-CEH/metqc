@@ -60,7 +60,6 @@ metqcApp <- function(...) {
       sidebarMenu(
         id = 'tabs',
         menuItem("Dashboard", tabName = "dashboard", icon = icon('database')),
-        menuItem("Flags", tabName = "flags", icon = icon('flag')),
         menuItem("Download", tabName = "download", icon = icon('download')),
         menuItem(
           "Information",
@@ -189,94 +188,6 @@ metqcApp <- function(...) {
           ),
         ),
         tabItem(
-          tabName = "flags",
-          fluidRow(
-            box(
-              id = 'flag_details_box',
-              title = 'Add data flag',
-              status = "success",
-              solidHeader = TRUE,
-              helpText("Select the start and end times for the data flag."),
-              width = 6,
-
-              fluidRow(
-                column(6, uiOutput('flag_date_start_input')),
-                column(6, uiOutput('flag_date_end_input')),
-              ),
-              fluidRow(
-                # checkboxGroupButtons(
-                #   inputId = "flag_all_day", label = "Flag the entire day?",
-                #   choices = c("Yes", "No"),
-                #   justified = FALSE, status = "primary"
-                # )
-
-                column(
-                  6,
-                  #selectInput('flag_all_day', label = 'Flag the entire day?', choices = c('Yes' = TRUE, 'No' = FALSE))
-                  selectInput(
-                    'flag_all_day',
-                    label = 'Flag the entire day?',
-                    choices = c('Yes', 'No'),
-                    selected = 'Yes'
-                  )
-                )
-              ),
-              fluidRow(
-                conditionalPanel(
-                  "input.flag_all_day == 'No'",
-                  column(
-                    6,
-                    numericInput(
-                      "flag_start_hour",
-                      value = 0,
-                      label = "Start hour (24 hour)",
-                      min = 0,
-                      max = 23,
-                      step = 1
-                    )
-                  ),
-                  column(
-                    6,
-                    numericInput(
-                      "flag_end_hour",
-                      value = 0,
-                      label = "End hour (24 hour)",
-                      min = 0,
-                      max = 23,
-                      step = 1
-                    )
-                  )
-                )
-              ),
-              fluidRow(
-                column(
-                  6,
-                  selectInput(
-                    'flag_var',
-                    label = 'Variable',
-                    choices = v_names[!v_names %in% "DATECT"]
-                  )
-                ),
-                column(
-                  6,
-                  textInput(
-                    'flag_comm',
-                    label = 'Comment',
-                    placeholder = 'Why is this data being flagged?'
-                  )
-                )
-              ),
-              column(6, actionButton("add_flag", "Add Flag"))
-            ),
-          ),
-          shinycssloaders::withSpinner(
-            DT::dataTableOutput('flag_table', width = '50%')
-          ),
-
-          actionButton('save_flags_btn', 'Save'),
-          actionButton('reset_flags_btn', 'Reset')
-        ),
-        tabItem(
           tabName = 'download',
           fluidRow(
             box(
@@ -290,8 +201,7 @@ metqcApp <- function(...) {
                 choices = c(
                   'Level 1' = 'lev1',
                   'Level 2' = 'lev2',
-                  'CEDA' = 'ceda',
-                  'Data flags' = 'flags'
+                  'CEDA' = 'ceda'
                 )
               ),
               downloadButton('download_data', label = 'Download')
@@ -407,19 +317,7 @@ metqcApp <- function(...) {
 
     board <- board_connect()
 
-    # Read in data flags
-    flagged_data <- pin_read(board, "wilfinc/flagged_data")
-    df_flagged_data <- reactiveVal(flagged_data)
-
-    # Reading in this year's Level 1 data----
-    # read from JASMIN
-    # this_year <- as.POSIXlt(Sys.Date())$year + 1900
-    # url_mainmet <- paste0("https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/UK-AMo_mainmet_", this_year, "_agf.rds")
-    #l_lev1 <- readRDS(url(url_mainmet, "rb"))
-    # OR read from local file
-    # fname_mainmet <- here("data", "UK-AMo_mainmet_2022_agf.rds")
-    # l_lev1 <- readRDS(fname_mainmet)
-    # OR read from pin on Connect server
+    # Reading in Level 1 data from pin on Connect server
     l_lev1 <- pin_read(board, "plevy/level1_data")
 
     # Read in the previously validated data from pin on Connect server
@@ -505,38 +403,6 @@ metqcApp <- function(...) {
         min = first_start_date(),
         max = last_end_date(),
         label = "End date"
-      )
-    })
-
-    # output$flag_date_range_input <- renderUI({
-    #   dateRangeInput("flag_date_range",
-    #             start = as.Date(date_of_last_new_record, tz = "UTC"),
-    #             end = as.Date(date_of_last_new_record, tz = "UTC"),
-    #             min = first_start_date(),
-    #             max = date_of_last_new_record,
-    #             label = "Date range"
-    #   )
-    # })
-
-    output$flag_date_start_input <- renderUI({
-      dateInput(
-        "flag_date_start",
-        value = as.Date(date_of_last_new_record, tz = "UTC"),
-        min = first_start_date(),
-        max = date_of_last_new_record,
-        label = "Start date",
-        weekstart = 1
-      )
-    })
-
-    output$flag_date_end_input <- renderUI({
-      dateInput(
-        "flag_date_end",
-        value = as.Date(date_of_last_new_record, tz = "UTC"),
-        min = first_start_date(),
-        max = date_of_last_new_record,
-        label = "End date",
-        weekstart = 1
       )
     })
 
@@ -674,247 +540,6 @@ metqcApp <- function(...) {
       enable('compare_vars')
     })
 
-    output$flag_table <- DT::renderDataTable({
-      DT::datatable(
-        df_flagged_data(),
-        colnames = c(
-          'Date',
-          'Time (UTC)',
-          'Timestamp (UTC)',
-          'Variable',
-          'QC',
-          'Comment',
-          'Validator',
-          'Date flagged'
-        ),
-        #colnames = c('date' = 'Date', 'time' = 'Time (UTC)', 'timestamp' = 'Timestamp (UTC)', 'variable' =  'Variable', 'qc' = 'QC', 'comment' = 'Comment', 'validator' = 'Validator', 'date_flagged' = 'Date flagged'),
-        selection = 'none',
-        rownames = FALSE,
-        options = list(
-          dom = 'rtilp',
-          scrollX = TRUE,
-          pageLength = 25,
-          info = FALSE,
-          lengthMenu = list(
-            c(10, 25, 50, 100, -1),
-            c('10', '25', '50', '100', 'All')
-          )
-        )
-      ) %>%
-        formatDate(3, method = 'toLocaleString')
-    })
-
-    # add flag
-    observeEvent(input$add_flag, {
-      v_flag_date_seq <- NULL
-
-      if (input$flag_all_day == 'Yes') {
-        v_flag_date_seq <- with_tz(
-          seq(
-            ymd_hms(paste0(input$flag_date_start, ' ', '00:00:00'), tz = 'GB'),
-            ymd_hms(
-              paste0(input$flag_date_end + 1, ' ', '00:00:00'),
-              tz = 'GB'
-            ),
-            by = 'hour'
-          ),
-          tzone = 'UTC'
-        )
-      }
-
-      if (input$flag_all_day == 'No') {
-        v_flag_date_seq <- with_tz(
-          seq(
-            ymd_hms(
-              paste0(
-                input$flag_date_start,
-                ' ',
-                str_pad(input$flag_start_hour, 2, 'left', '0'),
-                ':00:00'
-              ),
-              tz = 'GB'
-            ),
-            ymd_hms(
-              paste0(
-                input$flag_date_end,
-                ' ',
-                str_pad(input$flag_end_hour, 2, 'left', '0'),
-                ':00:00'
-              ),
-              tz = 'GB'
-            ),
-            by = 'hour'
-          ),
-          tzone = 'UTC'
-        )
-      }
-
-      new_df <- data.table(
-        date = as.Date(v_flag_date_seq),
-        time = format(v_flag_date_seq, "%H:%M:%S"),
-        timestamp = v_flag_date_seq,
-        variable = input$flag_var,
-        qc = 8,
-        comment = input$flag_comm,
-        validator = username,
-        date_flagged = Sys.Date()
-      )
-
-      updated_flagged_data <- rbind(new_df, df_flagged_data())
-      df_flagged_data(updated_flagged_data)
-    })
-
-    # save flags
-    observeEvent(input$save_flags_btn, {
-      # do a check to see if the data has changed? could be time intensive if data gets big? Is it worth it?
-      # if(identical(df_flagged_data, flagged_data))
-
-      # Update button text
-      runjs(
-        'document.getElementById("save_flags_btn").textContent="Saving changes...";'
-      )
-      # disable button while working
-      shinyjs::disable("save_flags_btn")
-
-      #cat(which(df_flagged_data()$date_flagged == Sys.Date()))
-
-      # change the qc codes in dt_qc
-      for (i in which(df_flagged_data()$date_flagged == Sys.Date())) {
-        l_lev2$dt_qc[
-          trunc(l_lev2$dt_qc$DATECT, 'hour') == df_flagged_data()$timestamp[i],
-          which(colnames(l_lev2$dt_qc) == df_flagged_data()$variable[i])
-        ] <- 8
-        l_lev2$dt_qc$validator[
-          trunc(l_lev2$dt_qc$DATECT, 'hour') == df_flagged_data()$timestamp[i]
-        ] <- 'data flagged'
-      }
-
-      #write to pin on Connect server
-      pin_write(board, df_flagged_data(), name = "flagged_data", type = "rds")
-
-      time_diff_flags <- difftime(
-        as.POSIXct(Sys.time()),
-        as.POSIXct(pins::pin_meta(board, 'wilfinc/flagged_data')$created),
-        units = 'mins'
-      )
-
-      # write lev_2 to pin
-      pin_write(board, l_lev2, name = "plevy/level2_data", type = "rds")
-
-      # write CEDA formatted data to pin
-      df_ceda <- format_for_ceda(l_lev2)
-      pin_write(board, df_ceda, name = "ceda_data", type = "rds")
-
-      time_diff_lev2 <- difftime(
-        as.POSIXct(Sys.time()),
-        as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created),
-        units = 'mins'
-      )
-
-      if (time_diff_flags < 2 & time_diff_lev2 < 2) {
-        shinyalert(
-          title = "Data successfully saved to cloud",
-          size = "m",
-          closeOnEsc = FALSE,
-          closeOnClickOutside = FALSE,
-          html = FALSE,
-          type = "success",
-          showConfirmButton = TRUE,
-          showCancelButton = FALSE,
-          confirmButtonText = "OK",
-          confirmButtonCol = "#AEDEF4",
-          imageUrl = "",
-          animation = TRUE,
-          callbackR = function(value) {
-            shinyalert(
-              title = 'Would you like to apply the new data flags now? This will reset the app.',
-              size = "m",
-              closeOnEsc = FALSE,
-              closeOnClickOutside = FALSE,
-              html = FALSE,
-              type = "info",
-              showConfirmButton = TRUE,
-              showCancelButton = TRUE,
-              confirmButtonText = "Yes",
-              cancelButtonText = "No",
-              confirmButtonCol = "#329664",
-              imageUrl = "",
-              animation = TRUE,
-              callbackR = function(value) {
-                if (value == TRUE) {
-                  # re-load the data from the server
-
-                  l_lev2 <<- pin_read(board, "plevy/level2_data")
-
-                  l_lev2$dt <<- power_full_join(
-                    l_lev2$dt,
-                    l_lev1$dt,
-                    by = "DATECT",
-                    conflict = coalesce_xy
-                  )
-                  l_lev2$dt_qc <<- power_full_join(
-                    l_lev2$dt_qc,
-                    l_lev1$dt_qc,
-                    by = "DATECT",
-                    conflict = coalesce_xy
-                  )
-                  l_lev2$dt_era5 <<- power_full_join(
-                    l_lev2$dt_era5,
-                    l_lev1$dt_era5,
-                    by = "DATECT",
-                    conflict = coalesce_xy
-                  )
-                  session$reload()
-                }
-              }
-            )
-          }
-        )
-      } else {
-        shinyalert(
-          title = "Error saving data",
-          text = "Data took over 2 minuets to write. Data may not have saved correctly to the cloud.",
-          size = "m",
-          closeOnEsc = FALSE,
-          closeOnClickOutside = FALSE,
-          html = FALSE,
-          type = "error",
-          showConfirmButton = FALSE,
-          showCancelButton = TRUE,
-          cancelButtonText = "Cancel",
-          #timer = 10000,
-          imageUrl = "",
-          animation = TRUE
-        )
-      }
-
-      # reload and update the df_flags file
-      flagged_data <<- pin_read(board, "wilfinc/flagged_data")
-      df_flagged_data(flagged_data)
-
-      # remove button activation and reactivate button
-      runjs('document.getElementById("save_flags_btn").textContent="Save";')
-      shinyjs::enable("save_flags_btn")
-    })
-
-    # reset flag table
-    observeEvent(input$reset_flags_btn, {
-      showModal(modalDialog(
-        title = "Are you sure you want to reset the data flags? All unsaved flags will be lost",
-        footer = tagList(
-          actionButton("confirm_flag_reset", "Reset flags"),
-          modalButton("Cancel")
-        ),
-        easyClose = TRUE
-      ))
-
-      observeEvent(input$confirm_flag_reset, {
-        df_flagged_data(flagged_data)
-        shinyjs::reset("flag_details_box")
-        removeModal()
-      })
-    })
-
     # compare variables modal
     observeEvent(input$compare_vars, {
       plot_data <- reactive({
@@ -1015,8 +640,6 @@ metqcApp <- function(...) {
 
     # Finished checking, close tab functionality----
     observeEvent(input$finished_check, {
-      #removeTab("plotTabs", input$plotTabs)
-
       # Insert validation flag for date range here
       v_names_checklist[[input$plotTabs]] <- TRUE
     })
@@ -1029,8 +652,6 @@ metqcApp <- function(...) {
           paste("level_2-", Sys.Date(), ".zip", sep = "")
         } else if (input$download_file == 'ceda') {
           paste("ceda-", Sys.Date(), ".zip", sep = "")
-        } else if (input$download_file == 'flags') {
-          paste("flagged_data-", Sys.Date(), ".csv", sep = "")
         }
       },
       content = function(file) {
@@ -1079,16 +700,6 @@ metqcApp <- function(...) {
             'document.getElementById("download_data").textContent="Download";'
           )
           shinyjs::enable("download_data")
-        } else if (input$download_file == 'flags') {
-          runjs(
-            'document.getElementById("download_data").textContent="Preparing download...";'
-          )
-          shinyjs::disable("download_data")
-          data.table::fwrite(flagged_data, file)
-          runjs(
-            'document.getElementById("download_data").textContent="Download";'
-          )
-          shinyjs::enable("download_data")
         }
       }
     )
@@ -1132,7 +743,7 @@ metqcApp <- function(...) {
 
       # write CEDA formatted data to pin
       df_ceda <- format_for_ceda(l_lev2)
-      pin_write(board, df_ceda, name = "ceda_data", type = "rds")
+      pin_write(board, df_ceda, name = "plevy/ceda_data", type = "rds")
 
       time_diff <- difftime(
         as.POSIXct(Sys.time()),
@@ -1159,7 +770,7 @@ metqcApp <- function(...) {
       } else {
         shinyalert(
           title = "Error saving data",
-          text = "Data took over 2 minuets to write. Data may not have saved correctly to the cloud.",
+          text = "Data took over 2 minutes to write. Data may not have saved correctly to the cloud.",
           size = "m",
           closeOnEsc = FALSE,
           closeOnClickOutside = FALSE,
