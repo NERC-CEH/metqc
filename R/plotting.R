@@ -3,7 +3,7 @@
 
 #' @title plotting_function
 #' @description Creates an interactive girafe plot, whereby the user can select
-#'   points for flagging as poor quality and imputing new values.
+#'   points with dubious quality and impute new values.
 #' @param input_variable The name of the variable within the query data frame to plot.
 #' @return OUTPUT_DESCRIPTION
 #' @details DETAILS
@@ -94,22 +94,14 @@ plot_heatmap_calendar <- function(df) {
     ) %>%
     distinct()
 
-  if ('data flagged' %in% levels(as.factor(df$validator))) {
-    df$f_validator <- forcats::fct_relevel(
-      forcats::fct_relevel(as.factor(df$validator), 'auto', after = Inf),
-      'data flagged',
-      after = 0
-    )
-  } else {
-    df$f_validator <- forcats::fct_relevel(
-      as.factor(df$validator),
-      'auto',
-      after = Inf
-    )
-  }
+  df$f_validator <- forcats::fct_relevel(
+    as.factor(df$validator),
+    'auto',
+    after = Inf
+  )
 
   heatmap_plot <- ggplot(df, aes(day_of_the_week, week, fill = f_validator)) +
-    geom_tile(color = "white", size = 0.1) +
+    geom_tile(color = "white", linewidth = 0.1) +
     labs(x = 'Day of week', y = 'Week', fill = 'Validator') +
     facet_wrap(year ~ month, nrow = 4, ncol = 3, scales = "free") +
     scale_y_reverse() +

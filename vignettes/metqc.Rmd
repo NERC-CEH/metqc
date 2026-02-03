@@ -83,7 +83,7 @@ It checks the existing data to find the date of the last successful download, an
 This script reads the logger data, performs 30-min averaging where necessary, and also reads the eddy covariance summary files.  It produces web pages containing plots of most variables for the past [week](https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/plot_UK-AMo_week.html), [month](https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/plot_UK-AMo_month.html) and [year](https://gws-access.jasmin.ac.uk/public/dare_uk/plevy/UK-AMo/plot_UK-AMo_year.html).
 
 ## metqc app
-The metqc app allows the user to manually check the variables in a chosen data range, flag any dubious values, and provide replacement values by several methods.
+The metqc app allows the user to manually check the variables in a chosen data range, select any dubious values, and provide replacement values by several methods.
 TBC
 
 The date ranges that have been checked, and by whom, are displayed in the form of a calendar plot, like the one below.
