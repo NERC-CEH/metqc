@@ -23,9 +23,13 @@ library(stringr)
 library(forcats)
 library(shinyvalidate)
 library(markdown)
+library(sodium)
 # source(here("R", "imputation.R"))
 # source(here("R", "plotting.R"))
 # source(here("R", "metqc_app.R"))
+
+# load user base with login
+user_base <- readRDS("./ignore/user_base.rds")
 
 # # to run
 # rm(list=ls(all=TRUE))
@@ -35,6 +39,14 @@ Sys.setenv(DBNAME = "budbase.nerc-bush.ac.uk/BUA")
 Sys.setenv(DBUID = "BU_FIELD_SITES")
 Sys.setenv(DBPWD = "0ig2mtYUL9")
 Sys.getenv("DBUID")
+
+# loading scripts for inputting files
+source(here::here("R", "mod_upload.R"))
+source(here::here("R", "mod_colmap.R"))
+source(here::here("R", "mod_campbell_logger_import.R"))
+
+# load R object with credentials info
+dict_list <- readRDS(here("data", "col_vocabulary.rds"))
 
 metqcApp <- function(...) {
   # Reading in the gap-filling methods and codes----
@@ -61,6 +73,7 @@ metqcApp <- function(...) {
         id = 'tabs',
         menuItem("Dashboard", tabName = "dashboard", icon = icon('database')),
         menuItem("Flags", tabName = "flags", icon = icon('flag')),
+        menuItem("Upload", tabName = "upload", icon = icon("upload")),
         menuItem("Download", tabName = "download", icon = icon('download')),
         menuItem(
           "Information",
@@ -74,249 +87,269 @@ metqcApp <- function(...) {
     ),
     dashboardBody(
       useShinyjs(),
-      tabItems(
-        tabItem(
-          tabName = "dashboard",
-          fluidRow(
-            box(
-              title = "Data Selection",
-              status = "success",
-              solidHeader = TRUE,
-              helpText(
-                "Select your required processing start and end times below."
-              ),
-              column(
-                width = 6,
-                uiOutput("start_date") #,
-                #textOutput("date_warning")
-              ),
-              column(
-                width = 3,
-                numericInput(
-                  "shour",
-                  value = 00,
-                  label = "Hour (24 hour)",
-                  min = 0,
-                  max = 23,
-                  step = 1
-                )
-              ),
-              column(
-                width = 3,
-                numericInput(
-                  "smin",
-                  value = 00,
-                  label = "Minute",
-                  min = 0,
-                  max = 59,
-                  step = 1
-                )
-              ),
-              column(
-                width = 6,
-                uiOutput("end_date"),
-                tags$style(HTML(".datepicker {z-index:99999 !important;}"))
-              ),
-              column(
-                width = 3,
-                numericInput(
-                  "ehour",
-                  value = 00,
-                  label = "Hour  (24 hour)",
-                  min = 0,
-                  max = 23,
-                  step = 1
-                )
-              ),
-              column(
-                width = 3,
-                numericInput(
-                  "emin",
-                  value = 00,
-                  label = "Minute",
-                  min = 0,
-                  max = 59,
-                  step = 1
-                )
-              ),
-              actionButton("retrieve_data", "Retrieve from database"),
-              actionButton("compare_vars", "Compare variables"),
-            ),
-            hidden(
-              div(
-                id = "validation_calendar_outer",
-                box(
-                  id = 'validation_calendar',
-                  title = "Validation Calendar",
-                  status = "success",
-                  solidHeader = TRUE,
-                  shinycssloaders::withSpinner(plotOutput("heatmap_plot"))
-                )
-              )
-            )
-          ),
-          hidden(
+      
+      # sodium library auth UI
+      uiOutput("auth_ui"),
+      
+      # the main content appears only after succesful authentication
+      conditionalPanel(
+        condition = "output.fully_authenticated == true",
+      
+        tabItems(
+          tabItem(
+            tabName = "dashboard",
             fluidRow(
-              id = "extracted_data",
               box(
-                title = "Extracted Data",
+                title = "Data Selection",
                 status = "success",
                 solidHeader = TRUE,
-                width = 12,
-                shinycssloaders::withSpinner(uiOutput("mytabs")),
-                selectInput(
-                  "select_imputation",
-                  label = h5("Gap-Filling Method"),
-                  choices = gf_choices
+                helpText(
+                  "Select your required processing start and end times below."
                 ),
-                actionButton("impute", label = "Impute selection"),
-                actionButton(
-                  "finished_check",
-                  label = "Finished checking variable for date range."
-                ),
-                checkboxGroupInput(
-                  "qc_tokeep",
-                  "Do not alter data estimated by",
-                  choiceNames = df_method$method_longname,
-                  choiceValues = df_method$qc
-                ),
-                uiOutput("impute_extra_info"),
-                actionButton("reset", label = "Restart app"),
-                #actionButton("submitchanges", "Submit changes to file"),
-                actionButton("submitchanges_cloud", "Submit changes")
-              ),
-            )
-          ),
-        ),
-        tabItem(
-          tabName = "flags",
-          fluidRow(
-            box(
-              id = 'flag_details_box',
-              title = 'Add data flag',
-              status = "success",
-              solidHeader = TRUE,
-              helpText("Select the start and end times for the data flag."),
-              width = 6,
-
-              fluidRow(
-                column(6, uiOutput('flag_date_start_input')),
-                column(6, uiOutput('flag_date_end_input')),
-              ),
-              fluidRow(
-                # checkboxGroupButtons(
-                #   inputId = "flag_all_day", label = "Flag the entire day?",
-                #   choices = c("Yes", "No"),
-                #   justified = FALSE, status = "primary"
-                # )
-
                 column(
-                  6,
-                  #selectInput('flag_all_day', label = 'Flag the entire day?', choices = c('Yes' = TRUE, 'No' = FALSE))
-                  selectInput(
-                    'flag_all_day',
-                    label = 'Flag the entire day?',
-                    choices = c('Yes', 'No'),
-                    selected = 'Yes'
+                  width = 6,
+                  uiOutput("start_date") #,
+                  #textOutput("date_warning")
+                ),
+                column(
+                  width = 3,
+                  numericInput(
+                    "shour",
+                    value = 00,
+                    label = "Hour (24 hour)",
+                    min = 0,
+                    max = 23,
+                    step = 1
+                  )
+                ),
+                column(
+                  width = 3,
+                  numericInput(
+                    "smin",
+                    value = 00,
+                    label = "Minute",
+                    min = 0,
+                    max = 59,
+                    step = 1
+                  )
+                ),
+                column(
+                  width = 6,
+                  uiOutput("end_date"),
+                  tags$style(HTML(".datepicker {z-index:99999 !important;}"))
+                ),
+                column(
+                  width = 3,
+                  numericInput(
+                    "ehour",
+                    value = 00,
+                    label = "Hour  (24 hour)",
+                    min = 0,
+                    max = 23,
+                    step = 1
+                  )
+                ),
+                column(
+                  width = 3,
+                  numericInput(
+                    "emin",
+                    value = 00,
+                    label = "Minute",
+                    min = 0,
+                    max = 59,
+                    step = 1
+                  )
+                ),
+                actionButton("retrieve_data", "Retrieve from database"),
+                actionButton("compare_vars", "Compare variables"),
+              ),
+              hidden(
+                div(
+                  id = "validation_calendar_outer",
+                  box(
+                    id = 'validation_calendar',
+                    title = "Validation Calendar",
+                    status = "success",
+                    solidHeader = TRUE,
+                    shinycssloaders::withSpinner(plotOutput("heatmap_plot"))
                   )
                 )
-              ),
+              )
+            ),
+            hidden(
               fluidRow(
-                conditionalPanel(
-                  "input.flag_all_day == 'No'",
+                id = "extracted_data",
+                box(
+                  title = "Extracted Data",
+                  status = "success",
+                  solidHeader = TRUE,
+                  width = 12,
+                  shinycssloaders::withSpinner(uiOutput("mytabs")),
+                  selectInput(
+                    "select_imputation",
+                    label = h5("Gap-Filling Method"),
+                    choices = gf_choices
+                  ),
+                  actionButton("impute", label = "Impute selection"),
+                  actionButton(
+                    "finished_check",
+                    label = "Finished checking variable for date range."
+                  ),
+                  checkboxGroupInput(
+                    "qc_tokeep",
+                    "Do not alter data estimated by",
+                    choiceNames = df_method$method_longname,
+                    choiceValues = df_method$qc
+                  ),
+                  uiOutput("impute_extra_info"),
+                  actionButton("reset", label = "Restart app"),
+                  #actionButton("submitchanges", "Submit changes to file"),
+                  actionButton("submitchanges_cloud", "Submit changes")
+                ),
+              )
+            ),
+          ),
+          tabItem(
+            tabName = "flags",
+            fluidRow(
+              box(
+                id = 'flag_details_box',
+                title = 'Add data flag',
+                status = "success",
+                solidHeader = TRUE,
+                helpText("Select the start and end times for the data flag."),
+                width = 6,
+  
+                fluidRow(
+                  column(6, uiOutput('flag_date_start_input')),
+                  column(6, uiOutput('flag_date_end_input')),
+                ),
+                fluidRow(
+                  # checkboxGroupButtons(
+                  #   inputId = "flag_all_day", label = "Flag the entire day?",
+                  #   choices = c("Yes", "No"),
+                  #   justified = FALSE, status = "primary"
+                  # )
+  
                   column(
                     6,
-                    numericInput(
-                      "flag_start_hour",
-                      value = 0,
-                      label = "Start hour (24 hour)",
-                      min = 0,
-                      max = 23,
-                      step = 1
+                    #selectInput('flag_all_day', label = 'Flag the entire day?', choices = c('Yes' = TRUE, 'No' = FALSE))
+                    selectInput(
+                      'flag_all_day',
+                      label = 'Flag the entire day?',
+                      choices = c('Yes', 'No'),
+                      selected = 'Yes'
+                    )
+                  )
+                ),
+                fluidRow(
+                  conditionalPanel(
+                    "input.flag_all_day == 'No'",
+                    column(
+                      6,
+                      numericInput(
+                        "flag_start_hour",
+                        value = 0,
+                        label = "Start hour (24 hour)",
+                        min = 0,
+                        max = 23,
+                        step = 1
+                      )
+                    ),
+                    column(
+                      6,
+                      numericInput(
+                        "flag_end_hour",
+                        value = 0,
+                        label = "End hour (24 hour)",
+                        min = 0,
+                        max = 23,
+                        step = 1
+                      )
+                    )
+                  )
+                ),
+                fluidRow(
+                  column(
+                    6,
+                    selectInput(
+                      'flag_var',
+                      label = 'Variable',
+                      choices = v_names[!v_names %in% "DATECT"]
                     )
                   ),
                   column(
                     6,
-                    numericInput(
-                      "flag_end_hour",
-                      value = 0,
-                      label = "End hour (24 hour)",
-                      min = 0,
-                      max = 23,
-                      step = 1
+                    textInput(
+                      'flag_comm',
+                      label = 'Comment',
+                      placeholder = 'Why is this data being flagged?'
                     )
                   )
-                )
+                ),
+                column(6, actionButton("add_flag", "Add Flag"))
               ),
-              fluidRow(
-                column(
-                  6,
-                  selectInput(
-                    'flag_var',
-                    label = 'Variable',
-                    choices = v_names[!v_names %in% "DATECT"]
+            ),
+            shinycssloaders::withSpinner(
+              DT::dataTableOutput('flag_table', width = '50%')
+            ),
+  
+            actionButton('save_flags_btn', 'Save'),
+            actionButton('reset_flags_btn', 'Reset')
+          ),
+          
+          # upload file tab
+          tabItem(
+            tabName = "upload",
+            fluidPage(
+              mod_upload_ui("upload_module"),
+              mod_colmap_ui("colmap_module")
+            )
+          ),
+          ###################
+          
+          tabItem(
+            tabName = 'download',
+            fluidRow(
+              box(
+                id = 'download_box',
+                title = 'Data download',
+                status = "success",
+                solidHeader = TRUE,
+                selectInput(
+                  'download_file',
+                  'Data to download:',
+                  choices = c(
+                    'Level 1' = 'lev1',
+                    'Level 2' = 'lev2',
+                    'CEDA' = 'ceda',
+                    'Data flags' = 'flags'
                   )
                 ),
-                column(
-                  6,
-                  textInput(
-                    'flag_comm',
-                    label = 'Comment',
-                    placeholder = 'Why is this data being flagged?'
-                  )
-                )
-              ),
-              column(6, actionButton("add_flag", "Add Flag"))
-            ),
-          ),
-          shinycssloaders::withSpinner(
-            DT::dataTableOutput('flag_table', width = '50%')
-          ),
-
-          actionButton('save_flags_btn', 'Save'),
-          actionButton('reset_flags_btn', 'Reset')
-        ),
-        tabItem(
-          tabName = 'download',
-          fluidRow(
-            box(
-              id = 'download_box',
-              title = 'Data download',
-              status = "success",
-              solidHeader = TRUE,
-              selectInput(
-                'download_file',
-                'Data to download:',
-                choices = c(
-                  'Level 1' = 'lev1',
-                  'Level 2' = 'lev2',
-                  'CEDA' = 'ceda',
-                  'Data flags' = 'flags'
-                )
-              ),
-              downloadButton('download_data', label = 'Download')
+                downloadButton('download_data', label = 'Download')
+              )
             )
-          )
-        ),
-        tabItem(
-          tabName = "information",
-        ),
-        tabItem(
-          tabName = "gapfill_guide",
-          includeMarkdown("./vignettes/gap_fill_methods.md")
-        ),
-        tabItem(
-          tabName = "app_guide",
-          includeMarkdown("./vignettes/app_user_guide.md")
-        ),
-        tabItem(
-          tabName = "data_guide",
-          includeHTML(
-            './vignettes/metdb_shiny_version.html'
-            # rmarkdown::render(
-            #   input="./vignettes/metdb.rmd",
-            #   #params = list(selection = input$state, data=librarians_filtered)
-            # )
+          ),
+          tabItem(
+            tabName = "information",
+          ),
+          tabItem(
+            tabName = "gapfill_guide",
+            includeMarkdown("./vignettes/gap_fill_methods.md")
+          ),
+          tabItem(
+            tabName = "app_guide",
+            includeMarkdown("./vignettes/app_user_guide.md")
+          ),
+          tabItem(
+            tabName = "data_guide",
+            includeHTML(
+              './vignettes/metdb_shiny_version.html'
+              # rmarkdown::render(
+              #   input="./vignettes/metdb.rmd",
+              #   #params = list(selection = input$state, data=librarians_filtered)
+              # )
+            )
           )
         )
       )
@@ -324,6 +357,16 @@ metqcApp <- function(...) {
   )
 
   server <- function(input, output, session) {
+    
+    # load mapping for upload module
+    uploaded <- mod_upload_server("upload_module")
+    mapped_data <- mod_colmap_server("colmap_module", uploaded, dict_list)
+    
+    observeEvent(mapped_data(), {
+      showNotification("✅ Mapping confirmed! Ready to process data.")
+    })
+    ###############################
+    
     ##########################
     #shinyvalidate statements#
     #########################
@@ -332,7 +375,54 @@ metqcApp <- function(...) {
     iv$add_rule("sdate", sv_required())
     iv$add_rule("edate", sv_required())
     iv$enable()
-
+    
+    # authentication states
+    credentials <- reactiveValues(
+      login_ok = FALSE,           # sodium-based login
+      username_selected = FALSE,  # secondary username selection
+      user = NULL,
+      selected_username = NULL
+    )
+    #################
+    
+    # sodium login
+    output$auth_ui <- renderUI({
+      if (!credentials$login_ok) {
+        tagList(
+          h3("🔐 Please log in"),
+          textInput("login_user", "Username"),
+          passwordInput("login_pass", "Password"),
+          actionButton("login_btn", "Login")
+        )
+      } else {
+        NULL
+      }
+    })
+    
+    # sodium login check
+    observeEvent(input$login_btn, {
+      req(input$login_user, input$login_pass)
+      
+      user_row <- user_base[user_base$user == input$login_user, ]
+      if (nrow(user_row) == 1 &&
+          password_verify(user_row$password_hash[[1]], input$login_pass)) {
+        
+        credentials$login_ok <- TRUE
+        credentials$user <- input$login_user
+        
+        showNotification(paste("✅ Login successful for", input$login_user))
+        
+        # Once sodium login passes, show your existing username modal
+        showModal(username_modal)
+        
+      } else {
+        showNotification("❌ Invalid username or password", type = "error")
+      }
+    })
+    #######################
+    
+    # Secondary username modal for inputting data
+    
     # list of possible users - hard-coded for now
     v_usernames <- c(
       "plevy",
@@ -359,11 +449,36 @@ metqcApp <- function(...) {
     )
 
     # Show the model on start up ...
-    showModal(username_modal)
+    #showModal(username_modal)
 
-    # allow user to trigger modal with button press
+    # allow user to trigger modal with button press (after sodium login)
     observeEvent(input$change_user, {
+      req(credentials$login_ok)
       showModal(username_modal)
+    })
+    
+    # Handle username confirmation
+    observeEvent(input$ok, {
+      req(input$input_username)
+      credentials$username_selected <- TRUE
+      credentials$selected_username <- input$input_username
+      removeModal()
+      showNotification(paste("✅ Active username:", input$input_username))
+    })
+    
+    # control full access
+    output$fully_authenticated <- reactive({
+      credentials$login_ok && credentials$username_selected
+    })
+    outputOptions(output, "fully_authenticated", suspendWhenHidden = FALSE)
+    
+    # header display
+    output$user_name_text <- renderText({
+      if (credentials$login_ok && credentials$username_selected) {
+        paste(credentials$user, "(", credentials$selected_username, ")")
+      } else {
+        ""
+      }
     })
 
     ###

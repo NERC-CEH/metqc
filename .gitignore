@@ -2,8 +2,11 @@
 .Rhistory
 .RData
 .Ruserdata
-/doc/
+/docs/
 /Meta/
 .Renviron
 *.rds
 *.nc
+.vscode/
+ignore/
+*.pdf
