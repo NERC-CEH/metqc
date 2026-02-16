@@ -13,8 +13,7 @@ df_method <- data.frame(
     "nightzero",
     "noneg",
     "zero",
-    "era5",
-    "flagged"
+    "era5"
   ),
   method_longname = c(
     'Original observation (raw data)',
@@ -24,10 +23,9 @@ df_method <- data.frame(
     "Night-time zero",
     "No negative values",
     "All zeros",
-    "Regression with ERA5 covariate",
-    "Flagged data"
+    "Regression with ERA5 covariate"
   ),
-  qc = c(0, 1, 2, 3, 4, 5, 6, 7, 8) # 0 = raw, 1 = missing
+  qc = c(0, 1, 2, 3, 4, 5, 6, 7) # 0 = raw, 1 = missing
 )
 
 df_method$method_longname <- factor(
@@ -40,11 +38,8 @@ df_method$method_longname <- factor(
     "Night-time zero",
     "No negative values",
     "All zeros",
-    "Regression with ERA5 covariate",
-    "Flagged data"
+    "Regression with ERA5 covariate"
   )
 )
 
-usethis::use_data(df_method, overwrite = T)
-
-# End
+usethis::use_data(df_method, overwrite = TRUE)

@@ -18,8 +18,7 @@ Description: This app aims to be an standarisation to the UKCEH metadata
     quality control and processing, such as gap filling. It is a R Shiny
     app that allows users to retrieve met data from a database, and
     process them in an standard way.
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+License: GPL (>= 3)
 Encoding: UTF-8
 licence: CC BY 4.0
 Roxygen: list(markdown = TRUE)
