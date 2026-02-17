@@ -1,17 +1,16 @@
 #' Format the data for submission to CEDA
 #'
-#' @param l_lev A named list with three components \code{dt} and \code{dt_qc},
-#'   which are the data tables of the observations, the quality
-#'   control codes, and associated ERA5 data.
+#' @param mm A metamet object.
 #' @param v_names A character vector of column names
 #'   that should be included in the new data frame.
 #'
 #' @return A new data frame with the selected columns from \code{dt} and
 #'   \code{dt_qc}.
 #'
-#' @export
+##' @keywords internal
+##' @noRd
 format_for_ceda <- function(
-  l_lev,
+  mm,
   v_names = c(
     "TA_4_1_1",
     "RH_4_1_1",
@@ -33,10 +32,10 @@ format_for_ceda <- function(
   v_names_qc <- paste0(v_names, "_qc")
 
   # Select the columns from dt_qc with the names in v_names_qc
-  l_lev$dt_qc <- setNames(l_lev$dt_qc[, ..v_names], v_names_qc)
+  mm$dt_qc <- setNames(mm$dt_qc[, ..v_names], v_names_qc)
 
   # Create a new data frame by binding the selected columns from dt and dt_qc
-  dt <- cbind(l_lev$dt[, .(DATECT)], l_lev$dt[, ..v_names], l_lev$dt_qc)
+  dt <- cbind(mm$dt[, .(DATECT)], mm$dt[, ..v_names], mm$dt_qc)
 
   # Return the new data frame
   return(dt)

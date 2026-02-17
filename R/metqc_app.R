@@ -1,4 +1,9 @@
+# install.packages("pak")
+# library(pak)
+# pak::pak("NERC-CEH/metamet")
+
 # here::i_am("R/metqc_app.R")
+library(metamet)
 library(here)
 library(shiny)
 library(shinyWidgets)
@@ -315,39 +320,22 @@ metqcApp <- function(...) {
 
     disable('compare_vars')
 
-    board <- board_connect()
-
     # Reading in Level 1 data from pin on Connect server
-    l_lev1 <- pin_read(board, "plevy/level1_data")
-
+    system.time(mm1 <- readRDS(file = here("data-raw/UK-AMO", "mm1.rds")))
     # Read in the previously validated data from pin on Connect server
-    l_lev2 <- pin_read(board, "plevy/level2_data")
+    system.time(mm2 <- readRDS(file = here("data-raw/UK-AMO", "mm2.rds")))
+    dim(mm2$dt)
+    dim(mm1$dt)
 
     # Here we join the existing Level 2 data with new Level 1 data.
     # Where records already exist in the Level 2 data, these are preserved
     # and only new Level 1 data is added to the resulting data frame.
 
-    l_lev2$dt <- power_full_join(
-      l_lev2$dt,
-      l_lev1$dt,
-      by = "DATECT",
-      conflict = coalesce_xy
-    )
-    l_lev2$dt_qc <- power_full_join(
-      l_lev2$dt_qc,
-      l_lev1$dt_qc,
-      by = "DATECT",
-      conflict = coalesce_xy
-    )
-    l_lev2$dt_era5 <- power_full_join(
-      l_lev2$dt_era5,
-      l_lev1$dt_era5,
-      by = "DATECT",
-      conflict = coalesce_xy
-    )
+    mm2 <- join(mm1, mm2)
+    dim(mm2$dt)
 
     date_of_first_new_record <- as.POSIXct(Sys.Date() - 225, tz = "UTC")
-    date_of_last_new_record <- max(l_lev1$dt$DATECT, na.rm = TRUE)
+    date_of_last_new_record <- max(mm1$dt$DATECT, na.rm = TRUE)
 
     # v_names <<- dbListFields(con, table_name)
     v_names_for_box <- v_names[
@@ -480,28 +468,16 @@ metqcApp <- function(...) {
       shinyjs::show("extracted_data")
       shinyjs::show("validation_calendar_outer")
 
-      l_qry <<- list()
-
-      # file / dataframe version
-      l_qry$dt <<- subset(
-        l_lev2$dt,
-        DATECT >= df_daterange()$start_date &
-          DATECT <= df_daterange()$end_date
-      )
-      l_qry$dt_qc <<- subset(
-        l_lev2$dt_qc,
-        DATECT >= df_daterange()$start_date &
-          DATECT <= df_daterange()$end_date
-      )
-      # make a corresponding subset of the ERA5 data
-      l_qry$dt_era5 <<- subset(
-        l_lev2$dt_era5,
-        DATECT >= df_daterange()$start_date &
-          DATECT <= df_daterange()$end_date
+      ##* WIP: create a subsetting function in metamet. mm_qry here will be the
+      ## return value  of this function
+      mm_qry <<- metamet::subset_by_date(
+        mm2,
+        start_date = df_daterange()$start_date,
+        end_date = df_daterange()$end_date
       )
 
-      l_qry$dt$checked <<- as.factor(rownames(l_qry$dt))
-      l_qry$dt$datect_num <<- as.numeric(l_qry$dt$DATECT)
+      mm_qry$dt$checked <<- as.factor(rownames(mm_qry$dt))
+      mm_qry$dt$datect_num <<- as.numeric(mm_qry$dt$DATECT)
 
       # Add a tab to the plotting panel for each variable that has been selected by the user.
       output$mytabs <- renderUI({
@@ -532,7 +508,7 @@ metqcApp <- function(...) {
       # Creating a calendar heatmap plot that will be plotted depending on the tab selected in plotTabs
       heatmap_plot_selected <- reactive({
         req(input$plotTabs)
-        plot_heatmap_calendar(l_qry$dt_qc)
+        plot_heatmap_calendar(mm_qry$dt_qc)
       })
 
       output$heatmap_plot <- renderPlot(heatmap_plot_selected())
@@ -543,7 +519,7 @@ metqcApp <- function(...) {
     # compare variables modal
     observeEvent(input$compare_vars, {
       plot_data <- reactive({
-        data.frame(x = l_qry$dt[, input$x_var], y = l_qry$dt[, input$y_var])
+        data.frame(x = mm_qry$dt[, input$x_var], y = mm_qry$dt[, input$y_var])
       })
 
       output$compare_vars_plot <- renderPlot({
@@ -592,15 +568,15 @@ metqcApp <- function(...) {
       if (is.null(selected_state())) {
         shinyjs::alert("Please select a point to impute.")
       } else {
-        l_qry <<- impute(
-          y = input$plotTabs,
-          l_met = l_qry,
+        mm_qry <<- metamet::impute(
+          v_y = input$plotTabs,
+          mm = mm_qry,
           method = input$select_imputation,
           qc_tokeep = as.numeric(input$qc_tokeep),
           x = input$select_covariate,
           k = input$intslider,
           plot_graph = FALSE,
-          selection = l_qry$dt$checked %in% selected_state()
+          selection = mm_qry$dt$checked %in% selected_state()
         )
 
         # Re-plotting plot after imputation is confirmed to illustrate changes
@@ -663,8 +639,8 @@ metqcApp <- function(...) {
           tmpdir <- tempdir()
           setwd(tempdir())
           fs <- c('level_1-data.csv', 'level_1-qc.csv')
-          data.table::fwrite(l_lev1$dt, 'level_1-data.csv')
-          data.table::fwrite(l_lev1$dt_qc, 'level_1-qc.csv')
+          data.table::fwrite(mm1$dt, 'level_1-data.csv')
+          data.table::fwrite(mm1$dt_qc, 'level_1-qc.csv')
           zip(zipfile = file, files = fs)
           runjs(
             'document.getElementById("download_data").textContent="Download";'
@@ -678,8 +654,8 @@ metqcApp <- function(...) {
           tmpdir <- tempdir()
           setwd(tempdir())
           fs <- c('level_2-data.csv', 'level_2-qc.csv')
-          data.table::fwrite(l_lev2$dt, 'level_2-data.csv')
-          data.table::fwrite(l_lev2$dt_qc, 'level_2-qc.csv')
+          data.table::fwrite(mm2$dt, 'level_2-data.csv')
+          data.table::fwrite(mm2$dt_qc, 'level_2-qc.csv')
           zip(zipfile = file, files = fs)
           runjs(
             'document.getElementById("download_data").textContent="Download";'
@@ -693,7 +669,7 @@ metqcApp <- function(...) {
           tmpdir <- tempdir()
           setwd(tempdir())
           fs <- c('ceda-data.csv')
-          df_ceda <- format_for_ceda(l_lev2)
+          df_ceda <- format_for_ceda(mm2)
           data.table::fwrite(df_ceda, 'ceda-data.csv')
           zip(zipfile = file, files = fs)
           runjs(
@@ -715,75 +691,59 @@ metqcApp <- function(...) {
       shinyjs::disable("submitchanges_cloud")
       shinyjs::disable("edit_table_cols")
 
-      # update lev2 with l_qry
-      l_qry$dt_qc$validator <- username
+      # update lev2 with mm_qry
+      mm_qry$dt_qc$validator <- username
 
       # overwrite existing data with changes in query
-      l_lev2$dt <<- power_full_join(
-        l_lev2$dt,
-        l_qry$dt,
-        by = "DATECT",
-        conflict = coalesce_yx
-      )
-      l_lev2$dt_qc <<- power_full_join(
-        l_lev2$dt_qc,
-        l_qry$dt_qc,
-        by = "DATECT",
-        conflict = coalesce_yx
-      )
-      l_lev2$dt_era5 <<- power_full_join(
-        l_lev2$dt_era5,
-        l_qry$dt_era5,
-        by = "DATECT",
-        conflict = coalesce_yx
-      )
+      mm2 <<- join(mm2, mm_qry)
 
+      ##* WIP: temp stop writing to pins
       # write to pin on Connect server
-      pin_write(board, l_lev2, name = "plevy/level2_data", type = "rds")
+      # pin_write(board, mm2, name = "plevy/level2_data", type = "rds")
 
       # write CEDA formatted data to pin
-      df_ceda <- format_for_ceda(l_lev2)
-      pin_write(board, df_ceda, name = "plevy/ceda_data", type = "rds")
+      df_ceda <- format_for_ceda(mm2)
+      # pin_write(board, df_ceda, name = "plevy/ceda_data", type = "rds")
 
-      time_diff <- difftime(
-        as.POSIXct(Sys.time()),
-        as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created),
-        units = 'mins'
-      )
+      # time_diff <- difftime(
+      #   as.POSIXct(Sys.time()),
+      #   as.POSIXct(pins::pin_meta(board, 'plevy/level2_data')$created),
+      #   units = 'mins'
+      # )
 
-      if (time_diff < 2) {
-        shinyalert(
-          title = "Data successfully saved to cloud",
-          size = "m",
-          closeOnEsc = TRUE,
-          closeOnClickOutside = TRUE,
-          html = FALSE,
-          type = "success",
-          showConfirmButton = TRUE,
-          showCancelButton = FALSE,
-          confirmButtonText = "OK",
-          confirmButtonCol = "#AEDEF4",
-          timer = 10000,
-          imageUrl = "",
-          animation = TRUE
-        )
-      } else {
-        shinyalert(
-          title = "Error saving data",
-          text = "Data took over 2 minutes to write. Data may not have saved correctly to the cloud.",
-          size = "m",
-          closeOnEsc = FALSE,
-          closeOnClickOutside = FALSE,
-          html = FALSE,
-          type = "error",
-          showConfirmButton = FALSE,
-          showCancelButton = TRUE,
-          cancelButtonText = "Cancel",
-          timer = 10000,
-          imageUrl = "",
-          animation = TRUE
-        )
-      }
+      # if (time_diff < 2) {
+      #   shinyalert(
+      #     title = "Data successfully saved to cloud",
+      #     size = "m",
+      #     closeOnEsc = TRUE,
+      #     closeOnClickOutside = TRUE,
+      #     html = FALSE,
+      #     type = "success",
+      #     showConfirmButton = TRUE,
+      #     showCancelButton = FALSE,
+      #     confirmButtonText = "OK",
+      #     confirmButtonCol = "#AEDEF4",
+      #     timer = 10000,
+      #     imageUrl = "",
+      #     animation = TRUE
+      #   )
+      # } else {
+      #   shinyalert(
+      #     title = "Error saving data",
+      #     text = "Data took over 2 minutes to write. Data may not have saved correctly to the cloud.",
+      #     size = "m",
+      #     closeOnEsc = FALSE,
+      #     closeOnClickOutside = FALSE,
+      #     html = FALSE,
+      #     type = "error",
+      #     showConfirmButton = FALSE,
+      #     showCancelButton = TRUE,
+      #     cancelButtonText = "Cancel",
+      #     timer = 10000,
+      #     imageUrl = "",
+      #     animation = TRUE
+      #   )
+      # }
 
       # remove button activation and reactivate button
       runjs(

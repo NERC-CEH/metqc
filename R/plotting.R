@@ -7,15 +7,14 @@
 #' @param input_variable The name of the variable within the query data frame to plot.
 #' @return OUTPUT_DESCRIPTION
 #' @details DETAILS
-#' @export
-#'
-#' @examples
+#' @keywords internal
+#' @noRd
 plotting_function <- function(input_variable) {
   df <- data.frame(
-    DATECT = l_qry$dt$DATECT,
-    y = l_qry$dt[, ..input_variable][[1]],
-    qc = l_qry$dt_qc[, ..input_variable][[1]],
-    checked = l_qry$dt$checked
+    DATECT = mm_qry$dt$DATECT,
+    y = mm_qry$dt[, ..input_variable][[1]],
+    qc = mm_qry$dt_qc[, ..input_variable][[1]],
+    checked = mm_qry$dt$checked
   )
 
   df <- left_join(df, df_method, by = "qc")
@@ -71,9 +70,8 @@ plotting_function <- function(input_variable) {
 #' @param df A data frame of met data
 #' @return OUTPUT_DESCRIPTION
 #' @details DETAILS
-#' @export
-#'
-#' @examples
+#' @keywords internal
+#' @noRd
 plot_heatmap_calendar <- function(df) {
   # Transforming query dataframe with lubridate to fit the format needed for a heatmap calendar
   df <- df %>%

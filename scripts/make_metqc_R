@@ -1,0 +1,106 @@
+library(here)
+library(sloop)
+library(devtools)
+library(usethis)
+library(pkgload)
+library(pkgbuild)
+library(NCmisc)
+# usethis::use_package_doc()
+# install.packages("NCmisc")
+library(pak)
+pak::pak("NERC-CEH/metamet")
+
+# add to .RBuildIgnore
+usethis::use_build_ignore(c("data-raw"))
+# add air to GitHub Actions
+# usethis::use_github_action(url = "https://github.com/posit-dev/setup-air/blob/main/examples/format-suggest.yaml")
+
+# # add the packages requiring importing to package.r
+use_data_table()
+use_package("data.table", "Depends")
+# seems to produce an error with the coalesce_yx argument if we only Import
+use_package("powerjoin", "Imports")
+use_package("fs", "Imports", min_version = "1.5.0")
+use_package("readxl", "Imports")
+use_package("openair", "Imports")
+use_package("lubridate", "Imports")
+use_package("ggplot2", "Depends")
+use_package("metamet", "Depends")
+
+
+document()
+pkgload::load_all()
+build(vignettes = FALSE)
+check(vignettes = FALSE)
+pkgload::load_all()
+
+
+# analyse what packages are actually used
+# Source - https://stackoverflow.com/a/68746016
+# Posted by Matteo, modified by community. See post 'Timeline' for change history
+# Retrieved 2026-02-17, License - CC BY-SA 4.0
+
+# Load packages ----
+
+packageload <- c(
+  "metamet",
+  "here",
+  "shiny",
+  "shinyWidgets",
+  "shinyjs",
+  "shinydashboard",
+  "dplyr",
+  "ggplot2",
+  "ggiraph",
+  "mgcv",
+  "DT",
+  "data.table",
+  "lubridate",
+  "ggExtra",
+  "openair",
+  "powerjoin",
+  "pins",
+  "glue",
+  "shinycssloaders",
+  "shinyalert",
+  "stringr",
+  "forcats",
+  "shinyvalidate",
+  "markdown"
+)
+
+# packageload <- c("ggplot2", "readxl")
+lapply(packageload, library, character.only = TRUE)
+
+
+# Find which packages do used functions belong to ----
+
+functions_in_metqc_app <- NCmisc::list.functions.in.file(
+  filename = "R/metqc_app.R",
+  alphabetic = FALSE
+)
+
+functions_in_ceda <- NCmisc::list.functions.in.file(
+  filename = "R/format_for_ceda.R",
+  alphabetic = FALSE
+)
+functions_in_plot <- NCmisc::list.functions.in.file(
+  filename = "R/plotting.R",
+  alphabetic = FALSE
+)
+
+used.functions <- c(
+  functions_in_metqc_app,
+  functions_in_ceda,
+  functions_in_plot
+)
+
+# Find which loaded packages are not used ----
+
+used.packages <- used.functions |>
+  names() |>
+  grep(pattern = "package:", value = TRUE) |>
+  gsub(pattern = "package:", replacement = "") |>
+  print()
+
+unused.packages <- packageload[!(packageload %in% used.packages)] |> print()
